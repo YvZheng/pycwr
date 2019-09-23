@@ -2,12 +2,15 @@
 import struct
 import numpy as np
 from BaseDataProtocol.CCProtocol import dtype_cc
-from util import _prepare_for_read, _unpack_from_buf, get_radar_info
+from util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
 import time
 import datetime
 import pandas as pd
 from libs.core.NRadar import NuistRadar
-
+from configure.pyart_config import get_metadata, get_fillvalue
+from configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
+from libs.core.PyartRadar import Radar
+from netCDF4 import date2num
 
 class CCBaseData(object):
     """
@@ -169,6 +172,8 @@ class CCBaseData(object):
         ## only ppi support!
         return "ppi"
 
+    def get_sitename(self):
+        return get_radar_sitename(self.filename)
 
 class CC2NRadar(object):
     """到NusitRadar object 的桥梁"""
@@ -189,6 +194,7 @@ class CC2NRadar(object):
         self.max_bins = self.bins_per_sweep.max()
         self.range = self.get_range_per_radial(self.max_bins)
         self.fields = self._get_fields()
+        self.sitename = self.CC.get_sitename()
 
     def get_azimuth(self):
         """
@@ -291,10 +297,115 @@ class CC2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
 
     def ToPyartRadar(self):
-        pass
+
+        dts = self.get_scan_time()
+        units = make_time_unit_str(min(dts))
+        time = get_metadata('time')
+        time['units'] = units
+        time['data'] = date2num(dts, units).astype('float32')
+
+        # range
+        _range = get_metadata('range')
+        # assume that the number of gates and spacing from the first ray is
+        # representative of the entire volume
+        _range['data'] = self.range
+        _range['meters_to_center_of_first_gate'] = self.CC.header['CutConfig']['usBindWidth'][0] * 2
+        _range['meters_between_gates'] = self.CC.header['CutConfig']['usBindWidth'][0] * 2
+
+        latitude = get_metadata('latitude')
+        longitude = get_metadata('longitude')
+        altitude = get_metadata('altitude')
+        latitude['data'] = np.array([self.latitude], dtype='float64')
+        longitude['data'] = np.array([self.longitude], dtype='float64')
+        altitude['data'] = np.array([self.altitude], dtype='float64')
+
+        metadata = get_metadata('metadata')
+        metadata['original_container'] = 'CINRAD/CC'
+        metadata['site_name'] = self.sitename
+        metadata['radar_name'] = "CINRAD/CC"
+
+        sweep_start_ray_index = get_metadata('sweep_start_ray_index')
+        sweep_end_ray_index = get_metadata('sweep_end_ray_index')
+        sweep_start_ray_index['data'] = self.sweep_start_ray_index
+        sweep_end_ray_index['data'] = self.sweep_end_ray_index
+
+        sweep_number = get_metadata('sweep_number')
+        sweep_number['data'] = np.arange(self.nsweeps, dtype='int32')
+
+        scan_type = self.scan_type
+
+        sweep_mode = get_metadata('sweep_mode')
+        if self.scan_type == "ppi":
+            sweep_mode['data'] = np.array(self.nsweeps * ['azimuth_surveillance'], dtype='S')
+        elif self.scan_type == "rhi":
+            sweep_mode['data'] = np.array(self.nsweeps * ['rhi'], dtype='S')
+        else:
+            sweep_mode['data'] = np.array(self.nsweeps * ['sector'], dtype='S')
+
+        # elevation
+        elevation = get_metadata('elevation')
+        elevation['data'] = self.elevation
+
+        # azimuth
+        azimuth = get_metadata('azimuth')
+        azimuth['data'] = self.azimuth
+
+        # fixed_angle
+        fixed_angle = get_metadata('fixed_angle')
+        fixed_angle['data'] = self.get_fixed_angle()
+
+        # instrument_parameters
+        instrument_parameters = self._get_instrument_parameters()
+
+        # fields
+        fields = {}
+        for field_name_abbr in self.fields.keys():
+            field_name = CINRAD_field_mapping[field_name_abbr]
+            if field_name is None:
+                continue
+            field_dic = get_metadata(field_name)
+            field_dic['data'] = self.fields[field_name_abbr]
+            field_dic['_FillValue'] = get_fillvalue()
+            fields[field_name] = field_dic
+        return Radar(time, _range, fields, metadata, scan_type,
+                     latitude, longitude, altitude,
+                     sweep_number, sweep_mode, fixed_angle, sweep_start_ray_index,
+                     sweep_end_ray_index,
+                     azimuth, elevation,
+                     instrument_parameters=instrument_parameters)
+
+    def _get_instrument_parameters(self):
+        """ Return a dictionary containing instrument parameters. """
+
+        # pulse width
+        pulse_width = get_metadata('pulse_width')
+        pulse_width['data'] = self.CC.header['CutConfig']['usBindWidth'][0] * 2. / _LIGHT_SPEED  # m->sec
+        # assume that the parameters in the first ray represent the beam widths,
+        # bandwidth and frequency in the entire volume
+        wavelength_hz = self.frequency * 10 ** 9
+        # radar_beam_width_h
+        radar_beam_width_h = get_metadata('radar_beam_width_h')
+        radar_beam_width_h['data'] = np.array([0.703125, ], dtype='float32')
+        # radar_beam_width_v
+        radar_beam_width_v = get_metadata('radar_beam_width_v')
+        radar_beam_width_v['data'] = np.array([0.703125, ], dtype='float32')
+        # frequency
+        frequency = get_metadata('frequency')
+        frequency['data'] = np.array([wavelength_hz], dtype='float32')
+        instrument_parameters = {
+            'pulse_width': pulse_width,
+            'radar_beam_width_h': radar_beam_width_h,
+            'radar_beam_width_v': radar_beam_width_v,
+            'frequency': frequency, }
+
+        # nyquist velocity if defined
+        nyquist_velocity = get_metadata('nyquist_velocity')
+        nyquist_velocity['data'] = self.get_nyquist_velocity()
+        instrument_parameters['nyquist_velocity'] = nyquist_velocity
+        return instrument_parameters
 
 
 if __name__ == "__main__":

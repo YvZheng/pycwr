@@ -90,6 +90,13 @@ def get_radar_info(filename):
     return radar_info.loc[station_id, "Latitude"], radar_info.loc[station_id, "Longitude"],\
            radar_info.loc[station_id, "Elevation"], radar_info.loc[station_id, "Frequency"]
 
+def get_radar_sitename(filename):
+    name = os.path.basename(filename)
+    station_id = [int(name[idx:idx + 4]) for idx in range(len(name) - 4) if name[idx:idx + 4].isdigit()][0]
+    if station_id not in radar_info.index:
+        station_id = 9250  ###找不到站点信息返回南京雷达
+    return radar_info.loc[station_id, "Name"]
+
 def get_radar_type(filename):
     """
     根据雷达名称找雷达类型
@@ -129,4 +136,8 @@ def radar_format(filename):
         return "SC"
     else:
         return get_radar_type(filename)
+
+def make_time_unit_str(dtobj):
+    """ Return a time unit string from a datetime object. """
+    return "seconds since " + dtobj.strftime("%Y-%m-%dT%H:%M:%SZ")
 

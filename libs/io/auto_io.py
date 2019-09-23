@@ -33,5 +33,6 @@ if __name__ == "__main__":
         try:
             res = radar_io(ifile)
             c = res.ToNuistRadar()
+            d = res.ToPyartRadar()
         except Exception:
             print(ifile)

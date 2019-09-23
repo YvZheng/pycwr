@@ -71,7 +71,7 @@ class NuistRadar(object):
     def __init__(self, fields,  scan_type, time, range, azimuth, elevation,latitude,
                  longitude, altitude, sweep_start_ray_index, sweep_end_ray_index,
                  fixed_angle, bins_per_sweep, nyquist_velocity, frequency, unambiguous_range,
-                 nrays, nsweeps):
+                 nrays, nsweeps, sitename):
 
         super(NuistRadar, self).__init__()
         keys = fields.keys()
@@ -107,3 +107,4 @@ class NuistRadar(object):
         self.scan_info['fixed_angle'].attrs = DEFAULT_METADATA['fixed_angle']
         self.nsweeps = nsweeps
         self.nrays = nrays
+        self.sitename = sitename

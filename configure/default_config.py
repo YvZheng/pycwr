@@ -5,6 +5,7 @@ Configuration file for the NuistRadar Object , modified from Py-art
 """
 
 FILL_VALUE = -999.0
+_LIGHT_SPEED = 2.99792458e8
 
 DEFAULT_METADATA = {
     # Metadata for radar attributes. These closely follow the CF/Radial

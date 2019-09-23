@@ -1,0 +1,305 @@
+# -*- coding: utf-8 -*-
+import struct
+import numpy as np
+from BaseDataProtocol.CCProtocol import dtype_cc
+from util import _prepare_for_read, _unpack_from_buf, get_radar_info
+import time
+import datetime
+import pandas as pd
+from libs.core.NRadar import NuistRadar
+
+
+class CCBaseData(object):
+    """
+        解码CC/CCJ的数据格式
+    """
+
+    def __init__(self, filename):
+        super(CCBaseData, self).__init__()
+        self.filename = filename
+        self.fid = _prepare_for_read(self.filename)  ##判断是否是压缩文件
+        # print(len(self.fid.read()))
+        buf_header = self.fid.read(dtype_cc.BaseDataHeaderSize)  ##取出header的buf
+        self.header = self._parse_BaseDataHeader(buf_header)
+        self._check_cc_basedata()
+        self.fid.seek(dtype_cc.BaseDataHeaderSize, 0)  ##移动到径向数据的位置
+        self.radial = self._parse_radial()
+
+    def _check_cc_basedata(self):
+        """检查雷达数据是否完整"""
+        buf_radial_data = self.fid.read()
+        assert len(buf_radial_data) == self.nrays * dtype_cc.PerRadialSize, "CC basedata size has problems!"
+        return
+
+    def _parse_BaseDataHeader(self, buf_header):
+        """
+        :param buf_header: 只包含头文件的buf
+        :return:
+        """
+        BaseDataHeader_dict = {}
+        ##解码第一部分观测参数
+        BaseDataHeader_dict['ObsParam1'], _ = _unpack_from_buf(buf_header, \
+                                                               dtype_cc.HeaderSize1_pos,
+                                                               dtype_cc.BaseDataHeader['RadarHeader1'])
+        ##解码不同仰角的观测参数
+        assert BaseDataHeader_dict['ObsParam1']['ucScanMode'] > 100, "only vol support!"
+        self.nsweeps = BaseDataHeader_dict['ObsParam1']['ucScanMode'] - 100
+        BaseDataHeader_dict['CutConfig'] = np.frombuffer(buf_header, \
+                                                         dtype_cc.BaseDataHeader['CutConfigX30'], count=self.nsweeps,
+                                                         offset=dtype_cc.CutSize_pos)
+        ##解码第二部分观测参数
+        BaseDataHeader_dict['ObsParam2'], _ = _unpack_from_buf(buf_header, \
+                                                               dtype_cc.HeaderSize2_pos,
+                                                               dtype_cc.BaseDataHeader['RadarHeader2'])
+
+        self.nrays = np.sum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])
+        self.sweep_end_ray_index_add1 = np.cumsum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])  ##python格式的结束
+        self.sweep_start_ray_index = self.sweep_end_ray_index_add1 - BaseDataHeader_dict['CutConfig']['usRecordNumber']
+        return BaseDataHeader_dict
+
+    def _parse_radial_single(self, buf_radial, radialnumber):
+        """解析径向的数据"""
+        Radial = {}
+        RadialData = np.frombuffer(buf_radial, dtype_cc.RadialData(radialnumber))
+        Radial['fields'] = {}
+        Radial['fields']['dBZ'] = np.where(RadialData['dBZ'] != -32768, RadialData['dBZ'] / 10.,
+                                           np.nan).astype(np.float32)
+        Radial['fields']['V'] = np.where(RadialData['V'] != -32768, RadialData['V'] / 10.,
+                                         np.nan).astype(np.float32)
+        Radial['fields']['W'] = np.where(RadialData['W'] != -32768, RadialData['W'] / 10.,
+                                         np.nan).astype(np.float32)
+        return Radial
+
+    def _parse_radial(self):
+        radial = []
+        for isweep in range(self.nsweeps):
+            radialnumber = self.header['CutConfig']['usBinNumber'][isweep]
+            for _ in range(self.header['CutConfig']['usRecordNumber'][isweep]):
+                buf_radial = self.fid.read(dtype_cc.PerRadialSize)
+                radial.append(self._parse_radial_single(buf_radial, radialnumber))
+        return radial
+
+    def get_nyquist_velocity(self):
+        """get nyquist vel per ray
+        获取每根径向的不模糊速度
+        :return:(nRays)
+        """
+        nyquist_velocity = np.concatenate([np.array([self.header['CutConfig']['usMaxV'][isweep] / 100.] \
+                                                    * self.header['CutConfig']['usRecordNumber'][isweep]) for \
+                                           isweep in range(self.nsweeps)])
+        return nyquist_velocity.astype(np.float32)
+
+    def get_unambiguous_range(self):
+        """
+        获取每根径向的不模糊距离
+        :return:(nRays)
+        """
+        return np.concatenate([np.array([self.header['CutConfig']['usMaxL'][isweep] * 10. \
+                                         ] * self.header['CutConfig']['usRecordNumber'][isweep]) for \
+                               isweep in range(self.nsweeps)])
+
+    def get_scan_time(self):
+        """
+        获取每根径向的扫描时间
+        :return:(nRays)
+        """
+        params = self.header['ObsParam1']
+        start_year = params['ucSYear1'] * 100 + params['ucSYear2']
+        end_year = params['ucEYear1'] * 100 + params['ucEYear2']
+        start_time = datetime.datetime(year=start_year, month=params['ucSMonth'],
+                                       day=params['ucSDay'], hour=params['ucSHour'],
+                                       minute=params['ucSMinute'], second=params['ucSSecond'])
+        end_time = datetime.datetime(year=end_year, month=params['ucEMonth'],
+                                     day=params['ucEDay'], hour=params['ucEHour'],
+                                     minute=params['ucEMinute'], second=params['ucESecond'])
+        return pd.date_range(start_time, end_time, periods=self.nrays).to_pydatetime()
+
+    def get_sweep_end_ray_index(self):
+        """
+        获取每个sweep的结束的index，包含在内
+        :return:(nsweep)
+        """
+        return self.sweep_end_ray_index_add1 - 1
+
+    def get_sweep_start_ray_index(self):
+        """
+        获取每个sweep的开始的index
+        :return:(nsweep)
+        """
+        return self.sweep_start_ray_index
+
+    def get_rays_per_sweep(self):
+        """
+        获取每个sweep的径向数
+        :return:(nsweep)
+        """
+        return (self.header['CutConfig']['usRecordNumber']).astype(np.int32)
+
+    def get_azimuth(self):
+        """
+        获取每根径向的方位角
+        :return:(nRays)
+        """
+        return np.concatenate([np.linspace(0, 360, self.header['CutConfig']['usRecordNumber'][isweep]) \
+                               for isweep in range(self.nsweeps)], axis=0)
+
+    def get_elevation(self):
+        """
+        获取每根径向的仰角
+        :return: (nRays)
+        """
+        return np.concatenate([np.array([self.header['CutConfig']['usAngle'][isweep] / 100. \
+                                         ] * self.header['CutConfig']['usRecordNumber'][isweep]) for \
+                               isweep in range(self.nsweeps)])
+
+    def get_latitude_longitude_altitude_frequency(self):
+        """
+        获取经纬度高度，雷达频率
+        :return:lat, lon, alt, frequency
+        """
+        return self.header['ObsParam1']['lLatitudeValue'] / 3600000., self.header['ObsParam1'][
+            'lLongitudeValue'] / 3600000., \
+               self.header['ObsParam1']['lHeight'] / 1000., 3 * 10 ** 5 / self.header['ObsParam2']['lWavelength']
+
+    def get_scan_type(self):
+        """
+        获取扫描的类型
+        :return:
+        """
+        ## only ppi support!
+        return "ppi"
+
+
+class CC2NRadar(object):
+    """到NusitRadar object 的桥梁"""
+
+    def __init__(self, CC):
+        self.CC = CC
+        self.radial = self.CC.radial
+        self.azimuth = self.get_azimuth()
+        self.elevation = self.get_elevation()
+        self.sweep_start_ray_index = self.get_sweep_start_ray_index()
+        self.sweep_end_ray_index = self.get_sweep_end_ray_index()
+        self.nrays = self.CC.nrays
+        self.nsweeps = self.CC.nsweeps
+        self.scan_type = self.CC.get_scan_type()
+        self.latitude, self.longitude, self.altitude, self.frequency = \
+            self.CC.get_latitude_longitude_altitude_frequency()
+        self.bins_per_sweep = self.get_nbins_per_sweep()
+        self.max_bins = self.bins_per_sweep.max()
+        self.range = self.get_range_per_radial(self.max_bins)
+        self.fields = self._get_fields()
+
+    def get_azimuth(self):
+        """
+        获取每根径向的方位角
+        :return:(nRays)
+        """
+        return self.CC.get_azimuth()
+
+    def get_elevation(self):
+        """
+        获取每根径向的仰角
+        :return: (nRays)
+        """
+        return self.CC.get_elevation()
+
+    def get_rays_per_sweep(self):
+        """
+        获取每个sweep的径向数
+        :return:(nsweep)
+        """
+        return (self.CC.header['CutConfig']['usRecordNumber']).astype(int)
+
+    def get_scan_time(self):
+        """
+        获取每根径向的扫描时间
+        :return:(nRays)
+        """
+        return self.CC.get_scan_time()
+
+    def get_nyquist_velocity(self):
+        """get nyquist vel per ray
+        获取每根径向的不模糊速度
+        :return:(nRays)
+        """
+        return self.CC.get_nyquist_velocity()
+
+    def get_unambiguous_range(self):
+        """
+        获取每根径向的不模糊距离
+        :return:(nRays)
+        """
+        return self.CC.get_unambiguous_range()
+
+    def get_sweep_end_ray_index(self):
+        """
+        获取每个sweep的结束的index，包含在内
+        :return:(nsweep)
+        """
+        return self.CC.sweep_end_ray_index_add1 - 1
+
+    def get_sweep_start_ray_index(self):
+        """
+        获取每个sweep的开始的index
+        :return:(nsweep)
+        """
+        return self.CC.sweep_start_ray_index
+
+    def get_nbins_per_sweep(self):
+        """
+        确定每个sweep V探测的库数
+        :return:
+        """
+        return (self.CC.header['CutConfig']['usBinNumber']).astype(int)
+
+    def get_range_per_radial(self, length):
+        """
+        确定径向每个库的距离
+        :param length:
+        :return:
+        """
+        Resolution = self.CC.header['CutConfig']['usBindWidth'][0] * 2
+        return np.linspace(Resolution, Resolution * length, length)
+
+    def _get_fields(self):
+        """将所有的field的数据提取出来"""
+        fields = {}
+        field_keys = self.radial[0]['fields'].keys()
+        for ikey in field_keys:
+            fields[ikey] = np.array([(iray['fields'][ikey]).ravel() for iray in self.radial])
+        return fields
+
+    def get_NRadar_nyquist_speed(self):
+        """array shape (nsweeps)"""
+        return self.CC.header['CutConfig']['usMaxV'] / 100.
+
+    def get_NRadar_unambiguous_range(self):
+        """array shape (nsweeps)"""
+        return self.CC.header['CutConfig']['usMaxL'] * 10.
+
+    def get_fixed_angle(self):
+        return self.CC.header['CutConfig']['usAngle'] / 100.
+
+    def ToNuistRadar(self):
+        """将WSR98D数据转为Nuist Radar的数据格式"""
+
+        return NuistRadar(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
+                          range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
+                          longitude=self.longitude, altitude=self.altitude,
+                          sweep_start_ray_index=self.sweep_start_ray_index, \
+                          sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
+                          bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
+                          frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
+                          nrays=self.nrays, nsweeps=self.nsweeps)
+
+    def ToPyartRadar(self):
+        pass
+
+
+if __name__ == "__main__":
+    start = time.time()
+    test = CCBaseData(r"E:\RadarBaseData\CINRAD-CC\2016070818.00V")
+    CC = CC2NRadar(test)
+    end = time.time()
+    print(end - start)

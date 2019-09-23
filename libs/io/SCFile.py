@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("../../")
 import numpy as np
 from libs.io.BaseDataProtocol.SCProtocol import dtype_sc
 from libs.io.util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename

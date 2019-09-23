@@ -1,4 +1,5 @@
 """
+## pyart radar object
 pyart.core.radar
 ================
 
@@ -22,11 +23,8 @@ A general central radial scanning (or dwelling) instrument class.
 """
 from __future__ import print_function
 
-import copy
-import sys
-sys.path.append("../../")
 import numpy as np
-
+import sys
 from configure.pyart_config import get_metadata
 from configure.pyart_lazydict import LazyLoadDict
 from libs.core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic

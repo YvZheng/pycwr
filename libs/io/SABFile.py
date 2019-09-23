@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("../../")
 import numpy as np
 from scipy import interpolate
 from libs.io.BaseDataProtocol.SABProtocol import dtype_sab

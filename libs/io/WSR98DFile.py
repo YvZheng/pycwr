@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-sys.path.append("../../")
 import numpy as np
 from libs.io.BaseDataProtocol.WSR98DProtocol import dtype_98D
 from libs.io.util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str

@@ -7,28 +7,25 @@ this script is created to plot Stereotypical radar  images
 @author: zy
 """
 
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.colors as col
 from mpl_toolkits.basemap import Basemap
-from matplotlib.ticker import MultipleLocator
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
-from colormap import *
-import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+#from colormap import *
 
 class graph(object):
     '''plot radar graph'''                            
             
     @staticmethod
-    def plot_ppi(fig, ax, cx, x, y, dat, label, title, normvar ,orient ,cmap,
+    def plot_ppi(x, y, dat, label, title, normvar ,orient ,cmap,
                  ticks, clabel, nws = False):
         """绘制ppi图像,x是指数据对应的x轴坐标,单位:千米,y是指数据对应y轴坐标,单位:km, dat是指数据
         label=[xlabel,ylabel]代表x轴y轴要显示的字符串, title是指图像的标题, 
         normvar=[vmin,vmax]画图时要画的范围,orient代表colormap的方向,clabel代表cbar上的label"""
-#        global ax
+        global ax
 #        plt.style.use('dark_background')
-#        plt.style.use('default')
+        plt.style.use('default')
         
         xlabel, ylabel = label
         vmin, vmax = normvar
@@ -39,22 +36,23 @@ class graph(object):
             dat = np.ma.masked_where((dat == -999.) | (dat == 999.), dat)
         else:
             dat = np.ma.masked_where((dat == -999.) | (dat == 999.), dat)
+#            dat = np.ma.masked_where(dat == -999., dat)                
+        fig, ax = plt.subplots()
                 
         graph._SetGrids(ax,ranges)
-        gci = ax.pcolormesh(x, y, dat, cmap=cmap, zorder=100,norm=col.Normalize(vmin,vmax))
+        gci = ax.pcolormesh(x, y, dat, cmap=cmap, norm=col.Normalize(vmin,vmax))
         ax.set_aspect("equal")
         ax.set_xlim([xmin,xmax])
         ax.set_ylim([ymin,ymax])
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)
-        #cax = make_axes_locatable(ax).append_axes("right", size="5%", pad="5%")
-        cbar = fig.colorbar(mappable=gci,cax=cx,orientation=orient , ticks=ticks) 
-        #cbar = colorbar(mappable=gci,cax=cx,orientation=orient, ticks=ticks,)
+        
+        cbar = fig.colorbar(gci,ax=ax,orientation=orient , ticks=ticks)        
         cbar.set_label(clabel)
         cbar.set_ticklabels(graph._FixTicks(ticks,nws))
         graph._SetAxis(ax,50,5,8)
-#        plt.style.use('default')
+        plt.style.use('default')
         
     @staticmethod    
     def _SetAxis(ax,major,minor,fontsize):
@@ -75,12 +73,12 @@ class graph(object):
         for i in np.arange(deltaR, ranges+1 , deltaR):
             x0 = i*np.cos(theta)
             y0 = i*np.sin(theta)
-            ax.plot(x0,y0,linestyle = '-',linewidth=0.6,color='#6F6F6F')
+            ax.plot(x0,y0,linestyle = '-',linewidth=0.6,color='#DCDCDC')
                     
         for rad in np.arange(0,np.pi,np.pi/6):
             ax.plot([-1*ranges*np.sin(rad),ranges*np.sin(rad)],\
                      [-1*ranges*np.cos(rad),ranges*np.cos(rad)],\
-                     linestyle = '-',linewidth=0.6,color='#6F6F6F')
+                     linestyle = '-',linewidth=0.6,color='#DCDCDC') 
     @staticmethod
     def _MaxR(ranges,deltaR = 50):
         """计算图像应该显示的范围"""
@@ -93,12 +91,12 @@ class graph(object):
             temp = ["%2.f"%i for i in ticks]
         else:    
             temp = ["%.1f"%i for i in ticks]
-        #if nws == False:
-        #    temp[-1] = "FV"
+        if nws == False:
+            temp[-1] = "FV"
         return temp
     
     @staticmethod
-    def plot_ppi_map(fig, ax, cx, lon, lat, dat, title, normvar ,clocation ,cmap, ticks,
+    def plot_ppi_map(lon, lat, dat, title, normvar ,clocation ,cmap, ticks,
                      clabel, extend, main_point, projection, resolution, alpha,
                      parallels, meridians, shapefile = None):
         """绘制带有地图底图的PPI图像, lon数据的经度坐标,lat数据的纬度坐标,title图像显示的标题,
@@ -109,11 +107,16 @@ class graph(object):
         是basemap图像的分辨率(l,c,h),parallels是绘制的纬度网格,meridians绘制的经度网格,
         均为一维矩阵,shapefile保存的省界数据"""
         
+        global ax
         min_lon, min_lat, max_lon, max_lat = extend
         lon_0, lat_0 = main_point
         vmin, vmax = normvar
         
         dat = np.ma.masked_where((dat == -999) | (dat == 999), dat)
+        
+        plt.style.use('default')
+        fig, ax = plt.subplots(figsize=(12,8))
+        #fig, ax = plt.subplots()
         
         m = Basemap(llcrnrlon=min_lon, llcrnrlat=min_lat,urcrnrlon=max_lon,
                     urcrnrlat=max_lat,lat_0=lat_0, lon_0=lon_0, projection=\
@@ -134,14 +137,17 @@ class graph(object):
         m.plot(lon_0, lat_0, marker = 'o', color = '#FFFFFF', latlon = True,
                markersize = 3)
         #m.plot(119.9,32.516,latlon=True,marker="*",color="r",markersize=10)
-        #cax = make_axes_locatable(ax).append_axes("right", size="5%", pad="5%")
-        #cbar = colorbar(mappable=pm, cax=cx, orientation="vertical", ticks=ticks,)
-        cbar = fig.colorbar(mappable=pm,cax=cx,orientation="vertical" , ticks=ticks)        
+
+        cbar = m.colorbar(pm, location=clocation, pad="5%",ticks = ticks)        
         cbar.set_label(clabel)
         cbar.set_ticklabels(graph._FixTicks(ticks,True))
         ax.set_aspect("equal")
-        ax.set_title(title, fontsize=16)
+        ax.set_title(title, fontsize=16)  
 
-        m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10,color="#696969",linewidth = 0.4) # 绘制纬线
-        m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10,color="#696969",linewidth = 0.4) # 绘制经线
+        m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10,color="#696969",linewidth = 0.4) # 绘制纬线        
+        
+        m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10,color="#696969",linewidth = 0.4 ) # 绘制经线    
         #plt.savefig("taizhou.pdf",format="pdf",ppi=350)
+            
+
+        

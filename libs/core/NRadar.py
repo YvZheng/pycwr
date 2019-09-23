@@ -3,8 +3,6 @@
 为了适应中国雷达在不同仰角的探测距离不同以及前几层仰角 dop和ref分开扫描的问题
 提出NuistRadar Object，以方便后续的算法及绘图
 """
-import sys
-sys.path.append("../../")
 import numpy as np
 import xarray as xr
 from configure.default_config import DEFAULT_METADATA, FILL_VALUE, CINRAD_field_mapping

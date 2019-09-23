@@ -3,10 +3,9 @@ import numpy as np
 
 SHORT = 'h'
 INT = 'i'
-LONG = 'q'
 FLOAT = 'f'
 
-class StandardFormat(object):
+class WSR98DFormat(object):
 
     def __init__(self):
         self.GenericHeaderBlockPos = 0
@@ -138,4 +137,4 @@ class StandardFormat(object):
         )
         return MomentHeaderBlock
 
-dtype_standard = StandardFormat()
+dtype_98D = WSR98DFormat()

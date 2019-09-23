@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Configuration file for the NuistRadar Object , modified from Py-art
-注意：距离单位统一到km
+注意：距离单位统一到m
 """
 
 FILL_VALUE = -999.0
@@ -9,6 +9,7 @@ FILL_VALUE = -999.0
 DEFAULT_METADATA = {
     # Metadata for radar attributes. These closely follow the CF/Radial
     # standard
+
     'azimuth': {
         'units': 'degrees',
         'standard_name': 'beam_azimuth_angle',
@@ -24,7 +25,7 @@ DEFAULT_METADATA = {
         'comment': 'Elevation of antenna relative to the horizontal plane'},
 
     'range': {
-        'units': 'kilometers',
+        'units': 'meters',
         'standard_name': 'projection_range_coordinate',
         'long_name': 'range_to_measurement_volume',
         'axis': 'radial_range_coordinate',
@@ -33,7 +34,6 @@ DEFAULT_METADATA = {
             'Coordinate variable for range. Range to center of each bin.')},
 
     'time': {
-        'units': 'seconds',
         'standard_name': 'time',
         'long_name': 'time_in_seconds_since_volume_start',
         'calendar': 'gregorian',
@@ -41,17 +41,6 @@ DEFAULT_METADATA = {
                     'Time at the center of each ray, in fractional seconds '
                     'since the global variable time_coverage_start')},
 
-    'metadata': {
-        'Conventions': 'CF/Radial instrument_parameters',
-        'version': '0.1',
-        'title': '',
-        'institution': '',
-        'references': '',
-        'source': '',
-        'history': '',
-        'comment': '',
-        'instrument_name': ''},
-    # Metadata for radar sweep information dictionaries
     'fixed_angle': {
         'long_name': 'Target angle for sweep',
         'units': 'degrees',
@@ -60,10 +49,7 @@ DEFAULT_METADATA = {
     'rays_per_sweep': {
         'long_name': 'Number of rays in each sweep',
         'units': 'count'},
-    'bins_per_sweep':{
-        'long_name': 'Number of bins in each sweep',
-        'units': 'count'},
-    # Metadata for radar location attributes
+
     'latitude': {
         'long_name': 'Latitude',
         'standard_name': 'Latitude',
@@ -77,10 +63,9 @@ DEFAULT_METADATA = {
     'altitude': {
         'long_name': 'Altitude',
         'standard_name': 'Altitude',
-        'units': 'kilometers',
+        'units': 'meters',
         'positive': 'up'},
 
-    # Metadata for instrument_parameter dictionary
     'nyquist_velocity': {
         'units': 'meters_per_second',
         'comments': "Unambiguous velocity",
@@ -88,12 +73,12 @@ DEFAULT_METADATA = {
         'long_name': 'Nyquist velocity'},
 
     'unambiguous_range': {
-        'units': 'kilometers',
+        'units': 'meters',
         'comments': 'Unambiguous range',
         'meta_group': 'instrument_parameters',
         'long_name': 'Unambiguous range'},
     'frequency': {
-        'units': 's-1',
+        'units': 'GHZ',
         'meta_group': 'instrument_parameters',
         'long_name': 'Radiation frequency'},
 
@@ -112,7 +97,11 @@ DEFAULT_METADATA = {
         'valid_max': 80.0,
         'valid_min': -30.0,
         'coordinates': 'elevation azimuth range'},
-
+    'scan_type':{
+        'units': "string",
+        'standard_name':"radar scan type",
+        'long_name':"Type of scan, one of 'ppi', 'rhi', 'sector' or 'other'"
+    },
     'total_power': {
         'units': 'dBZ',
         'standard_name': 'equivalent_reflectivity_factor',
@@ -187,8 +176,9 @@ DEFAULT_METADATA = {
         'valid_max': 5,
         'valid_min': -2,
         'coordinates': 'elevation azimuth range'},
-
-
+    'clutter_flag':{
+        'standard_name': 'clutter_flag',
+    },
     # Depolarization ratio fields
     'linear_depolarization_ratio': {
         'units': 'dB',
@@ -212,12 +202,12 @@ CINRAD_field_mapping = {
     'ZDR': "differential_reflectivity",
     'LDR': "linear_depolarization_ratio",
     'CC': "cross_correlation_ratio",
-    'PHIDP': "differential_phase",
+    'PhiDP': "differential_phase",
     'KDP': "specific_differential_phase",
     'CP':None,
     'FLAG':None,
     'HCL':None,
-    'CF':None,
+    'CF': "clutter_flag",
     'Zc': "corrected_reflectivity",
     'Vc': "corrected_velocity",
     'Wc': None,

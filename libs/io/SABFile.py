@@ -433,7 +433,8 @@ class SAB2NRadar(object):
             if field_name is None:
                 continue
             field_dic = get_metadata(field_name)
-            field_dic['data'] = self.fields[field_name_abbr]
+            field_dic['data'] = np.ma.masked_array(self.fields[field_name_abbr],\
+                                mask=np.isnan(self.fields[field_name_abbr]), fill_value=get_fillvalue())
             field_dic['_FillValue'] = get_fillvalue()
             fields[field_name] = field_dic
 

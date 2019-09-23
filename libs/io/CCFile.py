@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-import struct
+import sys
+sys.path.append("../../")
 import numpy as np
-from BaseDataProtocol.CCProtocol import dtype_cc
-from util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
+from libs.io.BaseDataProtocol.CCProtocol import dtype_cc
+from libs.io.util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
 import time
 import datetime
 import pandas as pd

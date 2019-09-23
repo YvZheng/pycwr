@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from util import radar_format
-import CCFile
-import SABFile
-import SCFile
-import WSR98DFile
+from libs.io.util import radar_format
+from libs.io import CCFile
+from libs.io import SABFile
+from libs.io import SCFile
+from libs.io import WSR98DFile
 
 class radar_io(object):
     def __init__(self, filename):

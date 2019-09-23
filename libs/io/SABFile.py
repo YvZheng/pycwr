@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import struct
+import sys
+sys.path.append("../../")
 import numpy as np
 from scipy import interpolate
-from BaseDataProtocol.SABProtocol import dtype_sab
-from util import _prepare_for_read, _unpack_from_buf, julian2date, \
+from libs.io.BaseDataProtocol.SABProtocol import dtype_sab
+from libs.io.util import _prepare_for_read, _unpack_from_buf, julian2date, \
     get_radar_info, make_time_unit_str, get_radar_sitename
 import time
 from netCDF4 import date2num

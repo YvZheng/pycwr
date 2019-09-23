@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys
-
 sys.path.append("../../")
-import struct
 import numpy as np
-from BaseDataProtocol.WSR98DProtocol import dtype_98D
-from util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
+from libs.io.BaseDataProtocol.WSR98DProtocol import dtype_98D
+from libs.io.util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
 import time
 from libs.core.NRadar import NuistRadar
 from configure.pyart_config import get_metadata, get_fillvalue

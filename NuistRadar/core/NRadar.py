@@ -5,7 +5,7 @@
 """
 import numpy as np
 import xarray as xr
-from configure.default_config import DEFAULT_METADATA, FILL_VALUE, CINRAD_field_mapping
+from ..configure.default_config import DEFAULT_METADATA, FILL_VALUE, CINRAD_field_mapping
 
 class NuistRadar(object):
     """

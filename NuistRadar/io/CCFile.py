@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from libs.io.BaseDataProtocol.CCProtocol import dtype_cc
-from libs.io.util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
-import time
+from .BaseDataProtocol.CCProtocol import dtype_cc
+from .util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
 import datetime
 import pandas as pd
-from libs.core.NRadar import NuistRadar
-from configure.pyart_config import get_metadata, get_fillvalue
-from configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
-from libs.core.PyartRadar import Radar
+from ..core.NRadar import NuistRadar
+from ..configure.pyart_config import get_metadata, get_fillvalue
+from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
+from ..core.PyartRadar import Radar
 from netCDF4 import date2num
 
 class CCBaseData(object):
@@ -406,11 +405,3 @@ class CC2NRadar(object):
         nyquist_velocity['data'] = self.get_nyquist_velocity()
         instrument_parameters['nyquist_velocity'] = nyquist_velocity
         return instrument_parameters
-
-
-if __name__ == "__main__":
-    start = time.time()
-    test = CCBaseData(r"E:\RadarBaseData\CINRAD-CC\2016070818.00V")
-    CC = CC2NRadar(test)
-    end = time.time()
-    print(end - start)

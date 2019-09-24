@@ -30,6 +30,9 @@ and antenna (azimuth, elevation, range) coordinate systems.
 
 """
 
+# the code for transforms in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
+
 import warnings
 
 import numpy as np

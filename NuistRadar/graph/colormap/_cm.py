@@ -5,6 +5,8 @@ pyart.graph._cm
 Data for radar related colormaps.
 
 """
+# the data for colormaps in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
 
 # The data for the colormaps in this file were adapted from those found in
 # ctables.py of the Deprecated_Metpy package by Patrick Marsh and Ryan May.

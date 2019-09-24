@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from libs.io.BaseDataProtocol.WSR98DProtocol import dtype_98D
-from libs.io.util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
-import time
-from libs.core.NRadar import NuistRadar
-from configure.pyart_config import get_metadata, get_fillvalue
-from configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
-from libs.core.PyartRadar import Radar
+from .BaseDataProtocol.WSR98DProtocol import dtype_98D
+from .util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
+from ..core.NRadar import NuistRadar
+from ..configure.pyart_config import get_metadata, get_fillvalue
+from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
+from ..core.PyartRadar import Radar
 from netCDF4 import date2num
 
 class WSR98DBaseData(object):
@@ -477,13 +476,3 @@ class WSR98D2NRadar(object):
         nyquist_velocity['data'] = self.get_nyquist_velocity()
         instrument_parameters['nyquist_velocity'] = nyquist_velocity
         return instrument_parameters
-
-if __name__ == "__main__":
-    start = time.time()
-    # test = WSR98DBaseData(r"E:\RadarBaseData\郑玉\利奇马\LQM_Z9513_NT\Z_RADR_I_Z9513_20190811234540_O_DOR_SAD_CAP_FMT.bin.bz2")
-    test = WSR98DBaseData(r"E:\RadarBaseData\StandardFormat\厦门\Z9592.20160728.111443.AR2.bz2")
-    # test = WSR98DBaseData(r'E:\RadarBaseData\StandardFormat\NUIST\NUIST.20170408.153319.AR2')
-    wsr98d = WSR98D2NRadar(test)
-    NRadar = wsr98d.ToNuistRadar()
-    end = time.time()
-    print(end - start)

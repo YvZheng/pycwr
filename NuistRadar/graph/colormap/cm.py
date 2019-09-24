@@ -55,6 +55,8 @@ colormaps are available within matplotlib with names 'pyart_COLORMAP':
     * LangRainbow12
 
 """
+# the code for colormaps in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
 
 # This file was adapted from the cm.py file of the matplotlib project,
 # http://matplotlib.org/.
@@ -66,6 +68,7 @@ import warnings
 import matplotlib as mpl
 import matplotlib.colors as colors
 from ._cm import datad
+import matplotlib.cm
 
 cmap_d = dict()
 
@@ -147,4 +150,4 @@ locals().update(cmap_d)
 # register the colormaps so that can be accessed with the names pyart_XXX
 for name, cmap in cmap_d.items():
     full_name = 'pyart_' + name
-    mpl.cm.register_cmap(name=full_name, cmap=cmap)
+    matplotlib.cm.register_cmap(name=full_name, cmap=cmap)

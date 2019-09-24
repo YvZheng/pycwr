@@ -14,6 +14,8 @@ colormaps are available within matplotlib with names pyart_COLORMAP':
 
     * HomeyerRainbow
 """
+# the code for colormaps in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
 
 import warnings
 

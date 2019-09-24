@@ -21,13 +21,15 @@ A general central radial scanning (or dwelling) instrument class.
 
 
 """
+# the code for Radar Object in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
 from __future__ import print_function
 
 import numpy as np
 import sys
-from configure.pyart_config import get_metadata
-from configure.pyart_lazydict import LazyLoadDict
-from libs.core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic
+from ..configure.pyart_config import get_metadata
+from ..configure.pyart_lazydict import LazyLoadDict
+from .transforms import antenna_vectors_to_cartesian, cartesian_to_geographic
 
 
 class Radar(object):

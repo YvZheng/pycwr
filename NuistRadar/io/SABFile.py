@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy import interpolate
-from libs.io.BaseDataProtocol.SABProtocol import dtype_sab
-from libs.io.util import _prepare_for_read, _unpack_from_buf, julian2date, \
+from .BaseDataProtocol.SABProtocol import dtype_sab
+from .util import _prepare_for_read, _unpack_from_buf, julian2date, \
     get_radar_info, make_time_unit_str, get_radar_sitename
-import time
 from netCDF4 import date2num
-from libs.core.NRadar import NuistRadar
-from configure.pyart_config import get_metadata, get_fillvalue
-from configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
-from libs.core.PyartRadar import Radar
+from ..core.NRadar import NuistRadar
+from ..configure.pyart_config import get_metadata, get_fillvalue
+from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
+from ..core.PyartRadar import Radar
 
 
 class SABBaseData(object):
@@ -479,12 +478,3 @@ class SAB2NRadar(object):
         nyquist_velocity['data'] = self.get_nyquist_velocity()
         instrument_parameters['nyquist_velocity'] = nyquist_velocity
         return instrument_parameters
-
-
-if __name__ == "__main__":
-    start = time.time()
-    # test = SABBaseData("/home/zy/data/code_data/ERIC/Radar/2010081202.13A")
-    test = SABBaseData(r"E:\RadarBaseData\CINRAD-SA\z9250\BASE150427\Z_RADR_I_Z9250_20150427111500_O_DOR_SA_CAP.bin")
-    SAB = SAB2NRadar(test)
-    end = time.time()
-    print(end - start)

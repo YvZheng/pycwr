@@ -4,6 +4,9 @@ pyart.graph._cm_colorblind
 Data for colorblind friendly radar colormaps
 
 """
+# the code for colormaps in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
+
 import numpy as np
 import os
 

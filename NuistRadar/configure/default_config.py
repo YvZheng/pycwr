@@ -4,7 +4,7 @@ Configuration file for the NuistRadar Object , modified from Py-art
 注意：距离单位统一到m
 """
 
-FILL_VALUE = -999.0
+FILL_VALUE = -9999.0
 _LIGHT_SPEED = 2.99792458e8
 
 DEFAULT_METADATA = {

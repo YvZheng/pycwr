@@ -5,7 +5,7 @@ import bz2
 import gzip
 import datetime
 import os
-from configure.location_config import radar_info
+from ..configure.location_config import radar_info
 
 def _structure_size(structure):
     """计算structure的字节大小"""

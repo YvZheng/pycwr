@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from libs.io.BaseDataProtocol.SCProtocol import dtype_sc
-from libs.io.util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
-import time
+from .BaseDataProtocol.SCProtocol import dtype_sc
+from .util import _prepare_for_read, _unpack_from_buf, make_time_unit_str, get_radar_sitename
 import pandas as pd
 import datetime
-from libs.core.NRadar import NuistRadar
-from configure.pyart_config import get_metadata, get_fillvalue
-from configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
-from libs.core.PyartRadar import Radar
+from ..core.NRadar import NuistRadar
+from ..configure.pyart_config import get_metadata, get_fillvalue
+from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
+from ..core.PyartRadar import Radar
 from netCDF4 import date2num
 
 class SCBaseData(object):
@@ -413,11 +412,3 @@ class SC2NRadar(object):
         nyquist_velocity['data'] = self.get_nyquist_velocity()
         instrument_parameters['nyquist_velocity'] = nyquist_velocity
         return instrument_parameters
-
-
-if __name__ == "__main__":
-    start = time.time()
-    test = SCBaseData(r"E:\RadarBaseData\CINRAD_SC_old\Z_RADR_I_Z9280_20180209132700_O_DOR_SC_CAP.bin")
-    SC = SC2NRadar(test)
-    end = time.time()
-    print(end-start)

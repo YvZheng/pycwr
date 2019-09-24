@@ -1,0 +1,1028 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1045</width>
+    <height>825</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>新一代天气雷达数据处理软件</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="radar_icon.qrc">
+    <normaloff>:/res/icon/icons8-gps-antenna-80.png</normaloff>:/res/icon/icons8-gps-antenna-80.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="20,1">
+      <property name="spacing">
+       <number>2</number>
+      </property>
+      <item>
+       <widget class="MplWidget" name="MplWidget" native="true">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>550</width>
+          <height>550</height>
+         </size>
+        </property>
+        <property name="statusTip">
+         <string>天气雷达图像显示</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_3" stretch="6,11">
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <item>
+           <widget class="QGroupBox" name="groupBox_2">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>10</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>20</width>
+              <height>10</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>微软雅黑</family>
+             </font>
+            </property>
+            <property name="toolTipDuration">
+             <number>-1</number>
+            </property>
+            <property name="statusTip">
+             <string>选择显示的产品</string>
+            </property>
+            <property name="autoFillBackground">
+             <bool>false</bool>
+            </property>
+            <property name="title">
+             <string>基本产品</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_2">
+             <item row="2" column="1">
+              <widget class="QRadioButton" name="radioButton_15">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>相关系数</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QRadioButton" name="radioButton_12">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>谱宽</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QRadioButton" name="radioButton_14">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>差分相位比</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QRadioButton" name="radioButton_10">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>反射率因子</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QRadioButton" name="radioButton_13">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>差分反射率</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QRadioButton" name="radioButton_11">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>径向速度</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>10</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>20</width>
+              <height>10</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>微软雅黑</family>
+             </font>
+            </property>
+            <property name="statusTip">
+             <string>选择要显示的仰角</string>
+            </property>
+            <property name="title">
+             <string>VCP21</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout">
+             <item row="0" column="1">
+              <widget class="QRadioButton" name="radioButton_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第2层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QRadioButton" name="radioButton_4">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第4层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QRadioButton" name="radioButton_5">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第5层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QRadioButton" name="radioButton_3">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第3层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QRadioButton" name="radioButton_1">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第1层</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QRadioButton" name="radioButton_7">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第7层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QRadioButton" name="radioButton_8">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第8层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QRadioButton" name="radioButton_6">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第6层</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QRadioButton" name="radioButton_9">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>10</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>微软雅黑</family>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>第9层</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout" stretch="20,1">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <item>
+           <widget class="QListWidget" name="listWidget">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>10</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="statusTip">
+             <string>雷达基数据列表</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <widget class="QPushButton" name="pushButton">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>10</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="font">
+               <font>
+                <family>微软雅黑</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>上一个</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_2">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>10</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="font">
+               <font>
+                <family>微软雅黑</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>动画播放</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_3">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>10</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="font">
+               <font>
+                <family>微软雅黑</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>下一个</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1045</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>产品</string>
+    </property>
+    <widget class="QMenu" name="menu3D">
+     <property name="title">
+      <string>3D显示</string>
+     </property>
+     <property name="icon">
+      <iconset resource="radar_icon.qrc">
+       <normaloff>:/res/icon/icons8-virtualbox-96.png</normaloff>:/res/icon/icons8-virtualbox-96.png</iconset>
+     </property>
+     <addaction name="actionr"/>
+     <addaction name="actionv"/>
+     <addaction name="actionw"/>
+    </widget>
+    <addaction name="actioncappi"/>
+    <addaction name="actioncr"/>
+    <addaction name="separator"/>
+    <addaction name="actionVVP"/>
+    <addaction name="actionVAD"/>
+    <addaction name="actionCentroid_height"/>
+    <addaction name="actionLWC"/>
+    <addaction name="actionCLOUD_TOP"/>
+    <addaction name="separator"/>
+    <addaction name="actionstorm_Identification"/>
+    <addaction name="actionstorm_track"/>
+    <addaction name="separator"/>
+    <addaction name="menu3D"/>
+   </widget>
+   <widget class="QMenu" name="menu_3">
+    <property name="title">
+     <string>导出</string>
+    </property>
+    <addaction name="actionCAPPI"/>
+    <addaction name="actionCR"/>
+    <addaction name="separator"/>
+    <addaction name="actionVVP_2"/>
+    <addaction name="actionVAD_2"/>
+    <addaction name="actionheight"/>
+    <addaction name="actionLWC_2"/>
+    <addaction name="actiontop"/>
+    <addaction name="actionIdentification"/>
+    <addaction name="actiontrack"/>
+   </widget>
+   <widget class="QMenu" name="menu_4">
+    <property name="title">
+     <string>设置</string>
+    </property>
+    <widget class="QMenu" name="menu_6">
+     <property name="title">
+      <string>显示设置</string>
+     </property>
+     <property name="icon">
+      <iconset resource="radar_icon.qrc">
+       <normaloff>:/res/icon/icons8-support-60.png</normaloff>:/res/icon/icons8-support-60.png</iconset>
+     </property>
+     <addaction name="actionwithmap"/>
+     <addaction name="actioncontinuous"/>
+    </widget>
+    <addaction name="actionsavedir"/>
+    <addaction name="menu_6"/>
+    <addaction name="actionstation"/>
+   </widget>
+   <widget class="QMenu" name="menu_5">
+    <property name="title">
+     <string>关于</string>
+    </property>
+    <addaction name="actionabout_data_format"/>
+    <addaction name="separator"/>
+    <addaction name="actionabout_this_program"/>
+    <addaction name="actionabout_us"/>
+    <addaction name="actioncontact_us"/>
+   </widget>
+   <widget class="QMenu" name="menu_7">
+    <property name="title">
+     <string>剖面</string>
+    </property>
+    <addaction name="actionvertical"/>
+   </widget>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>文件</string>
+    </property>
+    <addaction name="actionopen_2"/>
+    <addaction name="actionopendir_2"/>
+    <addaction name="separator"/>
+    <addaction name="actionquit_2"/>
+   </widget>
+   <addaction name="menu"/>
+   <addaction name="menu_2"/>
+   <addaction name="menu_3"/>
+   <addaction name="menu_7"/>
+   <addaction name="menu_4"/>
+   <addaction name="menu_5"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionopen">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-opened-folder-128.png</normaloff>:/res/icon/icons8-opened-folder-128.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开文件</string>
+   </property>
+   <property name="statusTip">
+    <string>打开一个天气雷达基数据</string>
+   </property>
+  </action>
+  <action name="actionquit">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-exit-64.png</normaloff>:/res/icon/icons8-exit-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>退出</string>
+   </property>
+   <property name="statusTip">
+    <string>退出软件</string>
+   </property>
+  </action>
+  <action name="actionVVP">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-wind-turbines-64.png</normaloff>:/res/icon/icons8-wind-turbines-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>水平风场</string>
+   </property>
+  </action>
+  <action name="actionVAD">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-wind-turbine-64.png</normaloff>:/res/icon/icons8-wind-turbine-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>垂直风场</string>
+   </property>
+  </action>
+  <action name="actionLWC">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-water-steam-48.png</normaloff>:/res/icon/icons8-water-steam-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>液态水含量</string>
+   </property>
+  </action>
+  <action name="actionCLOUD_TOP">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-storm-64.png</normaloff>:/res/icon/icons8-storm-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>风暴顶高度</string>
+   </property>
+  </action>
+  <action name="actionstorm_Identification">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-lightning-bolt-40.png</normaloff>:/res/icon/icons8-lightning-bolt-40.png</iconset>
+   </property>
+   <property name="text">
+    <string>风暴识别</string>
+   </property>
+  </action>
+  <action name="actionCentroid_height">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-heaven-80.png</normaloff>:/res/icon/icons8-heaven-80.png</iconset>
+   </property>
+   <property name="text">
+    <string>质心高度</string>
+   </property>
+  </action>
+  <action name="actionstation">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-services-60.png</normaloff>:/res/icon/icons8-services-60.png</iconset>
+   </property>
+   <property name="text">
+    <string>站点信息设置</string>
+   </property>
+  </action>
+  <action name="actionabout_this_program">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-dashed-cloud-96.png</normaloff>:/res/icon/icons8-dashed-cloud-96.png</iconset>
+   </property>
+   <property name="text">
+    <string>关于本项目</string>
+   </property>
+  </action>
+  <action name="actionabout_us">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-people-80.png</normaloff>:/res/icon/icons8-people-80.png</iconset>
+   </property>
+   <property name="text">
+    <string>关于我们</string>
+   </property>
+  </action>
+  <action name="actioncontact_us">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-contacts-32.png</normaloff>:/res/icon/icons8-contacts-32.png</iconset>
+   </property>
+   <property name="text">
+    <string>联系我们</string>
+   </property>
+  </action>
+  <action name="actionstorm_track">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-radar-50.png</normaloff>:/res/icon/icons8-radar-50.png</iconset>
+   </property>
+   <property name="text">
+    <string>风暴追踪</string>
+   </property>
+  </action>
+  <action name="actionR">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-storm-48.png</normaloff>:/res/icon/icons8-storm-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>反射率因子</string>
+   </property>
+  </action>
+  <action name="actionW">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-soundcloud-48 (1).png</normaloff>:/res/icon/icons8-soundcloud-48 (1).png</iconset>
+   </property>
+   <property name="text">
+    <string>谱宽</string>
+   </property>
+  </action>
+  <action name="actionV">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-happy-cloud-80.png</normaloff>:/res/icon/icons8-happy-cloud-80.png</iconset>
+   </property>
+   <property name="text">
+    <string>径向速度</string>
+   </property>
+  </action>
+  <action name="actionNETCDF">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-save-as-50.png</normaloff>:/res/icon/icons8-save-as-50.png</iconset>
+   </property>
+   <property name="text">
+    <string>全部保存</string>
+   </property>
+  </action>
+  <action name="actionabout_data_format">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-toolbox-32.png</normaloff>:/res/icon/icons8-toolbox-32.png</iconset>
+   </property>
+   <property name="text">
+    <string>关于导出数据格式</string>
+   </property>
+  </action>
+  <action name="actionVVP_2">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-wind-turbines-64.png</normaloff>:/res/icon/icons8-wind-turbines-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>水平风场</string>
+   </property>
+  </action>
+  <action name="actionVAD_2">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-wind-turbine-64.png</normaloff>:/res/icon/icons8-wind-turbine-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>垂直风场</string>
+   </property>
+  </action>
+  <action name="actionLWC_2">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-water-steam-48.png</normaloff>:/res/icon/icons8-water-steam-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>液态水含量</string>
+   </property>
+  </action>
+  <action name="actionCAPPI">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-windy-weather-64.png</normaloff>:/res/icon/icons8-windy-weather-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>CAPPI</string>
+   </property>
+  </action>
+  <action name="actionCR">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-windy-weather-64 (1).png</normaloff>:/res/icon/icons8-windy-weather-64 (1).png</iconset>
+   </property>
+   <property name="text">
+    <string>组合反射率因子</string>
+   </property>
+  </action>
+  <action name="actioncappi">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-windy-weather-64.png</normaloff>:/res/icon/icons8-windy-weather-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>CAPPI</string>
+   </property>
+  </action>
+  <action name="actioncr">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-windy-weather-64 (1).png</normaloff>:/res/icon/icons8-windy-weather-64 (1).png</iconset>
+   </property>
+   <property name="text">
+    <string>组合反射率因子</string>
+   </property>
+  </action>
+  <action name="actiontop">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-storm-64.png</normaloff>:/res/icon/icons8-storm-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>风暴顶高度</string>
+   </property>
+  </action>
+  <action name="actionIdentification">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-lightning-bolt-40.png</normaloff>:/res/icon/icons8-lightning-bolt-40.png</iconset>
+   </property>
+   <property name="text">
+    <string>风暴识别</string>
+   </property>
+  </action>
+  <action name="actiontrack">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-radar-50.png</normaloff>:/res/icon/icons8-radar-50.png</iconset>
+   </property>
+   <property name="text">
+    <string>风暴追踪</string>
+   </property>
+  </action>
+  <action name="actionheight">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-heaven-80.png</normaloff>:/res/icon/icons8-heaven-80.png</iconset>
+   </property>
+   <property name="text">
+    <string>质心高度</string>
+   </property>
+  </action>
+  <action name="actionsavedir">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-add-folder-96.png</normaloff>:/res/icon/icons8-add-folder-96.png</iconset>
+   </property>
+   <property name="text">
+    <string>保存设置</string>
+   </property>
+  </action>
+  <action name="actionopendir">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-opened-folder-480.png</normaloff>:/res/icon/icons8-opened-folder-480.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开文件夹</string>
+   </property>
+   <property name="statusTip">
+    <string>打开存放雷达数据的文件夹</string>
+   </property>
+  </action>
+  <action name="actionr">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-storm-48.png</normaloff>:/res/icon/icons8-storm-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>反射率因子</string>
+   </property>
+  </action>
+  <action name="actionv">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-happy-cloud-80.png</normaloff>:/res/icon/icons8-happy-cloud-80.png</iconset>
+   </property>
+   <property name="text">
+    <string>径向速度</string>
+   </property>
+  </action>
+  <action name="actionw">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-soundcloud-48 (1).png</normaloff>:/res/icon/icons8-soundcloud-48 (1).png</iconset>
+   </property>
+   <property name="text">
+    <string>谱宽</string>
+   </property>
+  </action>
+  <action name="actionvertical">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-soundcloud-48.png</normaloff>:/res/icon/icons8-soundcloud-48.png</iconset>
+   </property>
+   <property name="text">
+    <string>垂直剖面</string>
+   </property>
+  </action>
+  <action name="actionopen_2">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-opened-folder-128.png</normaloff>:/res/icon/icons8-opened-folder-128.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开文件</string>
+   </property>
+   <property name="statusTip">
+    <string>退出软件</string>
+   </property>
+  </action>
+  <action name="actionopendir_2">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-opened-folder-480.png</normaloff>:/res/icon/icons8-opened-folder-480.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开文件夹</string>
+   </property>
+  </action>
+  <action name="actionquit_2">
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-exit-64.png</normaloff>:/res/icon/icons8-exit-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>退出</string>
+   </property>
+  </action>
+  <action name="actionwithmap">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-radar-64.png</normaloff>:/res/icon/icons8-radar-64.png</iconset>
+   </property>
+   <property name="text">
+    <string>叠加地图</string>
+   </property>
+   <property name="shortcutVisibleInContextMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actioncontinuous">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="radar_icon.qrc">
+     <normaloff>:/res/icon/icons8-barometer-40.png</normaloff>:/res/icon/icons8-barometer-40.png</iconset>
+   </property>
+   <property name="text">
+    <string>连续色标</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MplWidget</class>
+   <extends>QWidget</extends>
+   <header>mplwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="radar_icon.qrc"/>
+ </resources>
+ <connections/>
+</ui>

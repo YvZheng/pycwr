@@ -1,5 +1,5 @@
 """
-pyart.graph.cm_colorblind
+this code is from pyart.graph.cm_colorblind by Helmus, J.J. & Collis, S.M.
 =========================
 
 Colorblind friendly radar colormaps

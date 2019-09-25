@@ -1,5 +1,6 @@
 """
-pyart.core.transforms
+this code is from pyart.core.transforms by Helmus, J.J. & Collis, S.M.
+# https://github.com/ARM-DOE/pyart
 =====================
 
 Transformations between coordinate systems. Routines for converting between
@@ -52,7 +53,7 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     Parameters
     ----------
     ranges : array
-        Distances to the center of the radar gates (bins) in kilometers.
+        Distances to the center of the radar gates (bins) in meters.
     azimuths : array
         Azimuth angle of the radar in degrees.
     elevations : array
@@ -93,7 +94,7 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     theta_e = elevations * np.pi / 180.0    # elevation angle in radians.
     theta_a = azimuths * np.pi / 180.0      # azimuth angle in radians.
     R = 6371.0 * 1000.0 * 4.0 / 3.0     # effective radius of earth in meters.
-    r = ranges * 1000.0                 # distances to gates in meters.
+    r = ranges * 1.0                 # distances to gates in meters.
 
     z = (r ** 2 + R ** 2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
     s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
@@ -140,7 +141,7 @@ def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
             azimuths = _interpolate_azimuth_edges(azimuths)
     rg, azg = np.meshgrid(ranges, azimuths)
     rg, eleg = np.meshgrid(ranges, elevations)
-    return antenna_to_cartesian(rg / 1000., azg, eleg)
+    return antenna_to_cartesian(rg, azg, eleg)
 
 
 def _interpolate_range_edges(ranges):

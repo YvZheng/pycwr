@@ -1,5 +1,6 @@
 """
-pyart.graph.cm
+this code is modified from pyart.graph.cm file, developed by Helmus, J.J. & Collis, S.M.
+https://github.com/ARM-DOE/pyart
 ==============
 
 Radar related colormaps.
@@ -53,6 +54,8 @@ colormaps are available within matplotlib with names 'pyart_COLORMAP':
     * Theodore16
     * Wild25
     * LangRainbow12
+    * CN_ref
+    * CN_vel
 
 """
 # the code for colormaps in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
@@ -149,5 +152,9 @@ locals().update(cmap_d)
 
 # register the colormaps so that can be accessed with the names pyart_XXX
 for name, cmap in cmap_d.items():
-    full_name = 'pyart_' + name
-    matplotlib.cm.register_cmap(name=full_name, cmap=cmap)
+    if name in ["ref", "vel"]:
+        matplotlib.cm.register_cmap(name="CN_"+name, cmap=cmap)
+    else:
+        full_name = 'pyart_' + name
+        matplotlib.cm.register_cmap(name=full_name, cmap=cmap)
+

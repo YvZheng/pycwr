@@ -13,7 +13,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, CINRAD_field_normvar, CINRAD_field_mapping
-from ..core.transforms import antenna_vectors_to_cartesian
+from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
 
 
 class RadarGraph(object):
@@ -22,7 +22,7 @@ class RadarGraph(object):
     def __init__(self, NuistRadar=None):
         self.NRadar = NuistRadar
 
-    def plot(self, sweep, field_name, title=None, dark=False):
+    def plot(self, sweep, field_name, normvar=None, title=None, clabel=None, dark=False, continuously=False):
         """
         绘图
         :param sweep: sweep从0开始
@@ -38,23 +38,29 @@ class RadarGraph(object):
             vmin = np.nanmin(self.NRadar.fields[sweep][field_name])
         else:
             vmin, vmax = CINRAD_field_normvar[CINRAD_field_mapping[field_name]]
+
+        if normvar is not None:
+            vmin, vmax = normvar
         cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
         cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
 
         if title is None:
             title = pd.to_datetime(self.NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
             title = title + " elevation : %.1f"%self.NRadar.scan_info.fixed_angle[sweep].values
+        if clabel is None:
+            clabel = CINRAD_field_mapping[field_name]
         _range = self.NRadar.fields[sweep].range.values
         azimuth = self.NRadar.fields[sweep].azimuth.values
         elevation = self.NRadar.fields[sweep].elevation.values
         field = self.NRadar.fields[sweep][field_name]
         RadarGraph.simple_plot_ppi(_range, azimuth, elevation, field, normvar=(vmin, vmax),
-                                   title=title, cmap=cmap, cmap_bins=cmap_bins, dark=dark)
+                                   title=title, cmap=cmap, cmap_bins=cmap_bins,
+                                   clabel=clabel, dark=dark, continuously=continuously)
 
     @staticmethod
     def simple_plot_ppi_xy(x, y, radar_data, normvar=None, cmap=None,
                            max_range=None, title=None, cmap_bins=16, orient="vertical",
-                           label=None, clabel=None, dark=False):
+                           label=None, clabel=None, dark=False, continuously=False):
         """
         根据方位角 距离画图
         :param x: array x轴方向的距离(units:m)
@@ -77,12 +83,12 @@ class RadarGraph(object):
         ax = fig.add_axes([0.08, 0.1, 0.82, 0.82])
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
         return RadarGraph.plot_ppi(fig, ax, cax, x, y, radar_data, max_range, title, normvar, cmap, \
-                                   cmap_bins, orient, label, clabel)
+                                   cmap_bins, orient, label, clabel, continuously)
 
     @staticmethod
     def simple_plot_ppi(_range, azimuth, elevation, radar_data, normvar=None, cmap=None,
                         max_range=None, title=None, cmap_bins=16, orient="vertical",
-                        label=None, clabel=None, dark=False):
+                        label=None, clabel=None, dark=False, continuously=False):
         """
         根据方位角 距离画图
         :param _range: array 每个库的距离(units:m)
@@ -108,11 +114,11 @@ class RadarGraph(object):
         ax = fig.add_axes([0.08, 0.1, 0.82, 0.82])
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
         return RadarGraph.plot_ppi(fig, ax, cax, x, y, radar_data, max_range, title, normvar, cmap, \
-                                   cmap_bins, orient, label, clabel)
+                                   cmap_bins, orient, label, clabel, continuously)
 
     @staticmethod
     def plot_ppi(fig, ax, cx, x, y, radar_data, max_range=None, title=None, normvar=None, cmap=None, \
-                 cmap_bins=16, orient="vertical", label=None, clabel=None):
+                 cmap_bins=16, orient="vertical", label=None, clabel=None, continuously=False):
         """
         绘制ppi图像
         :param fig matplotlib的fig对象
@@ -129,6 +135,7 @@ class RadarGraph(object):
         :param label:label=[xlabel,ylabel]代表x轴y轴要显示的字符串
         :param clabel:代表cbar上的label
         :param dark: 是否打开黑色北京
+        :param continuously: bool,采用连续的colorbar,cmap_bins失效
         :return:
         """
         if label is None:
@@ -147,14 +154,13 @@ class RadarGraph(object):
             title = ""
         if clabel is None:
             clabel = ""
-
-        ticks = np.linspace(vmin, vmax, cmap_bins + 1)
+        if continuously:
+            cmap_bins = 256
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-
         RadarGraph._SetGrids(ax, max_range / 1000.)
-        gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmap, \
+        gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
                             zorder=100, norm=norm)
         ax.set_aspect("equal")
         ax.set_xlim([-max_range / 1000., max_range / 1000.])
@@ -162,9 +168,12 @@ class RadarGraph(object):
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)
-        cbar = fig.colorbar(mappable=gci, cax=cx, orientation=orient, ticks=ticks)
+        if continuously:
+            cbar = fig.colorbar(mappable=gci, cax=cx, orientation=orient)
+        else:
+            cbar = fig.colorbar(mappable=gci, cax=cx, orientation=orient, ticks=levels)
+            cbar.set_ticklabels(RadarGraph._FixTicks(levels))
         cbar.set_label(clabel)
-        cbar.set_ticklabels(RadarGraph._FixTicks(ticks))
         RadarGraph._SetAxis(ax, 50, 5, 8)
         plt.style.use('default')
 
@@ -201,5 +210,5 @@ class RadarGraph(object):
         if (ticks % 1).sum() == 0:
             temp = ["%2.f" % i for i in ticks]
         else:
-            temp = ["%.1f" % i for i in ticks]
+            temp = ["%.2f" % i for i in ticks]
         return temp

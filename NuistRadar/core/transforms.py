@@ -526,7 +526,7 @@ def cartesian_to_geographic(x, y, projparams):
         # Use pyproj for the projection
         # check that pyproj is available
         if not _PYPROJ_AVAILABLE:
-            raise MissingOptionalDependency(
+            raise Exception(
                 "PyProj is required to use cartesian_to_geographic "
                 "with a projection other than pyart_aeqd but it is not "
                 "installed")

@@ -132,6 +132,9 @@ def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
         gate centers or edges.
 
     """
+    assert isinstance(ranges, np.ndarray), "check input dtype!"
+    assert isinstance(azimuths, np.ndarray), "check input dtype!"
+    assert isinstance(elevations, np.ndarray), "check input dtype!"
     if edges:
         if len(ranges) != 1:
             ranges = _interpolate_range_edges(ranges)

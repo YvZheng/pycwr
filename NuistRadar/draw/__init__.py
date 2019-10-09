@@ -1,2 +1,2 @@
-from . import colormap, SingleRadarPlot, SingleRadarPlotMap
-__all__ = ["colormap", "SingleRadarPlot", SingleRadarPlotMap]
+from . import colormap, SingleRadarPlot, SingleRadarPlotMap, VerticalSectionPlot
+__all__ = ["colormap", "SingleRadarPlot", "SingleRadarPlotMap", "VerticalSectionPlot"]

@@ -62,17 +62,22 @@ class SABBaseData(object):
         Radial = {}
         RadialHeader, size_tmp = _unpack_from_buf(radial_buf, 0, dtype_sab.RadialHeader())
         Radial.update(RadialHeader)
-        RadialDataDtype = dtype_sab.RadialData(RadialHeader['GatesNumberOfReflectivity'],
-                                               RadialHeader['GatesNumberOfDoppler'])
-        FieldSize = RadialHeader['GatesNumberOfReflectivity'] + RadialHeader['GatesNumberOfDoppler'] * 2
-        RadialData = np.frombuffer(radial_buf[size_tmp:size_tmp + FieldSize], dtype=RadialDataDtype)
+        dBZ = np.frombuffer(radial_buf[RadialHeader['PtrOfReflectivity'] + dtype_sab.InfSize:\
+                                                     RadialHeader['PtrOfReflectivity'] + dtype_sab.InfSize +\
+                                                     RadialHeader['GatesNumberOfReflectivity']],\
+                                                    dtype="u1")
+        V = np.frombuffer(radial_buf[RadialHeader['PtrOfVelocity'] + dtype_sab.InfSize: \
+                                                     RadialHeader['PtrOfVelocity'] + dtype_sab.InfSize + \
+                                                     RadialHeader['GatesNumberOfDoppler']], \
+                                                    dtype="u1")
+        W = np.frombuffer(radial_buf[RadialHeader['PtrOfSpectrumWidth'] + dtype_sab.InfSize: \
+                                                   RadialHeader['PtrOfSpectrumWidth']  + dtype_sab.InfSize+ \
+                                                   RadialHeader['GatesNumberOfDoppler']], \
+                                                    dtype="u1")
         Radial['fields'] = {}
-        Radial['fields']['dBZ'] = np.where(RadialData['dBZ'] > 1, (RadialData['dBZ'].astype(int) - 2) / 2. - 32,
-                                           np.nan).astype(np.float32)
-        Radial['fields']['V'] = np.where(RadialData['V'] > 1, (RadialData['V'].astype(int) - 2) / 2. - 63.5,
-                                         np.nan).astype(np.float32)
-        Radial['fields']['W'] = np.where(RadialData['W'] > 1, (RadialData['W'].astype(int) - 2) / 2. - 63.5,
-                                         np.nan).astype(np.float32)
+        Radial['fields']['dBZ'] = np.where(dBZ > 1, (dBZ.astype(int) - 2) / 2. - 32, np.nan).astype(np.float32)
+        Radial['fields']['V'] = np.where(V > 1, (V.astype(int) - 2) / 2. - 63.5, np.nan).astype(np.float32)
+        Radial['fields']['W'] = np.where(W > 1, (W.astype(int) - 2) / 2. - 63.5, np.nan).astype(np.float32)
         return Radial
 
     def get_nyquist_velocity(self):

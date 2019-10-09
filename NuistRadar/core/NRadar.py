@@ -6,6 +6,9 @@
 import numpy as np
 import xarray as xr
 from ..configure.default_config import DEFAULT_METADATA, FILL_VALUE, CINRAD_field_mapping
+from ..core.transforms import antenna_vectors_to_cartesian
+from scipy import spatial
+from ..interp.RadarInterp import radar_interp2d_var, radar_interp2d
 
 class NuistRadar(object):
     """
@@ -106,3 +109,42 @@ class NuistRadar(object):
         self.nsweeps = nsweeps
         self.nrays = nrays
         self.sitename = sitename
+
+    def get_vertical_section(self, start_point, end_point, field_name):
+        """
+        :param start_point: units:m
+        :param end_point:  units:m
+        :return:
+        """
+        start_x, start_y = start_point
+        end_x, end_y = end_point
+        bins_res = (self.fields[0].range[1] - self.fields[0].range[0]).values
+        start_end_dis = np.sqrt((start_x-end_x)**2 + (start_y-end_y)**2)
+        npoints = int(start_end_dis/(bins_res/2.) + 1)
+        x_line = np.linspace(start_x, end_x, npoints)
+        y_line = np.linspace(start_y, end_y, npoints)
+        target = np.c_[x_line, y_line]
+        xy_line_1d = np.linspace(0, start_end_dis, npoints)
+        z_values = []
+        field_values = []
+        #先对剖线取最邻近点
+        for ifield in self.fields:
+            _x, _y, _z = antenna_vectors_to_cartesian(ifield.range.values, \
+                                ifield.azimuth.values, ifield.elevation.values)
+            kdtree = spatial.cKDTree(np.c_[_x.ravel(), _y.ravel()])
+            _distance, _idx = kdtree.query(target, k=1, n_jobs=-1)
+            _z_value = np.where(_distance > bins_res*2, np.nan, _z.ravel()[_idx])
+            _field_value = np.where(_distance > bins_res*2, np.nan, ifield[field_name].values.ravel()[_idx])
+            z_values.append(_z_value)
+            field_values.append(_field_value)
+        z_values = np.asarray(z_values)
+        field_values = np.asarray(field_values)
+        xy_line_values = np.stack([xy_line_1d,]*len(self.fields), axis=0)
+        mask_flag = (np.isnan(z_values.ravel()) | np.isnan(field_values.ravel()))
+        z_values_ravel = z_values.ravel()[~mask_flag]
+        xy_line_values_ravel = xy_line_values.ravel()[~mask_flag]
+        field_values_ravel = field_values.ravel()[~mask_flag]
+        mesh_xy, mesh_z = np.mgrid[0:start_end_dis:npoints*1j, 0:np.nanmax(z_values):bins_res/2.] #生成剖面的网格
+        grid_field = radar_interp2d_var(np.c_[xy_line_values_ravel, z_values_ravel], field_values_ravel,\
+                              (mesh_xy, mesh_z), bandwidth=360/self.fields[0].azimuth.size)
+        return mesh_xy, mesh_z, grid_field

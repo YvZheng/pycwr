@@ -6,12 +6,10 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-
-from PyQt5 import QtCore, QtGui, QtWidgets
-from . import icons
 import matplotlib
 # Ensure using PyQt5 backend
 matplotlib.use('QT5Agg')
+from PyQt5 import QtCore, QtGui, QtWidgets
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as Canvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -537,6 +535,7 @@ class Ui_MainWindow(object):
         self.actionw.setIcon(icon17)
         self.actionw.setObjectName("actionw")
         self.actionvertical = QtWidgets.QAction(MainWindow)
+        self.actionvertical.setCheckable(True)
         icon25 = QtGui.QIcon()
         icon25.addPixmap(QtGui.QPixmap(":/res/icon/icons8-soundcloud-48.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionvertical.setIcon(icon25)

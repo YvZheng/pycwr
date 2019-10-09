@@ -97,7 +97,7 @@ def get_radar_sitename(filename):
         station_id = 9250  ###找不到站点信息返回南京雷达
     return radar_info.loc[station_id, "Name"]
 
-def get_radar_type(filename):
+def _get_radar_type(filename):
     """
     根据雷达名称找雷达类型
     :param filename:
@@ -135,7 +135,7 @@ def radar_format(filename):
     elif (size-1024)%4000 == 0 and (sc_flag == b"CINRAD/SC" or sc_flag == b"CINRAD/CD"):
         return "SC"
     else:
-        return get_radar_type(filename)
+        return _get_radar_type(filename)
 
 def make_time_unit_str(dtobj):
     """ Return a time unit string from a datetime object. """

@@ -10,6 +10,7 @@ class SABFormat(object):
     def __init__(self):
         super(SABFormat, self).__init__()
         self.RadialHeaderSize = 128
+        self.InfSize = 28
 
     def RadialHeader(self):
         return (

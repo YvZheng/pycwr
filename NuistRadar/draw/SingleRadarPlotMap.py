@@ -53,7 +53,7 @@ class RadarGraphMap(object):
 
         if title is None:
             title = pd.to_datetime(self.NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
-            title = title + " elevation : %.1f" % self.NRadar.scan_info.fixed_angle[sweep].values
+            title = title + " Elevation : %.1f" % self.NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name]
         longitude = self.NRadar.scan_info.longitude.values
@@ -65,6 +65,55 @@ class RadarGraphMap(object):
 
         RadarGraphMap.simple_plot_ppi_map(_range, azimuth, elevation, field, (longitude, latitude), title,
                                           (vmin, vmax), cmap, cmap_bins, clabel=clabel, continuously=continuously)
+
+    @staticmethod
+    def GUI_plot(NRadar, fig, ax, cax, sweep, field_name, main_point=None,\
+                 normvar=None, title=None, clabel=None, continuously=False):
+        """
+        带地图画图模块
+        :param sweep:扫描的sweep序号，从0开始
+        :param field_name:扫描的数据场
+        :param normvar:最小最大值
+        :param title:画图的title
+        :param clabel:colorbar的title
+        :param continuously: 是否使用连续的cmaps
+        :return:
+        """
+        assert NRadar.scan_info.scan_type.values == "ppi", "now only support ppi scan!"
+        if field_name == "V":
+            vmax = NRadar.scan_info.nyquist_velocity[sweep].values
+            vmin = -1 * vmax
+        elif CINRAD_field_normvar[CINRAD_field_mapping[field_name]] == -1:
+            vmax = np.nanmax(NRadar.fields[sweep][field_name])
+            vmin = np.nanmin(NRadar.fields[sweep][field_name])
+        else:
+            vmin, vmax = CINRAD_field_normvar[CINRAD_field_mapping[field_name]]
+
+        if normvar is not None:
+            vmin, vmax = normvar
+
+        cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
+        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
+
+        if title is None:
+            title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
+            title = title + " Elevation : %.1f" % NRadar.scan_info.fixed_angle[sweep].values
+        if clabel is None:
+            clabel = CINRAD_field_mapping[field_name]
+        if main_point is None:
+            longitude = NRadar.scan_info.longitude.values
+            latitude = NRadar.scan_info.latitude.values
+        else:
+            longitude, latitude = main_point
+        _range = NRadar.fields[sweep].range.values
+        azimuth = NRadar.fields[sweep].azimuth.values
+        elevation = NRadar.fields[sweep].elevation.values
+        field = NRadar.fields[sweep][field_name]
+        x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+        lon, lat = cartesian_to_geographic_aeqd(x, y, longitude, latitude)
+        RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, field, title=title,\
+                                    normvar=(vmin, vmax), cmap = cmap, cmap_bins = cmap_bins,\
+                                   clabel=clabel, continuously=continuously)
 
     @staticmethod
     def simple_plot_ppi_map(_range, azimuth, elevation, radar_data, main_piont, title=None, normvar=None, cmap=None, \

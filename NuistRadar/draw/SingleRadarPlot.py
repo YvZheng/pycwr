@@ -46,7 +46,7 @@ class RadarGraph(object):
 
         if title is None:
             title = pd.to_datetime(self.NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
-            title = title + " elevation : %.1f"%self.NRadar.scan_info.fixed_angle[sweep].values
+            title = title + " Elevation : %.1f"%self.NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name]
         _range = self.NRadar.fields[sweep].range.values
@@ -56,6 +56,42 @@ class RadarGraph(object):
         RadarGraph.simple_plot_ppi(_range, azimuth, elevation, field, normvar=(vmin, vmax),
                                    title=title, cmap=cmap, cmap_bins=cmap_bins,
                                    clabel=clabel, dark=dark, continuously=continuously)
+    @staticmethod
+    def GUI_plot(NRadar,fig, ax, cx, sweep, field_name, normvar=None, title=None, clabel=None, continuously=False):
+        """
+        绘图
+        :param sweep: sweep从0开始
+        :param field_name: 产品场的名称
+        :return:
+        """
+        assert NRadar.scan_info.scan_type.values == "ppi", "now only support ppi scan!"
+        if field_name == "V":
+            vmax = NRadar.scan_info.nyquist_velocity[sweep].values
+            vmin = -1 * vmax
+        elif CINRAD_field_normvar[CINRAD_field_mapping[field_name]] == -1:
+            vmax = np.nanmax(NRadar.fields[sweep][field_name])
+            vmin = np.nanmin(NRadar.fields[sweep][field_name])
+        else:
+            vmin, vmax = CINRAD_field_normvar[CINRAD_field_mapping[field_name]]
+
+        if normvar is not None:
+            vmin, vmax = normvar
+        cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
+        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
+
+        if title is None:
+            title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
+            title = title + " Elevation : %.1f"%NRadar.scan_info.fixed_angle[sweep].values
+        if clabel is None:
+            clabel = CINRAD_field_mapping[field_name]
+        _range = NRadar.fields[sweep].range.values
+        azimuth = NRadar.fields[sweep].azimuth.values
+        elevation = NRadar.fields[sweep].elevation.values
+        field = NRadar.fields[sweep][field_name]
+        x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+        RadarGraph.plot_ppi(fig, ax, cx, x, y, field, normvar=(vmin, vmax),
+                                title=title, cmap=cmap, cmap_bins=cmap_bins,
+                                clabel=clabel, continuously=continuously)
 
     @staticmethod
     def simple_plot_ppi_xy(x, y, radar_data, normvar=None, cmap=None,
@@ -161,7 +197,7 @@ class RadarGraph(object):
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         RadarGraph._SetGrids(ax, max_range / 1000.)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
-                            zorder=100, norm=norm)
+                            zorder=10, norm=norm)
         ax.set_aspect("equal")
         ax.set_xlim([-max_range / 1000., max_range / 1000.])
         ax.set_ylim([-max_range / 1000., max_range / 1000.])

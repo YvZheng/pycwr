@@ -9,17 +9,16 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QMainWindow
-from Ui_WeatherRadar import Ui_MainWindow
-from SCFileRead import IO
-from CINRADPlot import CINRAD
-from CPolPlot import CPol
-from CPolRead import CIO
+from .UI_Radar import Ui_MainWindow
+from NuistRadar.io.auto_io import radar_io
+from NuistRadar.io.util import radar_format
+from NuistRadar.draw.SingleRadarPlot import RadarGraph
+from NuistRadar.draw.SingleRadarPlotMap import RadarGraphMap
 from glob import glob
 import sys
-import bz2
-import gzip
+from .station_info import Ui_Dialog
 
-from Ui_info import Ui_Dialog
+field_name = ["dBZ", "V", "W", "ZDR",  "KDP", "CC"]
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -102,8 +101,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.files = None
         self.radar_type = None
         
-        self.org_lat = 23
-        self.org_lon = 131.3
+        self.org_lat = 131.3
+        self.org_lon = 23
         self.org_height = 57
 
     @pyqtSlot()
@@ -121,42 +120,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
 
         print(self.actioncontinuous.isChecked())
-        
-    def radar_format(self, filename):
-        if hasattr(filename, 'read'):
-            return filename
 
-        fh = open(filename, 'rb')
-        magic = fh.read(3)
-        fh.close()
-
-        if magic.startswith(b'\x1f\x8b'):
-            f = gzip.GzipFile(filename, 'rb')
-        elif magic.startswith(b'BZh'):
-            f = bz2.BZ2File(filename, 'rb')
-        else:
-            f = open(filename, 'rb')
-
-        cpol_id = f.read(4)
-        sc_id = f.read(24)
-        f.close()
-        if cpol_id == b'RSTM':
-            self.open_dual()
-            return 1
-        elif sc_id[10:12] == b'\x01\x00':
-            self.close_non_dual()
-            return 0
-        else:
-            return 2
 
     def Read_radar(self,  filename):
-        self.radar_type = self.radar_format(filename)
-        if self.radar_type == 0:
-            return IO.read_sc(filename,  self.org_lat,  self.org_lon,  self.org_height)
-        elif self.radar_type == 1:
-            return CIO.read(filename)
+        if radar_format(filename) is not None:
+            radar_obj = radar_io(filename)
+            NRadar = radar_obj.ToNuistRadar()
+            self.org_lat = NRadar.scan_info.latitude.values
+            self.org_lon = NRadar.scan_info.longitude.values
+            self.org_height = NRadar.scan_info.altitude.values
+            if "KDP" in NRadar.fields[0].keys():
+                self.open_dual()
+            else:
+                self.close_non_dual()
+            return NRadar
         else:
-            QMessageBox.warning(self,"数据错误警告",  "非SA/SB/CA/CB/POL数据", 
+            QMessageBox.warning(self,"数据错误警告",  "非SA/SB/CA/CB/98D/CC/CCJ/SC/CD数据",
             QMessageBox.Yes)
             return 0
     
@@ -236,8 +215,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.setSelected(ReadFile)
             self.plot_graph_PPI(self.radar_dat,  self.find_level_in_groupBox(), self.find_var_in_groupBox(),
                                 self.actionwithmap.isChecked(),self.actioncontinuous.isChecked())
-        print(self.radioButton_2.isChecked())
-        print(ReadFile)
     
     @pyqtSlot()
     def on_actionopendir_2_triggered(self):
@@ -254,7 +231,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     
         if self.targetDirPath.strip()=='':
             return
-        print("Path", self.targetDirPath)
         self.files = self.import_basedat(self.targetDirPath)
         self.add_listwidget(self.files)
     
@@ -311,25 +287,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 return i
         return 0
         
-    def plot_graph_PPI(self,  radar,  level, product,  map,  nws):
+    def plot_graph_PPI(self,  radar,  level, product,  map, continuously):
         self.MplWidget.canvas.update()
         self.MplWidget.canvas.flush_events()
-        fig,  ax,  cax = self.MplWidget.canvas.get_fig_ax()
-        #fig.subplots_adjust(top = 0.95, bottom = 0.055, right = 1, left = 0.03, hspace = 0, wspace = 0)
-        #ax.margins(0, 0)
-        ax.clear()
-        cax.clear()
-        ax.set_facecolor((0.95, 0.95, 0.95))
-        if self.radar_type == 0:
-            if map:
-                CINRAD.PPI_MAP(fig, ax, cax, radar, level, product, nws=nws)
-            else:
-                CINRAD.PPI(fig,  ax,  cax,  radar,  level,  product, nws=nws)
+        try:
+            self.fig.clf()
+            self.ax.clear()
+            self.cax.clear()
+        except AttributeError:
+            pass
+
+        if not map:
+            self.fig, self.ax,  self.cax = self.MplWidget.canvas.get_fig_ax()
+            self.ax.set_facecolor((0.95, 0.95, 0.95))
+            RadarGraph.GUI_plot(radar, self.fig, self.ax, self.cax, level, \
+                                field_name[product], continuously=continuously)
         else:
-            if map:
-                CPol.PPI_MAP(fig,  ax,  cax,  radar,  level,  product, nws=nws)
-            else:
-                CPol.PPI(fig, ax, cax, radar, level, product, nws=nws)
+            self.fig, self.ax, self.cax = self.MplWidget.canvas.get_fig_ax_map()
+            self.ax.set_facecolor((0.95, 0.95, 0.95))
+            RadarGraphMap.GUI_plot(radar, self.fig, self.ax, self.cax, level,\
+                                   field_name[product],main_point=(self.org_lon, self.org_lat),\
+                                   continuously=continuously)
         self.MplWidget.canvas.draw()
         
     @pyqtSlot()

@@ -8,12 +8,51 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from . import icons
+import matplotlib
+# Ensure using PyQt5 backend
+matplotlib.use('QT5Agg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as Canvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import cartopy.crs as ccrs
+
+
+# Matplotlib canvas class to create figure
+class MplCanvas(Canvas):
+    def __init__(self):
+        self.fig = Figure()
+        Canvas.__init__(self, self.fig)
+        Canvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        Canvas.updateGeometry(self)
+
+    def get_fig_ax(self):
+        self.ax = self.fig.add_axes([0.035, 0.06, 0.88, 0.88])
+        self.cax = self.fig.add_axes([0.9, 0.06, 0.028, 0.88])
+        return self.fig, self.ax, self.cax
+
+    def get_fig_ax_map(self):
+        self.ax = self.fig.add_axes([0.06, 0.025, 0.82, 0.95], projection=ccrs.PlateCarree())
+        self.cax = self.fig.add_axes([0.91, 0.1, 0.028, 0.8])
+        return self.fig, self.ax, self.cax
+
+
+# Matplotlib widget
+class MplWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        QtWidgets.QWidget.__init__(self, parent)  # Inherit from QWidget
+        self.canvas = MplCanvas()  # Create canvas object
+        self.ntb = NavigationToolbar(self.canvas, parent)
+        self.vbl = QtWidgets.QVBoxLayout()  # Set box for plotting
+        self.vbl.addWidget(self.canvas)
+        self.vbl.addWidget(self.ntb)
+        self.setLayout(self.vbl)
 
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1045, 825)
+        MainWindow.resize(1148, 909)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/res/icon/icons8-gps-antenna-80.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWindow.setWindowIcon(icon)
@@ -323,7 +362,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.addLayout(self.horizontalLayout_2)
         MainWindow.setCentralWidget(self.centralWidget)
         self.menuBar = QtWidgets.QMenuBar(MainWindow)
-        self.menuBar.setGeometry(QtCore.QRect(0, 0, 1045, 23))
+        self.menuBar.setGeometry(QtCore.QRect(0, 0, 1148, 23))
         self.menuBar.setObjectName("menuBar")
         self.menu_2 = QtWidgets.QMenu(self.menuBar)
         self.menu_2.setObjectName("menu_2")
@@ -657,14 +696,4 @@ class Ui_MainWindow(object):
         self.actionquit_2.setText(_translate("MainWindow", "退出"))
         self.actionwithmap.setText(_translate("MainWindow", "叠加地图"))
         self.actioncontinuous.setText(_translate("MainWindow", "连续色标"))
-from mplwidget import MplWidget
-import radar_icon_rc
 
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())

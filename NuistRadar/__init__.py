@@ -1,2 +1,2 @@
-from . import core, draw, io, interp, GraphicalInterface
-__all__ = ["core", "draw", "io", "interp", "GraphicalInterface"]
+from . import core, draw, io, interp
+__all__ = ["core", "draw", "io", "interp"]

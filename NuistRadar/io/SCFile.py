@@ -56,9 +56,10 @@ class SCBaseData(object):
         ##解码其余一些观测参数
         BaseDataHeader_dict['RadarObserationParam_2'], _ = _unpack_from_buf(buf_header,\
             dtype_sc.RadarObserationParamPos_2, dtype_sc.BaseDataHeader['RadarObserationParam_2'])
-        self.nrays = np.sum(BaseDataHeader_dict['LayerParam']['recordnumber'])
-        self.sweep_end_ray_index_add1 = np.cumsum(BaseDataHeader_dict['LayerParam']['recordnumber']) ##python格式的结束
-        self.sweep_start_ray_index = self.sweep_end_ray_index_add1 - BaseDataHeader_dict['LayerParam']['recordnumber']
+        self.nrays = np.sum((BaseDataHeader_dict['LayerParam']['recordnumber']).astype(np.int64))
+        self.sweep_end_ray_index_add1 = np.cumsum((BaseDataHeader_dict['LayerParam']['recordnumber']).astype(np.int64)) ##python格式的结束
+        self.sweep_start_ray_index = self.sweep_end_ray_index_add1 - \
+                                     (BaseDataHeader_dict['LayerParam']['recordnumber']).astype(np.int64)
         return BaseDataHeader_dict
 
     def _parse_radial(self):

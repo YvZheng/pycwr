@@ -152,7 +152,7 @@ class SCBaseData(object):
         获取每根径向的方位角
         :return:(nRays)
         """
-        return np.array([(iray['sStrAz'] + iray['sEndAz'])*180./65536 for iray in self.radial])
+        return np.concatenate([np.arange(0,360,1.0), ] * self.nsweeps)
 
     def get_elevation(self):
         """

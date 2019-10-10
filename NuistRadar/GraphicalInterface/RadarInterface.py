@@ -388,12 +388,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if not map:
             self.fig, self.ax, self.cax = self.MplWidget.canvas.get_fig_ax()
-            self.ax.set_facecolor("white")
+            self.ax.set_facecolor((0.95, 0.95, 0.95))
             self.pm = RadarGraph.GUI_plot(radar, self.fig, self.ax, self.cax, level, \
                                 field_name[product], continuously=continuously)
         else:
             self.fig, self.ax, self.cax = self.MplWidget.canvas.get_fig_ax_map()
-            self.ax.set_facecolor("white")
+            self.ax.set_facecolor((0.95, 0.95, 0.95))
             self.pm = RadarGraphMap.GUI_plot(radar, self.fig, self.ax, self.cax, level, \
                                    field_name[product], main_point=(self.org_lon, self.org_lat), \
                                    continuously=continuously)

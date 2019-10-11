@@ -21,6 +21,6 @@
 
 *Now we can use* `python setup.py install` *to install NuistRadar library.*
 
-*we also can use* `scripts\LaunchGUI.py` *to launch GUI to display radar data!*
+*we also can use* `python scripts\LaunchGUI.py` *to launch GUI to display radar data!*
 
 

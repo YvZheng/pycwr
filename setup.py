@@ -4,9 +4,12 @@ suggested by bugsuse(https://github.com/bugsuse)
 """
 
 from setuptools import find_packages, setup
+import sys, os
+
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(parent_dir)
 
 DISTNAME = "NuistRadar"
-LICENSE = "GPL"
 AUTHOR = "Yu Zheng"
 AUTHOR_EMAIL = "zhengyunuist@gmail.com"
 URL = "https://github.com/YvZheng"
@@ -20,7 +23,6 @@ LONG_DESCRIPTION = """The Weather Radar Toolkit, support most of China's radar f
 setup(
     name=DISTNAME,
     version="0.1",
-    license=LICENSE,
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
@@ -29,7 +31,7 @@ setup(
     install_requires=INSTALL_REQUIRES,
     url=URL,
     include_package_data = True,
-    packages=find_packages(),
-    package_data={"": ["data/*", "tests/data/*", "SetupRadar.py", "__init_.py", "draw/colormap/balance-rgb.txt"]},
+    packages=find_packages(parent_dir),
+    package_data={"NuistRadar": ["data/*.*","__init_.py", "draw/colormap/balance-rgb.txt"]},
 )
 

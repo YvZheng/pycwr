@@ -32,3 +32,4 @@ setup(
     packages=find_packages(),
     package_data={"": ["data/*", "tests/data/*", "SetupRadar.py", "__init_.py", "draw/colormap/balance-rgb.txt"]},
 )
+

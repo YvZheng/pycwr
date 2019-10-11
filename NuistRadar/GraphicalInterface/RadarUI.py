@@ -15,7 +15,6 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as Canvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import cartopy.crs as ccrs
 
-
 # Matplotlib canvas class to create figure
 class MplCanvas(Canvas):
     def __init__(self):

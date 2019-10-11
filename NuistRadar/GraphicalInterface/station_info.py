@@ -3,10 +3,10 @@
 """
 Module implementing Dialog.
 """
-
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 # -*- coding: utf-8 -*-
 

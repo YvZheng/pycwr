@@ -19,8 +19,18 @@
 - [ ] 雷达回波外推算法支持
 - [ ] 雷达定量预报降水算法支持
 
-*Now we can use* `python setup.py install` *to install NuistRadar library.*
+## install Nuist library
 
-*we also can use* `python scripts/LaunchGUI.py` *to launch GUI to display radar data!*
+```
+git clone https://github.com/YvZheng/NuistRadar.git
+cd NuistRadar
+python setup.py install    
+```
+
+## launch Graphical interface to show Radar Data
+
+```
+ python scripts/LaunchGUI.py
+```
 
 

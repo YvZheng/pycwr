@@ -1,5 +1,7 @@
 # NuistRadar 
 
+## Project development plan
+
 - [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC支持
 - [ ] Cfradial读取支持(不借助pyart)
 - [ ] NuistRadar类导出为Cfradial格式支持
@@ -19,7 +21,7 @@
 - [ ] 雷达回波外推算法支持
 - [ ] 雷达定量预报降水算法支持
 
-## install Nuist library
+## Install Nuist Library
 
 ```
 git clone https://github.com/YvZheng/NuistRadar.git
@@ -27,7 +29,7 @@ cd NuistRadar
 python setup.py install    
 ```
 
-## launch Graphical interface to show Radar Data
+## Launch Graphical interface to show Radar Data
 
 ```
  python scripts/LaunchGUI.py

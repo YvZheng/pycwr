@@ -21,7 +21,7 @@
 - [ ] 雷达回波外推算法支持
 - [ ] 雷达定量预报降水算法支持
 
-## Install Nuist Library
+## Install NuistRadar Library
 
 ```
 git clone https://github.com/YvZheng/NuistRadar.git

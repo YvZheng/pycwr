@@ -555,7 +555,7 @@ class Ui_MainWindow(object):
         icon26 = QtGui.QIcon()
         icon26.addPixmap(QtGui.QPixmap(":/res/icon/icons8-radar-64.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionwithmap.setIcon(icon26)
-        self.actionwithmap.setShortcutVisibleInContextMenu(False)
+        #self.actionwithmap.setShortcutVisibleInContextMenu(False)
         self.actionwithmap.setObjectName("actionwithmap")
         self.actioncontinuous = QtWidgets.QAction(MainWindow)
         self.actioncontinuous.setCheckable(True)

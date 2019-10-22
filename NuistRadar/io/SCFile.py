@@ -53,6 +53,11 @@ class SCBaseData(object):
         ##解码不同仰角的观测参数
         BaseDataHeader_dict['LayerParam'] = np.frombuffer(buf_header, \
         dtype_sc.BaseDataHeader['LayerParamX30'],count=self.nsweeps, offset=dtype_sc.LayerParamPos)
+        ####################sc basedata has wrong bandwidth############
+        BaseDataHeader_dict['LayerParam'].setflags(write=1) ## set writeable
+        BaseDataHeader_dict['LayerParam']["binWidth"][:] = 5000 ##basedata bandwidth save wrong data!!!
+        BaseDataHeader_dict['LayerParam'].setflags(write=0)
+        ####################sc basedata has wrong bandwidth############
         ##解码其余一些观测参数
         BaseDataHeader_dict['RadarObserationParam_2'], _ = _unpack_from_buf(buf_header,\
             dtype_sc.RadarObserationParamPos_2, dtype_sc.BaseDataHeader['RadarObserationParam_2'])
@@ -82,8 +87,11 @@ class SCBaseData(object):
         radial_dict_tmp, size_tmp = _unpack_from_buf(buf_radial, start_pos, dtype_sc.RadialHeader())
         radial_dict.update(radial_dict_tmp)
         radial_dict['fields'] = {}
+        ##basedata save some error data
+        #RadialData = np.frombuffer(buf_radial, dtype_sc.RadialData(),\
+        #                                 count=num_bins, offset=start_pos+size_tmp)
         RadialData = np.frombuffer(buf_radial, dtype_sc.RadialData(),\
-                                         count=num_bins, offset=start_pos+size_tmp)
+                                         count=500, offset=start_pos+size_tmp)
         radial_dict['fields']['dBZ'] = np.where(RadialData['dBZ'] != 0,\
                             (RadialData['dBZ'].astype(int) - 64)/2., np.nan).astype(np.float32)
         radial_dict['fields']['dBT'] = np.where(RadialData['dBT'] != 0, \

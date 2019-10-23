@@ -2,7 +2,7 @@ matplotlib==2.2.3
 pyproj==1.9.6
 Cartopy==0.17.0
 xarray==0.12.1
-numpy==1.17.2+mkl
+numpy==1.15.1
 scipy==1.1.0
 pandas==0.23.4
 PyQt5==5.13.1

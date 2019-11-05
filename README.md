@@ -35,4 +35,7 @@ python setup.py install
  python scripts/LaunchGUI.py
 ```
 
+The main window opens as shown below:
+![avatar](./examples/NuistRadar.png)
+
 

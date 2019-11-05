@@ -36,6 +36,7 @@ python setup.py install
 ```
 
 The main window opens as shown below:
+
 ![avatar](./examples/NuistRadar.png)
 
 

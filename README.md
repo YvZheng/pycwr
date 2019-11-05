@@ -2,7 +2,7 @@
 
 ## Project development plan
 
-- [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC支持
+- [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持
 - [ ] Cfradial读取支持(不借助pyart)
 - [ ] NuistRadar类导出为Cfradial格式支持
 - [x] 自动识别雷达站点并获取经纬度信息(针对SA/SB/CB)

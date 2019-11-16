@@ -81,7 +81,7 @@ def _get_interp_around_point_var(point_old, point_new, bandwidth=1):
     :param bandwidth: 波束宽度 degree
     :return:
     """
-    min_roi = 50
+    min_roi = 200
     kdtree = spatial.cKDTree(point_old)
     index_nearest = []
     nrows = point_new.shape[0]

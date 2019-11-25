@@ -2,7 +2,7 @@
 import numpy as np
 from .BaseDataProtocol.WSR98DProtocol import dtype_98D
 from .util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
-from ..core.NRadar import NuistRadar
+from ..core.NRadar import PRD
 from ..configure.pyart_config import get_metadata, get_fillvalue
 from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
 from ..core.PyartRadar import Radar
@@ -359,7 +359,7 @@ class WSR98D2NRadar(object):
 
     def ToNuistRadar(self):
         """将WSR98D数据转为Nuist Radar的数据格式"""
-        return NuistRadar(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
+        return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
                           longitude=self.longitude, altitude=self.altitude,
                           sweep_start_ray_index=self.sweep_start_ray_index, \

@@ -12,9 +12,13 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
-from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, CINRAD_field_normvar, CINRAD_field_mapping
-from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
+from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
+    CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
+from ..core.transforms import antenna_vectors_to_cartesian
+import xarray as xr
 
+plt.rcParams['xtick.direction'] = 'in'
+plt.rcParams['ytick.direction'] = 'in'
 
 class RadarGraph(object):
     """雷达绘图显示部分"""
@@ -48,7 +52,7 @@ class RadarGraph(object):
             title = pd.to_datetime(self.NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
             title = title + " Elevation : %.1f"%self.NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
-            clabel = CINRAD_field_mapping[field_name]
+            clabel = CINRAD_field_mapping[field_name] + " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
         _range = self.NRadar.fields[sweep].range.values
         azimuth = self.NRadar.fields[sweep].azimuth.values
         elevation = self.NRadar.fields[sweep].elevation.values
@@ -83,7 +87,7 @@ class RadarGraph(object):
             title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
             title = title + " Elevation : %.1f"%NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
-            clabel = CINRAD_field_mapping[field_name]
+            clabel = CINRAD_field_mapping[field_name]  + " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
         _range = NRadar.fields[sweep].range.values
         azimuth = NRadar.fields[sweep].azimuth.values
         elevation = NRadar.fields[sweep].elevation.values
@@ -142,6 +146,14 @@ class RadarGraph(object):
         :param dark: 是否使用黑色背景
         :return:
         """
+        if isinstance(_range, xr.DataArray):
+            _range = _range.values
+        if isinstance(azimuth, xr.DataArray):
+            azimuth = azimuth.values
+        if isinstance(elevation, xr.DataArray):
+            elevation = elevation.values
+        if isinstance(radar_data, xr.DataArray):
+            radar_data = radar_data.values
 
         x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
         if dark:

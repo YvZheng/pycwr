@@ -17,7 +17,12 @@ import cartopy.crs as ccrs
 import numpy as np
 import pandas as pd
 from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
-from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, CINRAD_field_normvar, CINRAD_field_mapping
+from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
+    CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
+import xarray as xr
+
+plt.rcParams['xtick.direction'] = 'in'
+plt.rcParams['ytick.direction'] = 'in'
 
 class RadarGraphMap(object):
 
@@ -55,7 +60,8 @@ class RadarGraphMap(object):
             title = pd.to_datetime(self.NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
             title = title + " Elevation : %.1f" % self.NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
-            clabel = CINRAD_field_mapping[field_name]
+            clabel = CINRAD_field_mapping[field_name]  +\
+                     " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
         longitude = self.NRadar.scan_info.longitude.values
         latitude = self.NRadar.scan_info.latitude.values
         _range = self.NRadar.fields[sweep].range.values
@@ -93,7 +99,8 @@ class RadarGraphMap(object):
             vmin, vmax = normvar
 
         cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
-        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
+        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]  +\
+               " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
 
         if title is None:
             title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
@@ -137,6 +144,15 @@ class RadarGraphMap(object):
         :param continuously: 是否使用连续的cmaps
         :return:
         """
+        if isinstance(_range, xr.DataArray):
+            _range = _range.values
+        if isinstance(azimuth, xr.DataArray):
+            azimuth = azimuth.values
+        if isinstance(elevation, xr.DataArray):
+            elevation = elevation.values
+        if isinstance(radar_data, xr.DataArray):
+            radar_data = radar_data.values
+
         main_lon, main_lat = main_piont
         x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
         lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)

@@ -10,8 +10,9 @@ from ..core.transforms import antenna_vectors_to_cartesian
 from scipy import spatial
 from ..interp.RadarInterp import radar_interp2d_var, radar_interp2d
 
-class NuistRadar(object):
+class PRD(object):
     """
+    Polarimetry Radar Data (PRD)
     A class for storing antenna coordinate radar data.
     Attributes
     ----------
@@ -74,7 +75,7 @@ class NuistRadar(object):
                  fixed_angle, bins_per_sweep, nyquist_velocity, frequency, unambiguous_range,
                  nrays, nsweeps, sitename):
 
-        super(NuistRadar, self).__init__()
+        super(PRD, self).__init__()
         keys = fields.keys()
         self.fields = []
         for idx, (istart, iend) in enumerate(zip(sweep_start_ray_index, sweep_end_ray_index)):

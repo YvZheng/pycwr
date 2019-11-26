@@ -12,17 +12,17 @@ sys.path.append(parent_dir)
 DISTNAME = "NuistRadar"
 AUTHOR = "Yu Zheng"
 AUTHOR_EMAIL = "zhengyunuist@gmail.com"
-URL = "https://github.com/YvZheng"
+URL = "https://github.com/YvZheng/NuistRadar"
 PYTHON_REQUIRES = ">=3.6"
 INSTALL_REQUIRES = ["matplotlib>=2.2.3", "pyproj>=1.9.6", "Cartopy>=0.17.0", "xarray>=0.12.1",\
-"numpy<=1.15.0", "scipy>=1.1.0", "pandas>=0.23.4", "PyQt5>=5.13.1", "netCDF4>=1.5.2"]
+"numpy<=1.15.0", "scipy>=1.1.0", "pandas>=0.23.4", "PyQt5>=5.13.1", "netCDF4>=1.5.2", 'easydict>=1.9']
 DESCRIPTION = "China Weather Radar tools"
 LONG_DESCRIPTION = """The Weather Radar Toolkit, support most of China's radar formats
 (WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD)"""
 
 setup(
     name=DISTNAME,
-    version="0.1",
+    version="0.2",
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,

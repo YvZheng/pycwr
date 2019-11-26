@@ -1,5 +1,8 @@
 # NuistRadar 
 
+- [README in Chinese](README_CN.md)
+- [Developers and contributors](CONTRIBUTORS.txt)
+
 ## Project development plan
 
 - [x] WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD support
@@ -39,5 +42,6 @@ python setup.py install
 The main window opens as shown below:
 
 ![avatar](./examples/NuistRadar.png)
+
 
 

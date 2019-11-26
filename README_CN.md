@@ -1,5 +1,8 @@
 # 南京信息工程大学雷达开源库
 
+- [英文版](README.md)
+- [开发人员](CONTRIBUTORS.txt)
+
 ## 项目开发计划
 
 - [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持

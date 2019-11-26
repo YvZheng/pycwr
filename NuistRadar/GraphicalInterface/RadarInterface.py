@@ -397,6 +397,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.pm = RadarGraphMap.GUI_plot(radar, self.fig, self.ax, self.cax, level, \
                                    field_name[product], main_point=(self.org_lon, self.org_lat), \
                                    continuously=continuously)
+        self.ax.tick_params(axis="y", which="both", direction='in')
+        self.ax.tick_params(axis="x", which="both", direction='in')
         self.MplWidget.canvas.draw()
 
     @pyqtSlot()

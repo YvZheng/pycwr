@@ -21,9 +21,6 @@ from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
 import xarray as xr
 
-plt.rcParams['xtick.direction'] = 'in'
-plt.rcParams['ytick.direction'] = 'in'
-
 class RadarGraphMap(object):
 
     def __init__(self, NuistRadar = None):
@@ -159,6 +156,8 @@ class RadarGraphMap(object):
         fig = plt.figure()
         ax = fig.add_axes([0.04, 0.1, 0.82, 0.82], projection=projection)
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
+        ax.tick_params(axis="y", which="both", direction='in')
+        ax.tick_params(axis="x", which="both", direction='in')
         return RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, radar_data, title, normvar, cmap, \
                  cmap_bins, extend, projection, orient, clabel, continuously)
     @staticmethod
@@ -170,6 +169,8 @@ class RadarGraphMap(object):
         fig = plt.figure()
         ax = fig.add_axes([0.04, 0.1, 0.82, 0.82], projection=projection)
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
+        ax.tick_params(axis="y", which="both", direction='in')
+        ax.tick_params(axis="x", which="both", direction='in')
         return RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, radar_data, title, normvar, cmap, \
                                           cmap_bins, extend, projection, orient, clabel, continuously)
     @staticmethod

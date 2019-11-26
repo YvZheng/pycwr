@@ -17,9 +17,6 @@ from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
 from ..core.transforms import antenna_vectors_to_cartesian
 import xarray as xr
 
-plt.rcParams['xtick.direction'] = 'in'
-plt.rcParams['ytick.direction'] = 'in'
-
 class RadarGraph(object):
     """雷达绘图显示部分"""
 
@@ -122,6 +119,8 @@ class RadarGraph(object):
         fig = plt.figure()
         ax = fig.add_axes([0.08, 0.1, 0.82, 0.82])
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
+        ax.tick_params(axis="y", which="both", direction='in')
+        ax.tick_params(axis="x", which="both", direction='in')
         return RadarGraph.plot_ppi(fig, ax, cax, x, y, radar_data, max_range, title, normvar, cmap, \
                                    cmap_bins, orient, label, clabel, continuously)
 
@@ -161,6 +160,8 @@ class RadarGraph(object):
         fig = plt.figure()
         ax = fig.add_axes([0.08, 0.1, 0.82, 0.82])
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
+        ax.tick_params(axis="y", which="both", direction='in')
+        ax.tick_params(axis="x", which="both", direction='in')
         return RadarGraph.plot_ppi(fig, ax, cax, x, y, radar_data, max_range, title, normvar, cmap, \
                                    cmap_bins, orient, label, clabel, continuously)
 

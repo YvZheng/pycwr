@@ -33,6 +33,18 @@ cd NuistRadar
 python setup.py install    
 ```
 
+## Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
+```
+from NuistRadar.io.auto_io import radar_io 
+file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
+data = radar_io(file)
+PRD = data.ToNuistRadar()
+PyartRadar = data.ToPyartRadar()
+```
+The data structure of the PRD is as follows:
+
+![avatar](./examples/PRD_class.png)
+
 ## Launch Graphical interface to show Radar Data
 
 ```

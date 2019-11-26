@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import spatial
-
+from ..configure.config import cfg
 
 def get_weight(dist, r, method="barnes"):
     """
@@ -81,13 +81,13 @@ def _get_interp_around_point_var(point_old, point_new, bandwidth=1):
     :param bandwidth: 波束宽度 degree
     :return:
     """
-    min_roi = 200
+    min_roi = cfg.interp.mroi
     kdtree = spatial.cKDTree(point_old)
     index_nearest = []
     nrows = point_new.shape[0]
     roi = np.empty(nrows)
     for i, itarget in enumerate(point_new):
-        roi[i] = min_roi + ((itarget[0] / 1000.) ** 2 + (itarget[1] / 1000.) ** 2) ** 0.5 * bandwidth * 20
+        roi[i] = min_roi + ((itarget[0] / 1000.) ** 2 + (itarget[1] / 1000.) ** 2) ** 0.5 * bandwidth * cfg.interp.coeff
         index_nearest.append(kdtree.query_ball_point(itarget, roi[i]))  ###idx放的是索引
     distance = [np.sqrt(np.sum(np.square(point_old[i, :] - j), axis=1)) for i, j \
             in zip(index_nearest, point_new)]

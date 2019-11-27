@@ -285,8 +285,8 @@ class CC2NRadar(object):
     def get_fixed_angle(self):
         return self.CC.header['CutConfig']['usAngle'] / 100.
 
-    def ToNuistRadar(self):
-        """将WSR98D数据转为Nuist Radar的数据格式"""
+    def ToPRD(self):
+        """将WSR98D数据转为PRD 的数据格式"""
 
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \

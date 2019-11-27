@@ -16,8 +16,8 @@ class radar_io(object):
         else:
             raise TypeError("unsupported radar type!")
 
-    def ToNuistRadar(self):
-        return self.radar_obj.ToNuistRadar()
+    def ToPRD(self):
+        return self.radar_obj.ToPRD()
 
     def ToPyartRadar(self):
         return self.radar_obj.ToPyartRadar()

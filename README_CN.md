@@ -30,18 +30,18 @@
 ----------
 
 ```
-git clone https://github.com/YvZheng/NuistRadar.git
-cd NuistRadar
+git clone https://github.com/YvZheng/pycwr.git
+cd pycwr
 python setup.py install    
 ```
 
 读取雷达数据 PRD类或者Py-ART的Radar类
 ----------
 ```
-from NuistRadar.io.auto_io import radar_io 
+from pycwr.io.auto_io import radar_io 
 file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
 data = radar_io(file)
-PRD = data.ToNuistRadar()
+PRD = data.ToPRD()
 PyartRadar = data.ToPyartRadar()
 ```
 PRD类的数据结构如下:

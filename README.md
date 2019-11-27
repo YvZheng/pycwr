@@ -30,18 +30,18 @@ Install pycwr Library
 ----------
 
 ```
-git clone https://github.com/YvZheng/NuistRadar.git
-cd NuistRadar
+git clone https://github.com/YvZheng/pycwr.git
+cd pycwr
 python setup.py install    
 ```
 
 Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
 ----------
 ```
-from NuistRadar.io.auto_io import radar_io 
+from pycwr.io.auto_io import radar_io 
 file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
 data = radar_io(file)
-PRD = data.ToNuistRadar()
+PRD = data.ToPRD()
 PyartRadar = data.ToPyartRadar()
 ```
 The data structure of the PRD is as follows:

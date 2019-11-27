@@ -362,8 +362,8 @@ class SAB2NRadar(object):
             fixed_angle = np.array([self.radial[idx]['El'] / 8. * 180. / 4096. for idx in self.sweep_start_ray_index])
         return fixed_angle
 
-    def ToNuistRadar(self):
-        """将WSR98D数据转为Nuist Radar的数据格式"""
+    def ToPRD(self):
+        """将WSR98D数据转为PRD的数据格式"""
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
                           longitude=self.longitude, altitude=self.altitude,

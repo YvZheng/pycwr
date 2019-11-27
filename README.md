@@ -7,7 +7,7 @@
 
 - [x] WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD support
 - [ ] Cfradial Read support
-- [ ] Write to Cfradial support
+- [x] Write to Cfradial support
 - [x] Automatically identify radar and obtain latitude and longitude information (SA/SB/CB)
 - [x] Automatic recognition of radar data format types
 - [x] transform to Pyart Radar object
@@ -55,5 +55,6 @@ The main window opens as shown below:
 
 ![avatar](./examples/NuistRadar.png)
 
+more example via:[NuistRadar exmaple](./notebooks/NuistRadar_example.ipynb)
 
 

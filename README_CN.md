@@ -7,7 +7,7 @@
 
 - [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持
 - [ ] Cfradial读取支持(不借助pyart)
-- [ ] NuistRadar类导出为Cfradial格式支持
+- [x] NuistRadar类导出为Cfradial格式支持
 - [x] 自动识别雷达站点并获取经纬度信息(针对SA/SB/CB)
 - [x] 自动识别雷达数据格式类型
 - [x] 转换为Pyart Radar类

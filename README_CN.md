@@ -55,4 +55,5 @@ PRD类的数据结构如下:
 
 ![avatar](./examples/NuistRadar.png)
 
+更多个例请见[NuistRadar例子](./notebooks/NuistRadar_example.ipynb)
 

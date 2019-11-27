@@ -29,7 +29,7 @@ if __name__ == "__main__":
     for ifile in files:
         try:
             res = radar_io(ifile)
-            c = res.ToNuistRadar()
+            c = res.ToPRD()
             d = res.ToPyartRadar()
         except Exception:
             print(ifile)

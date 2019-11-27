@@ -3,7 +3,8 @@
 - [README in Chinese](README_CN.md)
 - [Developers and contributors](CONTRIBUTORS.txt)
 
-## Project development plan
+Project development plan
+----------
 
 - [x] WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD support
 - [ ] Cfradial Read support
@@ -25,7 +26,8 @@
 - [ ] Radar extrapolation algorithm support
 - [ ] Radar quantitative precipitation forecast  algorithm support
 
-## Install NuistRadar Library
+Install NuistRadar Library
+----------
 
 ```
 git clone https://github.com/YvZheng/NuistRadar.git
@@ -33,7 +35,8 @@ cd NuistRadar
 python setup.py install    
 ```
 
-## Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
+Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
+----------
 ```
 from NuistRadar.io.auto_io import radar_io 
 file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
@@ -45,7 +48,8 @@ The data structure of the PRD is as follows:
 
 ![avatar](./examples/PRD_class.png)
 
-## Launch Graphical interface to show Radar Data
+Launch Graphical interface to show Radar Data
+----------
 
 ```
  python scripts/LaunchGUI.py

@@ -1,9 +1,10 @@
-# 南京信息工程大学雷达开源库
+# 南京信息工程大学天气雷达开源库
 
 - [英文版](README.md)
 - [开发人员](CONTRIBUTORS.txt)
 
-## 项目开发计划
+项目开发计划
+----------
 
 - [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持
 - [ ] Cfradial读取支持(不借助pyart)
@@ -25,7 +26,8 @@
 - [ ] 雷达回波外推算法支持
 - [ ] 雷达定量预报降水算法支持
 
-## 安装NuistRadar库
+安装NuistRadar库
+----------
 
 ```
 git clone https://github.com/YvZheng/NuistRadar.git
@@ -33,7 +35,8 @@ cd NuistRadar
 python setup.py install    
 ```
 
-## 读取雷达数据 PRD类或者Py-ART的Radar类
+读取雷达数据 PRD类或者Py-ART的Radar类
+----------
 ```
 from NuistRadar.io.auto_io import radar_io 
 file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
@@ -45,7 +48,8 @@ PRD类的数据结构如下:
 
 ![avatar](./examples/PRD_class.png)
 
-## 启动图形化界面
+启动图形化界面
+----------
 
 ```
  python scripts/LaunchGUI.py
@@ -55,5 +59,21 @@ PRD类的数据结构如下:
 
 ![avatar](./examples/NuistRadar.png)
 
-更多个例请见[NuistRadar例子](./notebooks/NuistRadar_example.ipynb)
+更多个例参见[NuistRadar例子](./notebooks/NuistRadar_example.ipynb)
+
+开发者
+----------
+
+郑玉 - 南京信息工程大学, 大气物理学院
+李南 - 南京信息工程大学, 大气物理学院
+魏鸣 - 南京信息工程大学, 大气物理学院
+楚志刚 - 南京信息工程大学, 大气物理学院
+樊思慧 - 南京信息工程大学, 大气物理学院
+贾鹏程 - 南京信息工程大学, 大气物理学院
+
+贡献者
+------------
+
+李杨 - 南京信息工程大学, 大气物理学院
+张昕 - 南京信息工程大学, 大气物理学院
 

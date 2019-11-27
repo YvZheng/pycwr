@@ -1,4 +1,4 @@
-# 南京信息工程大学天气雷达开源库
+# 中国天气雷达开源库
 
 - [英文版](README.md)
 - [开发人员](CONTRIBUTORS.txt)
@@ -26,7 +26,7 @@
 - [ ] 雷达回波外推算法支持
 - [ ] 雷达定量预报降水算法支持
 
-安装NuistRadar库
+安装pycwr库
 ----------
 
 ```
@@ -57,7 +57,7 @@ PRD类的数据结构如下:
 
 主窗口如下图所示:
 
-![avatar](./examples/NuistRadar.png)
+![avatar](examples/pycwr.png)
 
 更多个例参见[NuistRadar例子](./notebooks/NuistRadar_example.ipynb)
 

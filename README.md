@@ -1,4 +1,4 @@
-# NuistRadar 
+# pycwr (Python China Weather Radar libaray)
 
 - [README in Chinese](README_CN.md)
 - [Developers and contributors](CONTRIBUTORS.txt)
@@ -26,7 +26,7 @@ Project development plan
 - [ ] Radar extrapolation algorithm support
 - [ ] Radar quantitative precipitation forecast  algorithm support
 
-Install NuistRadar Library
+Install pycwr Library
 ----------
 
 ```
@@ -57,9 +57,9 @@ Launch Graphical interface to show Radar Data
 
 The main window opens as shown below:
 
-![avatar](./examples/NuistRadar.png)
+![avatar](examples/pycwr.png)
 
-more example via:[NuistRadar exmaple](./notebooks/NuistRadar_example.ipynb)
+more example via: [exmaple](./notebooks/NuistRadar_example.ipynb)
 
 Developers
 ----------

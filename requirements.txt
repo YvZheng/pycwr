@@ -7,4 +7,4 @@ pyproj>=1.9.6
 scipy>=1.1.0
 numpy<=1.15.1
 netCDF4>=1.5.3
-PyQt5>=5.13.2
+PyQt5>=5.10.0

@@ -57,4 +57,26 @@ The main window opens as shown below:
 
 more example via:[NuistRadar exmaple](./notebooks/NuistRadar_example.ipynb)
 
+Developers
+----------
+
+Yu Zheng - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Nan Li - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Wei Ming - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Zhigang Chu - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Sihui Fan - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Pengcheng Jia - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Contributors
+------------
+
+Yang Li - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
+Xin Zhang  - Nanjing University of Information Science and Technology, School of Atmospheric Physics
+
 

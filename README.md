@@ -73,7 +73,7 @@ The main window opens as shown below:
 
 more example via: [exmaple](./notebooks/NuistRadar_example.ipynb)
 
-Developers
+Developers and Contributors
 ----------
 
 Yu Zheng - Nanjing University of Information Science and Technology, School of Atmospheric Physics
@@ -87,9 +87,6 @@ Zhigang Chu - Nanjing University of Information Science and Technology, School o
 Sihui Fan - Nanjing University of Information Science and Technology, School of Atmospheric Physics
 
 Pengcheng Jia - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Contributors
-------------
 
 Yang Li - Nanjing University of Information Science and Technology, School of Atmospheric Physics
 

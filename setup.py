@@ -9,7 +9,7 @@ import sys, os
 parent_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(parent_dir)
 
-DISTNAME = "NuistRadar"
+DISTNAME = "pycwr"
 AUTHOR = "Yu Zheng"
 AUTHOR_EMAIL = "zhengyunuist@gmail.com"
 URL = "https://github.com/YvZheng/NuistRadar"
@@ -32,6 +32,6 @@ setup(
     url=URL,
     include_package_data = True,
     packages=find_packages(parent_dir),
-    package_data={"NuistRadar": ["data/*.*","__init_.py", "GraphicalInterface/*.py", "draw/colormap/balance-rgb.txt"]},
+    package_data={"pycwr": ["data/*.*","__init_.py", "GraphicalInterface/*.py", "draw/colormap/balance-rgb.txt"]},
 )
 

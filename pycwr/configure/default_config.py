@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Configuration file for the NuistRadar Object , modified from Py-art
+Configuration file for the PRD Object , modified from Py-art
 注意：距离单位统一到m
 """
 

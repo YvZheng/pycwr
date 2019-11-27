@@ -39,7 +39,7 @@ python setup.py install
 ----------
 ```
 from pycwr.io.auto_io import radar_io 
-file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
+file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
 data = radar_io(file)
 PRD = data.ToPRD()
 PyartRadar = data.ToPyartRadar()
@@ -47,6 +47,18 @@ PyartRadar = data.ToPyartRadar()
 PRD类的数据结构如下:
 
 ![avatar](./examples/PRD_class.png)
+
+可视化雷达数据并叠加地图
+----------
+```
+from pycwr.draw.SingleRadarPlotMap import RadarGraphMap
+graph = RadarGraphMap(PRD)
+graph.plot(0, "dBZ")
+plt.show()
+```
+如下图所示:
+
+![avatar](examples/graph_map.png)
 
 启动图形化界面
 ----------

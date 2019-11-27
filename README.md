@@ -39,7 +39,7 @@ Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
 ----------
 ```
 from pycwr.io.auto_io import radar_io 
-file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
+file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
 data = radar_io(file)
 PRD = data.ToPRD()
 PyartRadar = data.ToPyartRadar()
@@ -47,6 +47,18 @@ PyartRadar = data.ToPyartRadar()
 The data structure of the PRD is as follows:
 
 ![avatar](./examples/PRD_class.png)
+
+Plotting Radar Data with map
+----------
+```
+from pycwr.draw.SingleRadarPlotMap import RadarGraphMap
+graph = RadarGraphMap(PRD)
+graph.plot(0, "dBZ")
+plt.show()
+```
+As illustrated in the picture below:
+
+![avatar](examples/graph_map.png)
 
 Launch Graphical interface to show Radar Data
 ----------

@@ -213,7 +213,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def Read_radar(self, filename):
         if radar_format(filename) is not None:
             radar_obj = radar_io(filename)
-            NRadar = radar_obj.ToNuistRadar()
+            NRadar = radar_obj.ToPRD()
             self.org_lat = NRadar.scan_info.latitude.values
             self.org_lon = NRadar.scan_info.longitude.values
             self.org_height = NRadar.scan_info.altitude.values

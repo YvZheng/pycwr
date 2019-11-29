@@ -45,6 +45,8 @@ from pycwr.io.auto_io import radar_io
 file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
 data = radar_io(file)
 PRD = data.ToPRD()
+print(PRD.scan_info)
+print(PRD.fields)
 PyartRadar = data.ToPyartRadar()
 ```
 PRD类的数据结构如下:
@@ -74,7 +76,7 @@ plt.show()
 
 ![avatar](examples/pycwr.png)
 
-更多个例参见[NuistRadar例子](./notebooks/NuistRadar_example.ipynb)
+更多个例参见[NuistRadar例子](./notebooks/pycwr_example.ipynb)
 
 开发者
 ----------

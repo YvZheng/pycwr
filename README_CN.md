@@ -76,7 +76,7 @@ plt.show()
 
 ![avatar](examples/pycwr.png)
 
-更多个例参见[NuistRadar例子](./notebooks/pycwr_example.ipynb)
+更多个例参见[pycwr例子](./notebooks/pycwr_example.ipynb)
 
 开发者
 ----------

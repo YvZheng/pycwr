@@ -54,9 +54,7 @@ class SCBaseData(object):
         BaseDataHeader_dict['LayerParam'] = np.frombuffer(buf_header, \
         dtype_sc.BaseDataHeader['LayerParamX30'],count=self.nsweeps, offset=dtype_sc.LayerParamPos)
         ####################sc basedata has wrong bandwidth############
-        BaseDataHeader_dict['LayerParam'].setflags(write=1) ## set writeable
-        BaseDataHeader_dict['LayerParam']["binWidth"][:] = 5000 ##basedata bandwidth save wrong data!!!
-        BaseDataHeader_dict['LayerParam'].setflags(write=0)
+        BaseDataHeader_dict["binWidth"] = np.full_like(BaseDataHeader_dict['LayerParam']["binWidth"], 5000, dtype=np.int32)
         ####################sc basedata has wrong bandwidth############
         ##解码其余一些观测参数
         BaseDataHeader_dict['RadarObserationParam_2'], _ = _unpack_from_buf(buf_header,\
@@ -279,7 +277,7 @@ class SC2NRadar(object):
         :param length:
         :return:
         """
-        Resolution = self.SC.header['LayerParam']['binWidth'][0]/10.
+        Resolution = self.SC.header['binWidth'][0]/10.
         return np.linspace(Resolution, Resolution * length, length)
 
     def _get_fields(self):

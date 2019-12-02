@@ -41,6 +41,20 @@ DEFAULT_METADATA = {
         'comment': ('Coordinate variable for time. '
                     'Time at the center of each ray, in fractional seconds '
                     'since the global variable time_coverage_start')},
+    'start_time': {
+        'standard_name': 'start_time',
+        'long_name': 'UTC_time_at_volume_start',
+        'calendar': 'gregorian',
+        'comment': ('Coordinate variable for time. '
+                    'Time at the center of each ray, in fractional seconds '
+                    'since the global variable time_coverage_start')},
+    'end_time': {
+        'standard_name': 'end_time',
+        'long_name': 'UTC_time_at_volume_end',
+        'calendar': 'gregorian',
+        'comment': ('Coordinate variable for time. '
+                    'Time at the center of each ray, in fractional seconds '
+                    'since the global variable time_coverage_start')},
 
     'fixed_angle': {
         'long_name': 'Target angle for sweep',
@@ -55,17 +69,40 @@ DEFAULT_METADATA = {
         'long_name': 'Latitude',
         'standard_name': 'Latitude',
         'units': 'degrees_north'},
+    'lat': {
+        'long_name': 'Latitude',
+        'standard_name': 'Latitude',
+        'units': 'degrees_north'},
+    'y': {
+        'long_name': 'distance from radar in north',
+        'standard_name': 'distance in y',
+        'units': 'meters'},
 
     'longitude': {
         'long_name': 'Longitude',
         'standard_name': 'Longitude',
         'units': 'degrees_east'},
 
+    'lon': {
+        'long_name': 'Longitude',
+        'standard_name': 'Longitude',
+        'units': 'degrees_east'},
+
+    'x': {
+        'long_name': 'distance from radar in east',
+        'standard_name': 'distance in x',
+        'units': 'meters'},
+
     'altitude': {
         'long_name': 'Altitude',
         'standard_name': 'Altitude',
         'units': 'meters',
         'positive': 'up'},
+    'z': {
+        'long_name': 'sea surface level',
+        'standard_name': 'altitude in z',
+        'positive': 'up',
+        'units': 'meters'},
 
     'nyquist_velocity': {
         'units': 'meters_per_second',

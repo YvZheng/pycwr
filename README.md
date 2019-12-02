@@ -28,6 +28,19 @@ Project development plan
 
 Install pycwr Library
 ----------
+### The easiest route to installing pycwr is through pip and conda:
+
+if you haven't install cartopy, For all platforms installing cartopy can be done with:
+
+```
+conda install -c conda-forge cartopy
+```
+and you can install pycwr with pip:
+```
+pip install pycwr
+```
+
+### Also, you can install from source code:
 
 ```
 git clone https://github.com/YvZheng/pycwr.git
@@ -41,7 +54,7 @@ Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
 from pycwr.io.auto_io import radar_io 
 file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
 data = radar_io(file)
-PRD = data.ToPRD()
+PRD = data.ToPRD(withlatlon=True)
 print(PRD.scan_info)
 print(PRD.fields)
 PyartRadar = data.ToPyartRadar()

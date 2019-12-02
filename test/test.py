@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 
 #file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
 #file = r"E:\RadarBaseData\CINRAD-CC\2016070817.03V"
-file = r"E:\RadarBaseData\CINRAD_SC_old\Z_RADR_I_Z9831_20190427200200_O_DOR_SC_CAP.bin"
+file = r"C:\Users\zy\Desktop\2016070817.48V"
 #radar = SCBaseData(file)
 Radar = radar_io(file)
-NRadar = Radar.ToPRD(withlatlon=False)
+NRadar = Radar.ToPRD(withlatlon=True)
 PyartRadar = Radar.ToPyartRadar()
 
 #dbz = NRadar.fields[0]["dBZ"]

@@ -31,6 +31,19 @@
 
 安装pycwr库
 ----------
+### 可以使用conda和pip来安装pycwr库
+
+如果你没安装 cartopy, 推荐使用conda来安装cartopy:
+
+```
+conda install -c conda-forge cartopy
+```
+然后, 可以使用以下pip命令安装:
+```
+pip install pycwr
+```
+
+### 当然你也可以通过源码安装:
 
 ```
 git clone https://github.com/YvZheng/pycwr.git
@@ -44,7 +57,7 @@ python setup.py install
 from pycwr.io.auto_io import radar_io 
 file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
 data = radar_io(file)
-PRD = data.ToPRD()
+PRD = data.ToPRD(withlatlon=True)
 print(PRD.scan_info)
 print(PRD.fields)
 PyartRadar = data.ToPyartRadar()

@@ -16,9 +16,18 @@ class SABBaseData(object):
     解码SA/SB/CB/SC2.0的雷达数据，仅仅对数据（dBZ, V, W）做了转换
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, station_lon=None, station_lat=None, station_alt=None):
+        """
+        :param filename:  radar basedata filename
+        :param station_lon:  radar station longitude //units: degree east
+        :param station_lat:  radar station latitude //units:degree north
+        :param station_alt:  radar station altitude //units: meters
+        """
         super(SABBaseData, self).__init__()
         self.filename = filename
+        self.station_lon = station_lon
+        self.station_lat = station_lat
+        self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename)
         self.RadialNum, self.nrays = self._RadialNum_SAB_CB()  ##检查文件有无问题
         self.radial = self._parse_radial()
@@ -141,7 +150,14 @@ class SABBaseData(object):
         获取经纬度高度，雷达频率
         :return:lat, lon, alt, frequency
         """
-        return get_radar_info(self.filename)
+        lat, lon, alt, frequency = get_radar_info(self.filename)
+        if self.station_lon is not None:
+            lon = self.station_lon
+        if self.station_lat is not None:
+            lat = self.station_lat
+        if self.station_alt is not None:
+            alt = self.station_alt
+        return lat, lon, alt, frequency
 
     def get_scan_type(self):
         """
@@ -362,7 +378,7 @@ class SAB2NRadar(object):
             fixed_angle = np.array([self.radial[idx]['El'] / 8. * 180. / 4096. for idx in self.sweep_start_ray_index])
         return fixed_angle
 
-    def ToPRD(self):
+    def ToPRD(self, withlatlon=True):
         """将WSR98D数据转为PRD的数据格式"""
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
@@ -371,7 +387,7 @@ class SAB2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, withlatlon=withlatlon)
 
     def ToPyartRadar(self):
         """转化为Pyart Radar的对象"""

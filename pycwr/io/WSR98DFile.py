@@ -13,9 +13,19 @@ class WSR98DBaseData(object):
     解码新一代双偏振的数据格式
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, station_lon=None, station_lat=None, station_alt=None):
+        """
+        :param filename:  radar basedata filename
+        :param station_lon:  radar station longitude //units: degree east
+        :param station_lat:  radar station latitude //units:degree north
+        :param station_alt:  radar station altitude //units: meters
+        """
         super(WSR98DBaseData, self).__init__()
-        self.fid = _prepare_for_read(filename)  ##对压缩的文件进行解码
+        self.filename = filename
+        self.station_lon = station_lon
+        self.station_lat = station_lat
+        self.station_alt = station_alt
+        self.fid = _prepare_for_read(self.filename)  ##对压缩的文件进行解码
         self._check_standard_basedata()  ##确定文件是standard文件
         self.header = self._parse_BaseDataHeader()
         self.radial = self._parse_radial()
@@ -145,8 +155,15 @@ class WSR98DBaseData(object):
         获取经纬度高度，雷达频率
         :return:lat, lon, alt, frequency
         """
-        return self.header['SiteConfig']['Latitude'], self.header['SiteConfig']['Longitude'], \
+        lat, lon, alt, frequency = self.header['SiteConfig']['Latitude'], self.header['SiteConfig']['Longitude'], \
                self.header['SiteConfig']['Height'], self.header['SiteConfig']['Frequency'] / 1000.
+        if self.station_lon is not None:
+            lon = self.station_lon
+        if self.station_lat is not None:
+            lat = self.station_lat
+        if self.station_alt is not None:
+            alt = self.station_alt
+        return lat, lon, alt, frequency
 
     def get_scan_type(self):
         if self.header['TaskConfig']['ScanType'] in [0, 1]:
@@ -357,7 +374,7 @@ class WSR98D2NRadar(object):
         else:
             return self.header['CutConfig']['Elevation']
 
-    def ToPRD(self):
+    def ToPRD(self, withlatlon=True):
         """将WSR98D数据转为PRD的数据格式"""
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
@@ -366,7 +383,7 @@ class WSR98D2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, withlatlon=withlatlon)
 
     def ToPyartRadar(self):
         """转化为Pyart Radar的对象"""

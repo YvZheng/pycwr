@@ -14,9 +14,18 @@ class SCBaseData(object):
     """
     解码SC/CD 1.0的数据格式
     """
-    def __init__(self, filename):
+    def __init__(self, filename, station_lon=None, station_lat=None, station_alt=None):
+        """
+        :param filename:  radar basedata filename
+        :param station_lon:  radar station longitude //units: degree east
+        :param station_lat:  radar station latitude //units:degree north
+        :param station_alt:  radar station altitude //units: meters
+        """
         super(SCBaseData, self).__init__()
         self.filename = filename
+        self.station_lon = station_lon
+        self.station_lat = station_lat
+        self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename) ##判断是否是压缩文件
         buf_header = self.fid.read(dtype_sc.BaseDataHeaderSize) ##取出header的buf
         self.header = self._parse_BaseDataHeader(buf_header)
@@ -172,8 +181,16 @@ class SCBaseData(object):
         获取经纬度高度，雷达频率
         :return:lat, lon, alt, frequency
         """
-        return self.header['RadarSite']['latitudevalue']/100., self.header['RadarSite']['longitudevalue']/100., \
-               self.header['RadarSite']['height'] / 1000., 2.765
+        lat, lon, alt, frequency =  self.header['RadarSite']['latitudevalue']/100., \
+                                    self.header['RadarSite']['longitudevalue']/100., \
+                                    self.header['RadarSite']['height'] / 1000., 2.765
+        if self.station_lon is not None:
+            lon = self.station_lon
+        if self.station_lat is not None:
+            lat = self.station_lat
+        if self.station_alt is not None:
+            alt = self.station_alt
+        return lat, lon, alt, frequency
 
     def get_scan_type(self):
         """
@@ -299,7 +316,7 @@ class SC2NRadar(object):
     def get_fixed_angle(self):
         return self.SC.header['LayerParam']['Swangles'] / 100.
 
-    def ToPRD(self):
+    def ToPRD(self, withlatlon=True):
         """将WSR98D数据转为PRD的数据格式"""
 
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
@@ -309,7 +326,7 @@ class SC2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, withlatlon=withlatlon)
 
     def ToPyartRadar(self):
 

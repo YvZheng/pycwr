@@ -84,7 +84,10 @@ def get_radar_info(filename):
     :return:(lat(deg), lon(deg), elev(m), frequency(GHZ))
     """
     name = os.path.basename(filename)
-    station_id = [int(name[idx:idx+4]) for idx in range(len(name)-4) if name[idx:idx+4].isdigit()][0]
+    try:
+        station_id = [int(name[idx:idx+4]) for idx in range(len(name)-4) if name[idx:idx+4].isdigit()][0]
+    except Exception:
+        station_id = 9250
     if station_id not in radar_info.index:
         station_id = 9250 ###找不到站点信息返回南京雷达
     return radar_info.loc[station_id, "Latitude"], radar_info.loc[station_id, "Longitude"],\

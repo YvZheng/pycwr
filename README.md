@@ -30,7 +30,7 @@ Install pycwr Library
 ----------
 ### The easiest route to installing pycwr is through pip and conda:
 
-if you haven't install cartopy, For all platforms installing cartopy can be done with:
+if you haven't install cartopy, for all platforms installing cartopy can be done with:
 
 ```
 conda install -c conda-forge cartopy

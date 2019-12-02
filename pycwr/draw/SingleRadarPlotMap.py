@@ -113,14 +113,17 @@ class RadarGraphMap(object):
         azimuth = NRadar.fields[sweep].azimuth.values
         elevation = NRadar.fields[sweep].elevation.values
         field = NRadar.fields[sweep][field_name]
-        x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
-        lon, lat = cartesian_to_geographic_aeqd(x, y, longitude, latitude)
+        if hasattr(field, 'lat') and hasattr(field, 'lon'):
+            lon, lat = field.lon, field.lat
+        else:
+            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+            lon, lat = cartesian_to_geographic_aeqd(x, y, longitude, latitude)
         RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, field, title=title,\
                                     normvar=(vmin, vmax), cmap = cmap, cmap_bins = cmap_bins,\
                                    clabel=clabel, continuously=continuously)
 
     @staticmethod
-    def simple_plot_ppi_map(_range, azimuth, elevation, radar_data, main_piont, title=None, normvar=None, cmap=None, \
+    def simple_plot_ppi_map(_range, azimuth, elevation, radar_data, main_piont=None, title=None, normvar=None, cmap=None, \
                  cmap_bins=16, extend=None, projection=ccrs.PlateCarree(), orient="vertical", \
                 clabel=None, continuously=False):
         """
@@ -141,18 +144,13 @@ class RadarGraphMap(object):
         :param continuously: 是否使用连续的cmaps
         :return:
         """
-        if isinstance(_range, xr.DataArray):
-            _range = _range.values
-        if isinstance(azimuth, xr.DataArray):
-            azimuth = azimuth.values
-        if isinstance(elevation, xr.DataArray):
-            elevation = elevation.values
-        if isinstance(radar_data, xr.DataArray):
-            radar_data = radar_data.values
-
-        main_lon, main_lat = main_piont
-        x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
-        lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
+        if hasattr(radar_data, 'lat') and hasattr(radar_data, 'lon'):
+            lon, lat = radar_data.lon, radar_data.lat
+        else:
+            assert main_piont is not None, "should input (station_lon, station_lat) as main_point!"
+            main_lon, main_lat = main_piont
+            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+            lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
         fig = plt.figure()
         ax = fig.add_axes([0.04, 0.1, 0.82, 0.82], projection=projection)
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
@@ -164,6 +162,7 @@ class RadarGraphMap(object):
     def simple_plot_ppi_xy_map(x, y, radar_data, main_piont, title=None, normvar=None, cmap=None, \
                  cmap_bins=16, extend=None, projection=ccrs.PlateCarree(), orient="vertical", \
                 clabel=None, continuously=False):
+
         main_lon, main_lat = main_piont
         lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
         fig = plt.figure()
@@ -173,6 +172,7 @@ class RadarGraphMap(object):
         ax.tick_params(axis="x", which="both", direction='in')
         return RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, radar_data, title, normvar, cmap, \
                                           cmap_bins, extend, projection, orient, clabel, continuously)
+
     @staticmethod
     def plot_ppi_map(fig, ax, cx, lon, lat, radar_data, title=None, normvar=None, cmap=None, \
                  cmap_bins=16, extend=None, projection=ccrs.PlateCarree(), orient="vertical", \

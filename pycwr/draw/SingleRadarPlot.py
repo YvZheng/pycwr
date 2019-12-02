@@ -89,7 +89,10 @@ class RadarGraph(object):
         azimuth = NRadar.fields[sweep].azimuth.values
         elevation = NRadar.fields[sweep].elevation.values
         field = NRadar.fields[sweep][field_name]
-        x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+        if hasattr(field, "x") and hasattr(field, "y"):
+            x, y = field.x, field.y
+        else:
+            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
         RadarGraph.plot_ppi(fig, ax, cx, x, y, field, normvar=(vmin, vmax),
                                 title=title, cmap=cmap, cmap_bins=cmap_bins,
                                 clabel=clabel, continuously=continuously)
@@ -145,16 +148,10 @@ class RadarGraph(object):
         :param dark: 是否使用黑色背景
         :return:
         """
-        if isinstance(_range, xr.DataArray):
-            _range = _range.values
-        if isinstance(azimuth, xr.DataArray):
-            azimuth = azimuth.values
-        if isinstance(elevation, xr.DataArray):
-            elevation = elevation.values
-        if isinstance(radar_data, xr.DataArray):
-            radar_data = radar_data.values
-
-        x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+        if hasattr(radar_data, "x") and hasattr(radar_data, "y"):
+            x, y = radar_data.x, radar_data.y
+        else:
+            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
         if dark:
             plt.style.use('dark_background')
         fig = plt.figure()

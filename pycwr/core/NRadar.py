@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 为了适应中国雷达在不同仰角的探测距离不同以及前几层仰角 dop和ref分开扫描的问题
-提出NuistRadar Object，以方便后续的算法及绘图
+提出PRD Object，以方便后续的算法及绘图
 """
 import numpy as np
 import xarray as xr
-from ..configure.default_config import DEFAULT_METADATA, FILL_VALUE, CINRAD_field_mapping
-from ..core.transforms import antenna_vectors_to_cartesian
+from ..configure.default_config import DEFAULT_METADATA, CINRAD_field_mapping
+from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
 from scipy import spatial
-from ..interp.RadarInterp import radar_interp2d_var, radar_interp2d
+from ..interp.RadarInterp import radar_interp2d_var
 
 class PRD(object):
     """
@@ -73,31 +73,57 @@ class PRD(object):
     def __init__(self, fields,  scan_type, time, range, azimuth, elevation,latitude,
                  longitude, altitude, sweep_start_ray_index, sweep_end_ray_index,
                  fixed_angle, bins_per_sweep, nyquist_velocity, frequency, unambiguous_range,
-                 nrays, nsweeps, sitename):
-
+                 nrays, nsweeps, sitename, withlatlon):
         super(PRD, self).__init__()
         keys = fields.keys()
         self.fields = []
-        for idx, (istart, iend) in enumerate(zip(sweep_start_ray_index, sweep_end_ray_index)):
-            isweep_data = xr.Dataset(coords={'azimuth': (['time', ], azimuth[istart:iend+1]),
-                                            'elevation': (['time',], elevation[istart:iend+1]),
-                                            'range': range[:bins_per_sweep[idx]], 'time': time[istart:iend+1]})
-            isweep_data.azimuth.attrs = DEFAULT_METADATA['azimuth']
-            isweep_data.elevation.attrs = DEFAULT_METADATA['elevation']
-            isweep_data.range.attrs = DEFAULT_METADATA['range']
-            isweep_data.time.attrs = DEFAULT_METADATA['time']
-            for ikey in keys:
-                isweep_data[ikey] = (['time','range'], fields[ikey][istart:iend+1, :bins_per_sweep[idx]])
-                isweep_data[ikey].attrs = DEFAULT_METADATA[CINRAD_field_mapping[ikey]]
-            self.fields.append(isweep_data)
+        if not withlatlon:
+            for idx, (istart, iend) in enumerate(zip(sweep_start_ray_index, sweep_end_ray_index)):
+                isweep_data = xr.Dataset(coords={'azimuth': (['time', ], azimuth[istart:iend+1]),
+                                                'elevation': (['time',], elevation[istart:iend+1]),
+                                                'range': range[:bins_per_sweep[idx]], 'time': time[istart:iend+1]})
+                isweep_data.azimuth.attrs = DEFAULT_METADATA['azimuth']
+                isweep_data.elevation.attrs = DEFAULT_METADATA['elevation']
+                isweep_data.range.attrs = DEFAULT_METADATA['range']
+                isweep_data.time.attrs = DEFAULT_METADATA['time']
+                for ikey in keys:
+                    isweep_data[ikey] = (['time','range'], fields[ikey][istart:iend+1, :bins_per_sweep[idx]])
+                    isweep_data[ikey].attrs = DEFAULT_METADATA[CINRAD_field_mapping[ikey]]
+                self.fields.append(isweep_data)
+        else:
+            for idx, (istart, iend) in enumerate(zip(sweep_start_ray_index, sweep_end_ray_index)):
+                x, y, z = antenna_vectors_to_cartesian(range[:bins_per_sweep[idx]], azimuth[istart:iend+1],\
+                                                       elevation[istart:iend+1])
+                lon, lat = cartesian_to_geographic_aeqd(x, y, longitude, latitude)
+                isweep_data = xr.Dataset(coords={'azimuth': (['time', ], azimuth[istart:iend+1]),
+                                                'elevation': (['time',], elevation[istart:iend+1]),
+                                                 'x':(['time','range'], x),
+                                                 'y':(['time', 'range'], y),
+                                                 'z':(['time', 'range'], z+altitude),
+                                                 'lat':(['time','range'], lat),
+                                                 'lon':(['time','range'], lon),
+                                                'range': range[:bins_per_sweep[idx]], 'time': time[istart:iend+1]})
+                isweep_data.azimuth.attrs = DEFAULT_METADATA['azimuth']
+                isweep_data.elevation.attrs = DEFAULT_METADATA['elevation']
+                isweep_data.range.attrs = DEFAULT_METADATA['range']
+                isweep_data.time.attrs = DEFAULT_METADATA['time']
+                isweep_data.x.attrs = DEFAULT_METADATA['x']
+                isweep_data.y.attrs = DEFAULT_METADATA['y']
+                isweep_data.z.attrs = DEFAULT_METADATA['z']
+                isweep_data.lon.attrs = DEFAULT_METADATA['lon']
+                isweep_data.lat.attrs = DEFAULT_METADATA['lat']
+                for ikey in keys:
+                    isweep_data[ikey] = (['time','range'], fields[ikey][istart:iend+1, :bins_per_sweep[idx]])
+                    isweep_data[ikey].attrs = DEFAULT_METADATA[CINRAD_field_mapping[ikey]]
+                self.fields.append(isweep_data)
         self.scan_info = xr.Dataset(data_vars={"latitude":latitude,"longitude":longitude,
                         "altitude":altitude,"scan_type":scan_type,  "frequency":frequency,
+                        "start_time":time[0], "end_time":time[-1],
                          "nyquist_velocity":(['sweep',], nyquist_velocity),
                         "unambiguous_range":(['sweep',], unambiguous_range),
                         "rays_per_sweep": (['sweep',], sweep_end_ray_index-sweep_start_ray_index+1),
                         "fixed_angle": (["sweep",], fixed_angle)},
                         coords={"sweep": np.arange(nsweeps, dtype=int)})
-
         self.scan_info['latitude'].attrs = DEFAULT_METADATA['latitude']
         self.scan_info['longitude'].attrs = DEFAULT_METADATA['longitude']
         self.scan_info['altitude'].attrs = DEFAULT_METADATA['altitude']
@@ -107,6 +133,8 @@ class PRD(object):
         self.scan_info['unambiguous_range'].attrs = DEFAULT_METADATA['unambiguous_range']
         self.scan_info['rays_per_sweep'].attrs = DEFAULT_METADATA['rays_per_sweep']
         self.scan_info['fixed_angle'].attrs = DEFAULT_METADATA['fixed_angle']
+        self.scan_info['start_time'].attrs = DEFAULT_METADATA['start_time']
+        self.scan_info['end_time'].attrs = DEFAULT_METADATA['end_time']
         self.nsweeps = nsweeps
         self.nrays = nrays
         self.sitename = sitename

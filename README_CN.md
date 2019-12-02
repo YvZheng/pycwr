@@ -8,7 +8,7 @@
 
 - [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持
 - [ ] Cfradial读取支持
-- [ ] 读取的同时计算经纬度
+- [x] 读取的同时计算经纬度
 - [ ] PRD数据结构优化, 增加订正结果和反演结果的结构
 - [ ] 绘图增加fig, ax的传入部分
 - [x] NuistRadar类导出为Cfradial格式支持

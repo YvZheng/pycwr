@@ -63,8 +63,8 @@ class CCBaseData(object):
                                                                dtype_cc.BaseDataHeader['RadarHeader2'])
 
         self.nrays = np.sum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])
-        self.sweep_end_ray_index_add1 = np.cumsum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])  ##python格式的结束
-        self.sweep_start_ray_index = self.sweep_end_ray_index_add1 - BaseDataHeader_dict['CutConfig']['usRecordNumber']
+        self.sweep_end_ray_index_add1 = (np.cumsum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])).astype(int)  ##python格式的结束
+        self.sweep_start_ray_index = (self.sweep_end_ray_index_add1 - BaseDataHeader_dict['CutConfig']['usRecordNumber']).astype(int)
         return BaseDataHeader_dict
 
     def _parse_radial_single(self, buf_radial, radialnumber):

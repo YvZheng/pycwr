@@ -1,0 +1,3 @@
+include pycwr/__init__.py
+include pycwr/draw/colormap/balance-rgb.txt
+include pycwr/data/*

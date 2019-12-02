@@ -10,28 +10,45 @@ parent_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(parent_dir)
 
 DISTNAME = "pycwr"
-AUTHOR = "Yu Zheng, Nan Li, Ming Wei, Zhigang Chu, etc."
+AUTHOR = "pycwr developers"
 AUTHOR_EMAIL = "zhengyunuist@gmail.com"
-URL = "https://github.com/YvZheng/NuistRadar"
+URL = "https://github.com/YvZheng/pycwr"
+LICENSE='MIT'
 PYTHON_REQUIRES = ">=3.6"
-INSTALL_REQUIRES = ["matplotlib>=2.2.3", "pyproj>=1.9.6", "Cartopy>=0.17.0", "xarray>=0.12.1",\
-"numpy>=1.8.2", "scipy>=1.1.0", "pandas>=0.23.4", "PyQt5>=5.10.0", "netCDF4>=1.4.2", 'easydict>=1.9']
+INSTALL_REQUIRES = ["matplotlib", "pyproj", "Cartopy", "xarray","numpy",\
+                    "scipy", "pandas", "PyQt5", "netCDF4", 'easydict']
 DESCRIPTION = "China Weather Radar tools"
 LONG_DESCRIPTION = """The Weather Radar Toolkit, support most of China's radar formats
 (WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD)"""
-
+PLATFORMS = ["Linux", "Mac OS-X", "Windows"]
+CLASSIFIERS = [
+    'Development Status :: 1 - Planning',
+    'Intended Audience :: Science/Research',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Scientific/Engineering :: Atmospheric Science',
+    'Operating System :: POSIX :: Linux',
+    'Operating System :: MacOS :: MacOS X',
+    'Operating System :: Microsoft :: Windows']
 setup(
     name=DISTNAME,
-    version="0.2.1",
+    version="0.2.4",
     author=AUTHOR,
+    license=LICENSE,
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     url=URL,
+    platforms=PLATFORMS,
+    classifiers=CLASSIFIERS,
     include_package_data = True,
     packages=find_packages(parent_dir),
-    package_data={"pycwr": ["data/*.*","__init_.py", "GraphicalInterface/*.py", "draw/colormap/balance-rgb.txt"]},
 )
 

@@ -12,13 +12,13 @@ class radar_io(object):
         """
         radar_type = radar_format(filename)
         if radar_type == "WSR98D":
-            self.radar_obj = WSR98DFile.WSR98D2NRadar(WSR98DFile.WSR98DBaseData(filename))
+            self.radar_obj = WSR98DFile.WSR98D2NRadar(WSR98DFile.WSR98DBaseData(filename, station_lon, station_lat, station_alt))
         elif radar_type == "SAB":
-            self.radar_obj = SABFile.SAB2NRadar(SABFile.SABBaseData(filename))
+            self.radar_obj = SABFile.SAB2NRadar(SABFile.SABBaseData(filename, station_lon, station_lat, station_alt))
         elif radar_type == "CC":
-            self.radar_obj = CCFile.CC2NRadar(CCFile.CCBaseData(filename))
+            self.radar_obj = CCFile.CC2NRadar(CCFile.CCBaseData(filename, station_lon, station_lat, station_alt))
         elif radar_type == "SC":
-            self.radar_obj = SCFile.SC2NRadar(SCFile.SCBaseData(filename))
+            self.radar_obj = SCFile.SC2NRadar(SCFile.SCBaseData(filename, station_lon, station_lat, station_alt))
         else:
             raise TypeError("unsupported radar type!")
 

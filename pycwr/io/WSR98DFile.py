@@ -185,26 +185,33 @@ class WSR98D2NRadar(object):
         self.WSR98D = WSR98D
         assert np.all(self.WSR98D.header['CutConfig']['LogResolution'] == \
                       self.WSR98D.header['CutConfig']['DopplerResolution']), "dop not match dBZ!"
-        v_index_alone = self.get_v_idx()
-        dBZ_index_alone = self.get_dbz_idx()
-        assert np.all(v_index_alone == (dBZ_index_alone + 1)), """v and dBZ not equal!"""
-        for index_with_dbz, index_with_v in zip(dBZ_index_alone, v_index_alone):
-            assert (self.WSR98D.header["CutConfig"]["Elevation"][index_with_v] - \
-                    self.WSR98D.header["CutConfig"]["Elevation"][index_with_dbz]) < 0.5, \
-                "warning! maybe it is a problem."
-            self.interp_dBZ(index_with_dbz, index_with_v)
+        self.v_index_alone = self.get_v_idx()
+        self.dBZ_index_alone = self.get_dbz_idx()
+
+        if self.WSR98D.header["TaskConfig"]["TaskName"].decode("utf-8").rstrip("\x00") == 'VCP26D': #HZ Radar problem!
+            self.interp_VCP26(self.dBZ_index_alone, self.v_index_alone) ##process V and dBZ are not match
+            self.dBZ_index_alone = self.dBZ_index_alone[:min(len(self.dBZ_index_alone), len(self.v_index_alone))] ##要去除的sweep
+        else:
+            assert np.all(self.v_index_alone == (self.dBZ_index_alone + 1)), """v and dBZ not equal!"""
+            for index_with_dbz, index_with_v in zip(self.dBZ_index_alone, self.v_index_alone):
+                assert (self.WSR98D.header["CutConfig"]["Elevation"][index_with_v] - \
+                        self.WSR98D.header["CutConfig"]["Elevation"][index_with_dbz]) < 0.5, \
+                    "warning! maybe it is a problem."
+                self.interp_dBZ(index_with_dbz, index_with_v)
+
         ind_remove = self.get_reomve_radial_num()
         self.radial = [iray for ind, iray in enumerate(self.WSR98D.radial) if ind not in ind_remove]
-        self.nsweeps = self.WSR98D.nsweeps - dBZ_index_alone.size
+        #self.nsweeps = self.WSR98D.nsweeps - dBZ_index_alone.size
         status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
         self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
         self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
+        self.nsweeps = len(self.sweep_start_ray_index)
         self.nrays = len(self.radial)
         self.scan_type = self.WSR98D.get_scan_type()
         self.latitude, self.longitude, self.altitude, self.frequency = \
             self.WSR98D.get_latitude_longitude_altitude_frequency()
         self.header = self.WSR98D.header
-        self.header['CutConfig'] = np.delete(self.header['CutConfig'], dBZ_index_alone)
+        self.header['CutConfig'] = np.delete(self.header['CutConfig'], self.dBZ_index_alone)
         self.bins_per_sweep = self.get_nbins_per_sweep()
         self.max_bins = self.bins_per_sweep.max()
         self.range = self.get_range_per_radial(self.max_bins)
@@ -215,7 +222,7 @@ class WSR98D2NRadar(object):
 
     def get_reomve_radial_num(self):
         """获得需要remove的radial的index"""
-        dBZ_alone = self.get_dbz_idx()
+        dBZ_alone = self.dBZ_index_alone
         index_romove = []
         for isweep in dBZ_alone:
             index_romove.extend(range(self.WSR98D.sweep_start_ray_index[isweep], \
@@ -236,6 +243,23 @@ class WSR98D2NRadar(object):
                          for idx in self.WSR98D.sweep_start_ray_index])
         return np.where(flag == 1)[0]
 
+    def interp_VCP26(self, dBZ_sweep_index, V_sweep_index):
+        """
+        处理VCP26不匹配问题
+        :param dBZ_sweep_index: array, dbz单独扫描的仰角
+        :param V_sweep_index: array, dBZ单独扫描的仰角
+        :return:
+        """
+        add_keys = ["V", "W"]
+        same_sweeps = min(len(dBZ_sweep_index), len(V_sweep_index))
+        for isweep in range(same_sweeps):
+            self.interp_dBZ(dBZ_sweep_index[isweep], V_sweep_index[isweep])
+        for dbz_dense in dBZ_sweep_index[same_sweeps:]:
+            for index in range(self.WSR98D.sweep_start_ray_index[dbz_dense], self.WSR98D.sweep_end_ray_index[dbz_dense]+1):
+                for ikey in add_keys:
+                    self.WSR98D.radial[index]["fields"][ikey] = np.full_like(self.WSR98D.radial[index]["fields"]["dBZ"],\
+                                                                             np.nan, dtype=np.float32)
+
     def interp_dBZ(self, field_with_dBZ_num, field_without_dBZ_num):
         """
         将dBZ插值到不含dBZ的仰角
@@ -250,7 +274,7 @@ class WSR98D2NRadar(object):
         v_az = azimuth[self.WSR98D.sweep_start_ray_index[field_without_dBZ_num]: \
                        self.WSR98D.sweep_end_ray_index[field_without_dBZ_num] + 1]
         dbz_idx = np.argmin(np.abs(dbz_az.reshape(-1, 1) - v_az.reshape(1, -1)), axis=0) + \
-                  self.WSR98D.sweep_start_ray_index[field_with_dBZ_num]
+                  self.WSR98D.sweep_start_ray_index[field_with_dBZ_num] ##最邻近插值
 
         v_idx = np.arange(self.WSR98D.sweep_start_ray_index[field_without_dBZ_num], \
                           self.WSR98D.sweep_end_ray_index[field_without_dBZ_num] + 1)

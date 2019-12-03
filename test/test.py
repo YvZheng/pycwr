@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 
 #file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
 #file = r"E:\RadarBaseData\CINRAD-CC\2016070817.03V"
-file = r"C:\Users\zy\Desktop\2016070817.48V"
+file = r"C:\Users\zy\Desktop\Z9040.20190515.040618.AR2.bz2"
 #radar = SCBaseData(file)
 Radar = radar_io(file)
 NRadar = Radar.ToPRD(withlatlon=True)
-PyartRadar = Radar.ToPyartRadar()
+#PyartRadar = Radar.ToPyartRadar()
 
 #dbz = NRadar.fields[0]["dBZ"]
 #y = correct_attenuation_HB(dbz)

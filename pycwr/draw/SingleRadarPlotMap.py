@@ -96,14 +96,12 @@ class RadarGraphMap(object):
             vmin, vmax = normvar
 
         cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
-        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]  +\
-               " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
-
+        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
         if title is None:
             title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
             title = title + " Elevation : %.1f" % NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
-            clabel = CINRAD_field_mapping[field_name]
+            clabel = CINRAD_field_mapping[field_name] + " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
         if main_point is None:
             longitude = NRadar.scan_info.longitude.values
             latitude = NRadar.scan_info.latitude.values

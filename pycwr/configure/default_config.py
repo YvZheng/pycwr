@@ -225,7 +225,13 @@ DEFAULT_METADATA = {
         'valid_max': 0,
         'valid_min': -40.0,
         'coordinates': 'elevation azimuth range'},
-
+    "clutter_phase_alignment":{
+        'units': 'ratio',
+        'standard_name': 'clutter_phase_alignment',
+        'long_name': 'clutter phase alignment',
+        'valid_max': 0,
+        'valid_min': 1,
+        'coordinates': 'elevation azimuth range'},
 }
 
 # CINRAD files
@@ -236,19 +242,19 @@ CINRAD_field_mapping = {
     'V': "velocity",
     'W': "spectrum_width",
     'SQI':'normalized_coherent_power',
-    'CPA':None,
+    'CPA': 'clutter_phase_alignment',
     'ZDR': "differential_reflectivity",
     'LDR': "linear_depolarization_ratio",
     'CC': "cross_correlation_ratio",
     'PhiDP': "differential_phase",
     'KDP': "specific_differential_phase",
-    'CP':None,
-    'FLAG':None,
-    'HCL':None,
+    'CP': "clutter_probability",
+    'FLAG': "flag_of_rpv_data",
+    'HCL': "hydro_class",
     'CF': "clutter_flag",
     'Zc': "corrected_reflectivity",
     'Vc': "corrected_velocity",
-    'Wc': None,
+    'Wc': "spectrum_width_corrected",
 }
 
 CINRAD_COLORMAP = {

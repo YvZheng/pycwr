@@ -1,5 +1,4 @@
 import numpy as np
-import struct
 
 UINT8 = "B"
 UINT16 = "H"

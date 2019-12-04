@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from .BaseDataProtocol.CCProtocol import dtype_cc
-from .util import _prepare_for_read, _unpack_from_buf, get_radar_info, make_time_unit_str, get_radar_sitename
+from .util import _prepare_for_read, _unpack_from_buf, make_time_unit_str, get_radar_sitename
 import datetime
 import pandas as pd
 from ..core.NRadar import PRD

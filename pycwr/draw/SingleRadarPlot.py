@@ -15,7 +15,6 @@ import pandas as pd
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
 from ..core.transforms import antenna_vectors_to_cartesian
-import xarray as xr
 
 class RadarGraph(object):
     """雷达绘图显示部分"""
@@ -173,7 +172,7 @@ class RadarGraph(object):
         :param x: x是指数据对应的x轴坐标, units:m
         :param y: y是指数据对应的y轴坐标, units:m
         :param radar_data: 雷达数据 //dBZ, V, W, KDP, PhiDP, ZDR, RHV
-        :param max_range: 最大显示的距离, units:m
+        :param max_range: 最大显示的距离,(min_x, max_x, min_y, max_y), units:m
         :param title: 图像显示的title
         :param normvar: list or tuple, (vmin, vmax), 作图的最大值与最小值
         :param cmap: 选择画图的colorbar
@@ -195,7 +194,12 @@ class RadarGraph(object):
         else:
             vmin, vmax = normvar
         if max_range is None:
-            max_range = np.max(x)
+            range_cycle = np.max(x)
+            min_x, max_x, min_y, max_y = -range_cycle / 1000., range_cycle / 1000.,\
+                                         -range_cycle/1000., range_cycle/1000.
+        else:
+            min_x, max_x, min_y, max_y = max_range
+            range_cycle = max(min_x, max_x, min_y, max_y)
         if title is None:
             title = ""
         if clabel is None:
@@ -205,12 +209,12 @@ class RadarGraph(object):
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-        RadarGraph._SetGrids(ax, max_range / 1000.)
+        RadarGraph._SetGrids(ax,  range_cycle / 1000.)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
                             zorder=10, norm=norm)
         ax.set_aspect("equal")
-        ax.set_xlim([-max_range / 1000., max_range / 1000.])
-        ax.set_ylim([-max_range / 1000., max_range / 1000.])
+        ax.set_xlim([min_x, max_x])
+        ax.set_ylim([min_y, max_y])
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)

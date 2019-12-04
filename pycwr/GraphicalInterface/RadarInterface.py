@@ -248,15 +248,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for item in items:
                 self.listWidget.setCurrentItem(item)
 
-    def import_basedat(self, dir):
+    def import_basedat(self, direc):
         """查找文件夹中的所有雷达文件名，并以list返回"""
-        self.lastOpenDir = dir
-        self.write_last_opendir(dir)
+        self.lastOpenDir = direc
+        self.write_last_opendir(direc)
         extensions = ["*.*A", "*.*V", "*.bz2", "*.bin",
                       "*.AR2", "*.gz", ".GZ"]
         files = []
         for iextend in extensions:
-            file = glob(os.path.join(dir, iextend))
+            file = glob(os.path.join(direc, iextend))
             files.extend(file)
         return [os.path.basename(ifile) for ifile in files]
 

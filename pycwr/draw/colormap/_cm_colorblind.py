@@ -24,7 +24,7 @@ def yuv_rainbow_24(nc):
                              [1, -0.39465, -0.58060],
                              [1, 2.03211, 0]])
     cmap_dict = {'blue': [], 'green': [], 'red': []}
-    for i in range(len(y)):
+    for i, _ in enumerate(y):
         yuv = np.array([y[i], u[i], v[i]])
         rgb = rgb_from_yuv.dot(yuv)
         red_tuple = (i/(len(y)-1.0), rgb[0], rgb[0])

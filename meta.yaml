@@ -11,13 +11,13 @@ source:
 requirements:
     build:
        - python
-
+       - setuptools
     host:
        - python
        - setuptools
 
     run:
-        - 'python>3.5'
+        - 'python>=3.6'
         - 'numpy'
         - 'scipy'
         - 'matplotlib'

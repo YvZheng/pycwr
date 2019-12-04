@@ -4,7 +4,7 @@ from .BaseDataProtocol.WSR98DProtocol import dtype_98D
 from .util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
 from ..core.NRadar import PRD
 from ..configure.pyart_config import get_metadata, get_fillvalue
-from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
+from ..configure.default_config import CINRAD_field_mapping
 from ..core.PyartRadar import Radar
 from netCDF4 import date2num
 
@@ -187,8 +187,7 @@ class WSR98D2NRadar(object):
                       self.WSR98D.header['CutConfig']['DopplerResolution']), "dop not match dBZ!"
         self.v_index_alone = self.get_v_idx()
         self.dBZ_index_alone = self.get_dbz_idx()
-
-        if self.WSR98D.header["TaskConfig"]["TaskName"].decode("utf-8").rstrip("\x00") == 'VCP26D': #HZ Radar problem!
+        if self.WSR98D.header["TaskConfig"]["TaskName"][:6] == b'VCP26D': #HZ Radar problem!
             self.interp_VCP26(self.dBZ_index_alone, self.v_index_alone) ##process V and dBZ are not match
             self.dBZ_index_alone = self.dBZ_index_alone[:min(len(self.dBZ_index_alone), len(self.v_index_alone))] ##要去除的sweep
         else:

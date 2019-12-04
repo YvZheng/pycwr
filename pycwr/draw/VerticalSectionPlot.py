@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import BoundaryNorm
 from matplotlib.ticker import MaxNLocator
-from matplotlib.ticker import MultipleLocator
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins,\
     CINRAD_field_normvar, CINRAD_field_mapping
 import pandas as pd

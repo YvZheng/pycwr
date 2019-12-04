@@ -22,8 +22,8 @@ import warnings
 import matplotlib as mpl
 import matplotlib.colors as colors
 
-from .cm import _reverser, revcmap, _reverse_cmap_spec
-from ._cm_colorblind import datad, yuv_rainbow_24
+from .cm import _reverse_cmap_spec
+from ._cm_colorblind import datad
 
 
 def _generate_cmap(name, lutsize):

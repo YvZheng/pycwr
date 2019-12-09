@@ -83,9 +83,9 @@ class WSR98DBaseData(object):
             Data_buf = self.fid.read(Momheader['Length'])
             assert (Momheader['BinLength'] == 1) | (Momheader['BinLength'] == 2), "Bin Length has problem!"
             if Momheader['BinLength'] == 1:
-                dat_tmp = (np.frombuffer(Data_buf, dtype="u1", offset=dtype_98D.MomentHeaderBlockSize)).astype(int)
+                dat_tmp = (np.frombuffer(Data_buf, dtype="u1", offset=0)).astype(int)
             else:
-                dat_tmp = (np.frombuffer(Data_buf, dtype="u2", offset=dtype_98D.MomentHeaderBlockSize)).astype(int)
+                dat_tmp = (np.frombuffer(Data_buf, dtype="u2", offset=0)).astype(int)
             radial_var[dtype_98D.flag2Product[Momheader['DataType']]] = np.where(dat_tmp >= 5, \
                                                                                  (dat_tmp - Momheader['Offset']) /
                                                                                  Momheader['Scale'],

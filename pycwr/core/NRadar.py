@@ -6,7 +6,7 @@
 import numpy as np
 import xarray as xr
 from ..configure.default_config import DEFAULT_METADATA, CINRAD_field_mapping
-from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
+from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd, antenna_vectors_to_cartesian_cwr
 from scipy import spatial
 from ..interp.RadarInterp import radar_interp2d_var
 
@@ -92,8 +92,8 @@ class PRD(object):
                 self.fields.append(isweep_data)
         else:
             for idx, (istart, iend) in enumerate(zip(sweep_start_ray_index, sweep_end_ray_index)):
-                x, y, z = antenna_vectors_to_cartesian(range[:bins_per_sweep[idx]], azimuth[istart:iend+1],\
-                                                       elevation[istart:iend+1])
+                x, y, z = antenna_vectors_to_cartesian_cwr(range[:bins_per_sweep[idx]], azimuth[istart:iend+1],\
+                                                       elevation[istart:iend+1], altitude)
                 lon, lat = cartesian_to_geographic_aeqd(x, y, longitude, latitude)
                 isweep_data = xr.Dataset(coords={'azimuth': (['time', ], azimuth[istart:iend+1]),
                                                 'elevation': (['time',], elevation[istart:iend+1]),

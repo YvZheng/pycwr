@@ -103,6 +103,123 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     y = s * np.cos(theta_a)
     return x, y, z
 
+def antenna_to_cartesian_cwr(ranges, azimuths, elevations, h):
+    """
+        Return Cartesian coordinates from antenna coordinates.
+        Parameters
+        ----------
+        ranges : array
+            Distances to the center of the radar gates (bins) in meters.
+        azimuths : array
+            Azimuth angle of the radar in degrees.
+        elevations : array
+            Elevation angle of the radar in degrees.
+        h : constant
+            Altitude of the instrument, above sea level, units:m.
+        Returns
+        -------
+        x, y, z : array
+            Cartesian coordinates in meters from the radar.
+        Notes
+        -----
+        The calculation for Cartesian coordinate is adapted from equations
+        2.28(b) and 2.28(c) of Doviak and Zrnic [1]_ assuming a
+        standard atmosphere (4/3 Earth's radius model).
+        .. math::
+            z = \\sqrt{r^2+R^2+2*r*R*sin(\\theta_e)} - R
+            s = R * arcsin(\\frac{r*cos(\\theta_e)}{R+z})
+            x = s * sin(\\theta_a)
+            y = s * cos(\\theta_a)
+        Where r is the distance from the radar to the center of the gate,
+        :math:`\\theta_a` is the azimuth angle, :math:`\\theta_e` is the
+        elevation angle, s is the arc length, and R is the effective radius
+        of the earth, taken to be 4/3 the mean radius of earth (6371 km).
+        References
+        ----------
+        .. [1] Doviak and Zrnic, Doppler Radar and Weather Observations, Second
+            Edition, 1993, p. 21.
+    """
+    theta_e = np.deg2rad(elevations)  # elevation angle in radians.
+    theta_a = np.deg2rad(azimuths)  # azimuth angle in radians.
+    R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
+    r = ranges * 1.0  # distances to gates in meters.
+
+    # z = (r ** 2 + R ** 2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
+    z = ((r * np.cos(theta_e)) ** 2 + \
+         (R + h + r * np.sin(theta_e)) ** 2) ** 0.5 - R
+    s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
+    x = s * np.sin(theta_a)
+    y = s * np.cos(theta_a)
+
+    return x, y, z
+
+def test_xyz(ranges, azimuths, elevations, h):
+    theta_e = np.deg2rad(elevations)
+    theta_a = np.deg2rad(azimuths)
+    r = ranges * 1.0
+    R = 6371.0 * 1000.0 * 4.0 / 3.0
+    z = ((r * np.cos(theta_e)) ** 2 + \
+         (R + h + r * np.sin(theta_e)) ** 2) ** 0.5 - R
+    return ranges*np.sin(theta_a), ranges * np.cos(theta_a), z
+
+def cartesian_to_antenna_cwr(x, y, elevation , h):
+    """根据采样点距离雷达的x,y的水平距离,以及雷达仰角
+    return x, y, z
+和高度,计算该点雷达的斜距
+    ..math::
+        s = sqrt(x^2 + y^2)
+        r = sin(s/R)*(R+h)/cos(elevation)
+        R为地球半径m,h为雷达高度m,elevation为仰角degree
+    """
+    R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
+    s = np.sqrt(x**2+y**2)
+    El = np.deg2rad(elevation)
+    ranges = np.tan(s/R)*(R+h)/np.cos(El)
+    z = (R+h)/np.cos(El + s/R)*np.cos(El) - R ##计算高度
+    az = _azimuth(x, y) ##计算方位角
+    return az, ranges, z
+
+def _azimuth(x, y):
+    '''根据某一点距离雷达x方向，y方向的距离，计算方位角，单位：弧度'''
+    az = np.pi / 2 - np.angle(x + y * 1j)
+    return np.where(az >= 0, az, 2 * np.pi + az) * 180 / np.pi
+
+def antenna_vectors_to_cartesian_cwr(ranges, azimuths, elevations, h=0, edges=False):
+    """
+    Calculate Cartesian coordinate for gates from antenna coordinate vectors.
+    Calculates the Cartesian coordinates for the gate centers or edges for
+    all gates from antenna coordinate vectors assuming a standard atmosphere
+    (4/3 Earth's radius model). See :py:func:`pyart.util.antenna_to_cartesian`
+    for details.
+    Parameters
+    ----------
+    ranges : array, 1D.
+        Distances to the center of the radar gates (bins) in meters.
+    azimuths : array, 1D.
+        Azimuth angles of the rays in degrees.
+    elevations : array, 1D.
+        Elevation angles of the rays in degrees.
+    edges : bool, optional
+        True to calculate the coordinates of the gate edges by interpolating
+        between gates and extrapolating at the boundaries.  False to
+        calculate the gate centers.
+    Returns
+    -------
+    x, y, z : array, 2D
+        Cartesian coordinates in meters from the center of the radar to the
+        gate centers or edges.
+    """
+    if edges:
+        if len(ranges) != 1:
+            ranges = _interpolate_range_edges(ranges)
+        if len(elevations) != 1:
+            elevations = _interpolate_elevation_edges(elevations)
+        if len(azimuths) != 1:
+            azimuths = _interpolate_azimuth_edges(azimuths)
+    rg, azg = np.meshgrid(ranges, azimuths)
+    rg, eleg = np.meshgrid(ranges, elevations)
+    return antenna_to_cartesian_cwr(rg, azg, eleg, h)
+
 
 def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
     """

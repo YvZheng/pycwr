@@ -209,9 +209,9 @@ class RadarGraph(object):
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-        RadarGraph._SetGrids(ax,  range_cycle / 1000.)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
-                            zorder=10, norm=norm)
+                            zorder=0, norm=norm)
+        RadarGraph._SetGrids(ax, range_cycle / 1000.)
         ax.set_aspect("equal")
         ax.set_xlim([min_x, max_x])
         ax.set_ylim([min_y, max_y])
@@ -247,12 +247,12 @@ class RadarGraph(object):
         for i in rings:
             x0 = i * np.cos(theta)
             y0 = i * np.sin(theta)
-            ax.plot(x0, y0, linestyle='-', linewidth=0.6, color='#DCDCDC')
+            ax.plot(x0, y0, linestyle='-', linewidth=0.6, color='#5B5B5B')
 
         for rad in np.arange(0, np.pi, np.pi / 6):
             ax.plot([-1 * rings[-1] * np.sin(rad), rings[-1] * np.sin(rad)], \
                     [-1 * rings[-1] * np.cos(rad), rings[-1] * np.cos(rad)], \
-                    linestyle='-', linewidth=0.6, color='#DCDCDC')
+                    linestyle='-', linewidth=0.6, color='#5B5B5B')
 
     @staticmethod
     def _FixTicks(ticks):

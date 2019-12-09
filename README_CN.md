@@ -78,6 +78,15 @@ plt.show()
 
 ![avatar](examples/graph_map.png)
 
+画垂直剖面
+----------
+```
+from pycwr.draw.VerticalSectionPlot import VerticalSection
+vcs = VerticalSection(PRD)
+vcs.section((6500, -27344), (16000, -120000), "dBZ")  # (start_x, start_y), (end_x, end_y) units:meters
+plt.show()
+```
+
 启动图形化界面
 ----------
 

@@ -1,6 +1,6 @@
 package:
     name: pycwr
-    version: 0.2.5
+    version: 0.2.7
 
 build:
     skip: True # [py<35]

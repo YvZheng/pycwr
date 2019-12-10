@@ -80,9 +80,10 @@ Plotting VCS
 ```
 from pycwr.draw.VerticalSectionPlot import VerticalSection
 vcs = VerticalSection(PRD)
-vcs.section((6500, -27344), (16000, -120000), "dBZ")  # (start_x, start_y), (end_x, end_y) units:meters
+vcs.section((0,0), (150, 0), "dBZ", (0, 10))  # (start_x, start_y), (end_x, end_y) units:km
 plt.show()
 ```
+![avatar](examples/vcs.png)
 
 Launch Graphical interface to show Radar Data
 ----------

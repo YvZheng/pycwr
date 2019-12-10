@@ -1,22 +1,30 @@
 # -*- coding: utf-8 -*-
 from pycwr.io.auto_io import radar_io
+from pycwr.draw.VerticalSectionPlot import VerticalSection
 from pycwr.draw.SingleRadarPlotMap import RadarGraphMap
 from pycwr.draw.SingleRadarPlot import RadarGraph
 from pycwr.qc.attenuation import correct_attenuation_HB, correct_attenuation
 import matplotlib.pyplot as plt
 
+
 #file = r"E:\RadarBaseData\CINRAD-SA\温州\2015080816.59A"
 #file = r"E:\RadarBaseData\CINRAD-CC\2016070817.03V"
-file = r"C:\Users\zy\Desktop\Z9040.20190515.040618.AR2.bz2"
+file = r"C:\Users\zy\Desktop\Z9577.20190809.100149.AR2.bz2"
+#file = r"E:\RadarBaseData\WSR98D\hangzhou\Z9040.20190515.040618.AR2.bz2"
 #radar = SCBaseData(file)
 Radar = radar_io(file)
 NRadar = Radar.ToPRD(withlatlon=True)
-#PyartRadar = Radar.ToPyartRadar()
+PyartRadar = Radar.ToPyartRadar()
 
+vcs = VerticalSection(NRadar)
+#vcs.section((0,0), (150, 0), "dBZ", (0, 10))
+
+vcs.section_map((120.8, 27.8), (122.9, 26.8), "dBZ", (0, 10))
 #dbz = NRadar.fields[0]["dBZ"]
 #y = correct_attenuation_HB(dbz)
 #graph = RadarGraphMap(NRadar)
 #z = correct_attenuation(dbz, "X")
 #graph.plot(0, "dBZ", continuously=False)
 #graph.simple_plot_ppi_map(dbz.range, dbz.azimuth, dbz.elevation, dbz,(0,0), cmap="CN_ref")
-#plt.show()
+#plt.savefig("../examples/vcs.png")
+plt.show()

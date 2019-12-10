@@ -153,19 +153,10 @@ def antenna_to_cartesian_cwr(ranges, azimuths, elevations, h):
 
     return x, y, z
 
-def test_xyz(ranges, azimuths, elevations, h):
-    theta_e = np.deg2rad(elevations)
-    theta_a = np.deg2rad(azimuths)
-    r = ranges * 1.0
-    R = 6371.0 * 1000.0 * 4.0 / 3.0
-    z = ((r * np.cos(theta_e)) ** 2 + \
-         (R + h + r * np.sin(theta_e)) ** 2) ** 0.5 - R
-    return ranges*np.sin(theta_a), ranges * np.cos(theta_a), z
-
 def cartesian_to_antenna_cwr(x, y, elevation , h):
     """根据采样点距离雷达的x,y的水平距离,以及雷达仰角
     return x, y, z
-和高度,计算该点雷达的斜距
+    和高度,计算该点雷达的斜距
     ..math::
         s = sqrt(x^2 + y^2)
         r = sin(s/R)*(R+h)/cos(elevation)
@@ -263,6 +254,42 @@ def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
     rg, azg = np.meshgrid(ranges, azimuths)
     rg, eleg = np.meshgrid(ranges, elevations)
     return antenna_to_cartesian(rg, azg, eleg)
+
+def antenna_vectors_to_cartesian_rhi(ranges, azimuths, elevations, h, BeamWidth=1):
+    """
+    考虑波束宽度,来构建RHI扫描的坐标系
+    :param ranges: 距离
+    :param azimuths: 方位角
+    :param elevations: 获取该仰角的信息
+    :param BeamWidth: 波束宽度
+    :param h: 雷达的高度
+    :return:
+    """
+    assert elevations.size == 1, "not rhi, check!"
+    assert azimuths.size == 1, "not rhi, check!"
+    elevs = np.array([elevations-BeamWidth/2., elevations+BeamWidth/2.])
+    rg, azg = np.meshgrid(ranges, azimuths)
+    rg, eleg = np.meshgrid(ranges, elevs)
+    return antenna_to_cartesian_cwr(rg, azg, eleg, h)
+
+def antenna_vectors_to_cartesian_vcs(ranges, azimuths, elevations, h, BeamWidth=1):
+    """
+    考虑波束宽度,来构建任意剖面的坐标系
+    :param ranges: 距离
+    :param azimuths: 方位角
+    :param elevations: 获取该仰角的信息
+    :param BeamWidth: 波束宽度
+    :param h: 雷达的高度
+    :return:
+    """
+    assert elevations.ndim == 1, "check ,may input data is not right!"
+    assert azimuths.ndim == 1, "check ,may input data is not right!"
+    assert ranges.ndim == 1, "check ,may input data is not right!"
+
+    eleg = np.stack([elevations-BeamWidth/2., elevations+BeamWidth/2.], axis=0)
+    rg = np.stack([ranges, ranges], axis=0)
+    azg = np.stack([azimuths, azimuths], axis=0)
+    return antenna_to_cartesian_cwr(rg, azg, eleg, h)
 
 
 def _interpolate_range_edges(ranges):

@@ -6,24 +6,25 @@ from matplotlib.ticker import MaxNLocator
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins,\
     CINRAD_field_normvar, CINRAD_field_mapping
 import pandas as pd
+from ..core.transforms import geographic_to_cartesian_aeqd
+plt.rcParams['xtick.direction'] = 'in'
+plt.rcParams['ytick.direction'] = 'in'
 
 class VerticalSection(object):
 
     def __init__(self, NuistRadar):
         self.NRadar = NuistRadar
 
-    def section(self, start_point, end_point, field_name, title=None, clabel=None, continuously=False):
+    def RHI(self, azimuth, field_name, height=(0,18), title=None, clabel=None, continuously=False):
         """
-        :param start_point:剖面的起点(x, y)
-        :param end_point:剖面的结束点(x, y)
+        :param azimuth:要剖面的方位角 degree
         :param field_name:要剖的数据场
         :param title: 剖面图的title
         :param clabel: colorbar的title
         :param continuously: 是否使用连续的colorbar
         :return:
         """
-        self.mesh_xy, self.mesh_z, self.grid_field = self.NRadar.get_vertical_section(start_point,
-                                                                            end_point, field_name)
+        mesh_xy, mesh_z, grid_field = self.NRadar.get_RHI_data(azimuth, field_name)
         assert self.NRadar.scan_info.scan_type.values == "ppi", "now only support ppi scan!"
         if field_name == "V":
             vmax = self.NRadar.scan_info.nyquist_velocity[0].values
@@ -45,9 +46,73 @@ class VerticalSection(object):
         fig = plt.figure()
         ax = fig.add_axes([0.1, 0.3, 0.8, 0.6])
         cax = fig.add_axes([0.1, 0.1, 0.8, 0.06])
-        return VerticalSection.SectionPlot(fig, ax, cax, self.mesh_xy, self.mesh_z, self.grid_field, title=title,
+        return VerticalSection.SectionPlot_VCS(fig, ax, cax, mesh_xy, mesh_z, grid_field, height, title=title,
                                            normvar=(vmin, vmax), cmap=cmap, cmap_bins=cmap_bins, clabel=clabel,
                                            continuously=continuously)
+
+    def section(self, start_point, end_point, field_name, height=(0, 18), title=None, clabel=None, continuously=False):
+        """
+        :param start_point: (start_x, start_y), units:km
+        :param end_point: (end_x, end_y), units:km
+        :param field_name: field names eg: dBZ
+        :param height: height to show (min_height, max_height), units:km
+        :param title:  the title to show top of graph
+        :param clabel: the title of cbar
+        :param continuously: if True, using continuously colormap
+        :return:
+        """
+        assert len(start_point) == 2, "start pionts should be (start_x, start_y), units:km!"
+        assert len(end_point) == 2, "end pionts should be (end_x, end_y), units:km!"
+
+        start_point = (start_point[0]*1000., start_point[1]*1000)
+        end_point = (end_point[0] * 1000., end_point[1] * 1000)
+        mesh_xy, mesh_z, grid_field = self.NRadar.get_vcs_data(start_point, end_point, field_name)
+        assert self.NRadar.scan_info.scan_type.values == "ppi", "now only support ppi scan!"
+        if field_name == "V":
+            vmax = self.NRadar.scan_info.nyquist_velocity[0].values
+            vmin = -1 * vmax
+        elif CINRAD_field_normvar[CINRAD_field_mapping[field_name]] == -1:
+            vmax = np.nanmax(self.NRadar.fields[0][field_name])
+            vmin = np.nanmin(self.NRadar.fields[0][field_name])
+        else:
+            vmin, vmax = CINRAD_field_normvar[CINRAD_field_mapping[field_name]]
+
+        cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
+        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
+
+        if title is None:
+            title = pd.to_datetime(self.NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
+        if clabel is None:
+            clabel = CINRAD_field_mapping[field_name]
+
+        fig = plt.figure()
+        ax = fig.add_axes([0.1, 0.3, 0.8, 0.6])
+        cax = fig.add_axes([0.1, 0.1, 0.8, 0.06])
+        return VerticalSection.SectionPlot_VCS(fig, ax, cax, mesh_xy, mesh_z, grid_field, height=height, title=title,
+                                           normvar=(vmin, vmax), cmap=cmap, cmap_bins=cmap_bins, clabel=clabel,
+                                           continuously=continuously)
+
+    def section_map(self, start_lonlat, end_lonlat, field_name, height=(0,18), title=None, clabel=None, continuously=False):
+        """
+        :param start_latlon: (start_lat, start_lon), units: degrees
+        :param end_latlon: (end_lat, end_lon), units: degrees
+        :param field_name: field names eg: dBZ
+        :param height: height to show (min_height, max_height), units:km
+        :param title: the title to show top of graph
+        :param clabel: the title of cbar
+        :param continuously:
+        :return:
+        """
+        assert np.abs(start_lonlat[0]) <= 90, "check, (lon, lat), lon first, lat second!"
+        start_x, start_y = geographic_to_cartesian_aeqd(lat=start_lonlat[1], lon=start_lonlat[0],\
+                                                        lat_0=self.NRadar.scan_info.latitude.values,\
+                                                        lon_0=self.NRadar.scan_info.longitude.values)
+        end_x, end_y = geographic_to_cartesian_aeqd(lat=end_lonlat[1], lon=end_lonlat[1], \
+                                                        lat_0=self.NRadar.scan_info.latitude.values, \
+                                                        lon_0=self.NRadar.scan_info.longitude.values)
+
+        self.section((start_x[0]/1000., start_y[0]/1000.), (end_x[0]/1000., end_y[0]/1000.), \
+                     field_name, height, title=title, clabel=clabel, continuously=continuously)
 
     @staticmethod
     def GUI_section(fig, ax, cax, NRadar, start_point, end_point, field_name, title=None, clabel=None, continuously=False):
@@ -60,7 +125,7 @@ class VerticalSection(object):
         :param continuously: 是否使用连续的colorbar
         :return:
         """
-        mesh_xy, mesh_z, grid_field = NRadar.get_vertical_section(start_point, end_point, field_name)
+        mesh_xy, mesh_z, grid_field = NRadar.get_vcs_data(start_point, end_point, field_name)
         assert NRadar.scan_info.scan_type.values == "ppi", "now only support ppi scan!"
         if field_name == "V":
             vmax = NRadar.scan_info.nyquist_velocity[0].values
@@ -78,13 +143,55 @@ class VerticalSection(object):
             title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name]
-        return VerticalSection.SectionPlot(fig, ax, cax, mesh_xy, mesh_z, grid_field, title=title,
+        return VerticalSection.SectionPlot_VCS(fig, ax, cax, mesh_xy, mesh_z, grid_field, title=title,
                                            normvar=(vmin, vmax), cmap=cmap, cmap_bins=cmap_bins, clabel=clabel,
                                            continuously=continuously)
 
     @staticmethod
-    def SectionPlot(fig, ax, cx, mesh_xy, mesh_z, field_data, title=None, normvar=None, cmap=None, \
-                 cmap_bins=16, orient="horizontal", label=None, clabel=None, continuously=False):
+    def GUI_section_map(fig, ax, cax, NRadar, start_lonlat, end_lonlat, field_name, title=None, clabel=None,
+                    continuously=False):
+        """
+        :param start_point:剖面的起点(x, y)
+        :param end_point:剖面的结束点(x, y)
+        :param field_name:要剖的数据场
+        :param title: 剖面图的title
+        :param clabel: colorbar的title
+        :param continuously: 是否使用连续的colorbar
+        :return:
+        """
+        start_x, start_y = geographic_to_cartesian_aeqd(lat=start_lonlat[1], lon=start_lonlat[0], \
+                                                        lat_0=NRadar.scan_info.latitude.values, \
+                                                        lon_0=NRadar.scan_info.longitude.values)
+        end_x, end_y = geographic_to_cartesian_aeqd(lat=end_lonlat[1], lon=end_lonlat[0], \
+                                                    lat_0=NRadar.scan_info.latitude.values, \
+                                                    lon_0=NRadar.scan_info.longitude.values)
+        print(start_x, start_y, end_x, end_y)
+        mesh_xy, mesh_z, grid_field = NRadar.get_vcs_data((start_x[0], start_y[0]),
+                                                          (end_x[0], end_y[0]), field_name) ##get_vcs in meters
+        assert NRadar.scan_info.scan_type.values == "ppi", "now only support ppi scan!"
+        if field_name == "V":
+            vmax = NRadar.scan_info.nyquist_velocity[0].values
+            vmin = -1 * vmax
+        elif CINRAD_field_normvar[CINRAD_field_mapping[field_name]] == -1:
+            vmax = np.nanmax(NRadar.fields[0][field_name])
+            vmin = np.nanmin(NRadar.fields[0][field_name])
+        else:
+            vmin, vmax = CINRAD_field_normvar[CINRAD_field_mapping[field_name]]
+
+        cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
+        cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
+
+        if title is None:
+            title = pd.to_datetime(NRadar.fields[0].time[0].item()).strftime("UTC %Y-%m-%d %H:%M:%S")
+        if clabel is None:
+            clabel = CINRAD_field_mapping[field_name]
+        return VerticalSection.SectionPlot_VCS(fig, ax, cax, mesh_xy, mesh_z, grid_field, title=title,
+                                               normvar=(vmin, vmax), cmap=cmap, cmap_bins=cmap_bins, clabel=clabel,
+                                               continuously=continuously)
+
+    @staticmethod
+    def SectionPlot_VCS(fig, ax, cx, mesh_xy, mesh_z, field_data, height=(0, 18), title=None, normvar=None, cmap=None, \
+                    cmap_bins=16, orient="horizontal", label=None, clabel=None, continuously=False):
         """
         画剖面图像
         :param fig:matplotlib的fig对象
@@ -118,20 +225,26 @@ class VerticalSection(object):
             clabel = ""
         if continuously:
             cmap_bins = 256
+        min_h, max_h = height
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-        gci = ax.pcolormesh(mesh_xy / 1000., mesh_z / 1000., field_data, cmap=cmaps, \
-                            zorder=10, norm=norm)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
+        for isweep, _ in enumerate(mesh_xy):
+            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps, norm=norm)
+        ax.set_xlabel(xlabel, fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=14)
         ax.set_title(title)
+        ax.spines['bottom'].set_linewidth(2)
+        ax.spines['left'].set_linewidth(2)
+        ax.set_ylim([min_h, max_h])
+        ax.tick_params(axis='both', which='major', labelsize=12)
+        #ax.tick_params(axis='both', which='minor', labelsize=12)
         if continuously:
             cbar = fig.colorbar(mappable=gci, cax=cx, orientation=orient)
         else:
             cbar = fig.colorbar(mappable=gci, cax=cx, orientation=orient, ticks=levels)
             cbar.set_ticklabels(VerticalSection._FixTicks(levels))
-        cbar.set_label(clabel)
+        cbar.set_label(clabel, fontsize=14)
         ax.grid(True, zorder=15)
         plt.style.use('default')
 

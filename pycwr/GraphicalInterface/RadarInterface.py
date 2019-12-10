@@ -27,11 +27,12 @@ field_name = ["dBZ", "V", "W", "ZDR", "KDP", "CC"]
 
 
 class LineBuilder:
-    def __init__(self, fig, ax, radar_data, product):
+    def __init__(self, fig, ax, radar_data, product, map_bool):
         self.ax = ax
         self.xs = []
         self.ys = []
         self.fig = fig
+        self.map = map_bool
         self.cid = self.fig.canvas.mpl_connect('button_press_event', self)
         self.cursor = self.fig.canvas.mpl_connect('motion_notify_event', self.mouse_move)
         self.radar_dat = radar_data
@@ -39,7 +40,6 @@ class LineBuilder:
 
     def __call__(self, event):
         if len(self.xs) < 2:
-            print("click", event.xdata, event.ydata)
             self.xs.append(event.xdata)
             self.ys.append(event.ydata)
             if len(self.xs) == 1:
@@ -52,8 +52,13 @@ class LineBuilder:
                 cv = FigureCanvas(Figure(figsize=(8, 6)))
                 ax = cv.figure.add_axes([0.1, 0.3, 0.8, 0.6])
                 cax = cv.figure.add_axes([0.1, 0.1, 0.8, 0.06])
-                VerticalSection.GUI_section(cv.figure, ax, cax, self.radar_dat, [self.xs[0]*1000, self.ys[0]*1000],\
+                if not self.map:
+                    VerticalSection.GUI_section(cv.figure, ax, cax, self.radar_dat, [self.xs[0]*1000, self.ys[0]*1000],\
                                             [self.xs[1]*1000, self.ys[1]*1000], field_name[self.product])
+                else:
+                    VerticalSection.GUI_section_map(cv.figure, ax, cax, self.radar_dat,
+                                                [self.xs[0], self.ys[0]], \
+                                                [self.xs[1], self.ys[1]], field_name[self.product])
                 cv.show()
             self.fig.canvas.draw()
         else:
@@ -182,7 +187,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """垂直剖面的绘制"""
         if self.actionvertical.isChecked():
             try:
-                self.linebuilder = LineBuilder(self.fig, self.ax, self.radar_dat, self.find_var_in_groupBox())
+                self.linebuilder = LineBuilder(self.fig, self.ax, self.radar_dat, self.find_var_in_groupBox(),\
+                                               self.actionwithmap.isChecked())
                 self.clickevent = True
             except AttributeError:
                 pass
@@ -199,7 +205,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Slot documentation goes here.
         """
-
         pass
 
     @pyqtSlot()
@@ -400,6 +405,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ax.tick_params(axis="y", which="both", direction='in')
         self.ax.tick_params(axis="x", which="both", direction='in')
         self.MplWidget.canvas.draw()
+
+        if self.actionvertical.isChecked(): #尝试重新绑定
+            try:
+                self.fig.canvas.mpl_disconnect(self.linebuilder.cid)
+                self.fig.canvas.mpl_disconnect(self.linebuilder.cursor)
+                self.linebuilder = LineBuilder(self.fig, self.ax, self.radar_dat, self.find_var_in_groupBox(), \
+                                               self.actionwithmap.isChecked())
+                self.clickevent = True
+            except AttributeError:
+                pass
 
     @pyqtSlot()
     def on_pushButton_clicked(self):

@@ -6,9 +6,9 @@
 import numpy as np
 import xarray as xr
 from ..configure.default_config import DEFAULT_METADATA, CINRAD_field_mapping
-from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd, antenna_vectors_to_cartesian_cwr
-from scipy import spatial
-from ..interp.RadarInterp import radar_interp2d_var
+from ..core.transforms import  cartesian_to_geographic_aeqd,\
+    antenna_vectors_to_cartesian_cwr, antenna_vectors_to_cartesian_rhi, cartesian_to_antenna_cwr,\
+    antenna_vectors_to_cartesian_vcs
 
 class PRD(object):
     """
@@ -122,7 +122,8 @@ class PRD(object):
                          "nyquist_velocity":(['sweep',], nyquist_velocity),
                         "unambiguous_range":(['sweep',], unambiguous_range),
                         "rays_per_sweep": (['sweep',], sweep_end_ray_index-sweep_start_ray_index+1),
-                        "fixed_angle": (["sweep",], fixed_angle)},
+                        "fixed_angle": (["sweep",], fixed_angle),
+                        "beam_width":(["sweep",], 360./(sweep_end_ray_index-sweep_start_ray_index+1))},
                         coords={"sweep": np.arange(nsweeps, dtype=int)})
         self.scan_info['latitude'].attrs = DEFAULT_METADATA['latitude']
         self.scan_info['longitude'].attrs = DEFAULT_METADATA['longitude']
@@ -135,45 +136,95 @@ class PRD(object):
         self.scan_info['fixed_angle'].attrs = DEFAULT_METADATA['fixed_angle']
         self.scan_info['start_time'].attrs = DEFAULT_METADATA['start_time']
         self.scan_info['end_time'].attrs = DEFAULT_METADATA['end_time']
+        self.scan_info['beam_width'].attrs = DEFAULT_METADATA['beam_width']
         self.nsweeps = nsweeps
         self.nrays = nrays
         self.sitename = sitename
 
-    def get_vertical_section(self, start_point, end_point, field_name):
+    def ordered_az(self, inplace=False):
         """
-        :param start_point: units:m
-        :param end_point:  units:m
+        regrid radar object by azimuth
         :return:
         """
+        if inplace:
+            for isweep in self.scan_info.sweep.values:
+                self.fields[isweep] = self.fields[isweep].swap_dims({"time": "azimuth"}).sortby("azimuth") ##对数据重新排序
+            return None
+        else:
+            prd_dat = PRD_AZ()
+            prd_dat.scan_info = self.scan_info
+            for isweep in self.scan_info.sweep.values:
+                prd_dat.fields.append(self.fields[isweep].swap_dims({"time": "azimuth"}).sortby("azimuth"))
+            return prd_dat
+
+    def get_RHI_data(self, az, field_name="dBZ"):
+        """
+        获取RHI剖面数据
+        :param az:
+        :param field_name:
+        :return:
+        """
+        mesh_RHI = []
+        mesh_RANGE = []
+        mesh_Z = []
+        order_dat = self.ordered_az()
+        for isweep in self.scan_info.sweep.values:
+            if (isweep>0) and (self.scan_info.fixed_angle.values[isweep] < self.scan_info.fixed_angle.values[isweep-1]):
+                continue  ##remove VCP26 Type data
+            isweep_data = order_dat.fields[isweep].sel(azimuth=az, method='nearest')[field_name]
+            x, y, z = antenna_vectors_to_cartesian_rhi(isweep_data.range, isweep_data.azimuth,\
+                                                       isweep_data.elevation, self.scan_info.altitude.values)
+            mesh_xy = np.sqrt(x**2 + y**2)
+            mesh_RHI.append(isweep_data.values.reshape(1,-1))
+            mesh_RANGE.append(mesh_xy)
+            mesh_Z.append(z)
+        return mesh_RANGE, mesh_Z, mesh_RHI
+
+    def get_vcs_data(self, start_point, end_point, field_name):
+        """
+        :param start_point:
+        :param end_point:
+        :param field_name:
+        :return:
+        """
+        order_dat = self.ordered_az() ##求排序后的数据
         start_x, start_y = start_point
         end_x, end_y = end_point
         bins_res = (self.fields[0].range[1] - self.fields[0].range[0]).values
-        start_end_dis = np.sqrt((start_x-end_x)**2 + (start_y-end_y)**2)
-        npoints = int(start_end_dis/(bins_res/2.) + 1)
+        start_end_dis = np.sqrt((start_x - end_x) ** 2 + (start_y - end_y) ** 2)
+        npoints = int(start_end_dis/bins_res + 1)
         x_line = np.linspace(start_x, end_x, npoints)
         y_line = np.linspace(start_y, end_y, npoints)
-        target = np.c_[x_line, y_line]
         xy_line_1d = np.linspace(0, start_end_dis, npoints)
-        z_values = []
-        field_values = []
-        #先对剖线取最邻近点
-        for ifield in self.fields:
-            _x, _y, _z = antenna_vectors_to_cartesian(ifield.range.values, \
-                                ifield.azimuth.values, ifield.elevation.values)
-            kdtree = spatial.cKDTree(np.c_[_x.ravel(), _y.ravel()])
-            _distance, _idx = kdtree.query(target, k=1, n_jobs=-1)
-            _z_value = np.where(_distance > bins_res*2, np.nan, _z.ravel()[_idx])
-            _field_value = np.where(_distance > bins_res*2, np.nan, ifield[field_name].values.ravel()[_idx])
-            z_values.append(_z_value)
-            field_values.append(_field_value)
-        z_values = np.asarray(z_values)
-        field_values = np.asarray(field_values)
-        xy_line_values = np.stack([xy_line_1d,]*len(self.fields), axis=0)
-        mask_flag = (np.isnan(z_values.ravel()) | np.isnan(field_values.ravel()))
-        z_values_ravel = z_values.ravel()[~mask_flag]
-        xy_line_values_ravel = xy_line_values.ravel()[~mask_flag]
-        field_values_ravel = field_values.ravel()[~mask_flag]
-        mesh_xy, mesh_z = np.mgrid[0:start_end_dis:npoints*1j, 0:np.nanmax(z_values):bins_res/2.] #生成剖面的网格
-        grid_field = radar_interp2d_var(np.c_[xy_line_values_ravel, z_values_ravel], field_values_ravel,\
-                              (mesh_xy, mesh_z), bandwidth=360/self.fields[0].azimuth.size)
-        return mesh_xy, mesh_z, grid_field
+        xy = np.stack([xy_line_1d, xy_line_1d], axis=0)
+        mesh_Z = []
+        mesh_vcs = []
+        mesh_xy = []
+        # 先对剖线取最邻近点
+        for isweep, ifield in enumerate(order_dat.fields):
+            if (isweep>0) and (self.scan_info.fixed_angle.values[isweep] < self.scan_info.fixed_angle.values[isweep-1]):
+                continue  ##remove VCP26 Type data
+            az, ranges, _ = cartesian_to_antenna_cwr(x_line, y_line, self.scan_info.fixed_angle.values[isweep],\
+                                                     self.scan_info.altitude.values)
+            vcs_data = ifield[field_name].sel(azimuth=xr.DataArray(az, dims="vcs_r"),\
+                                              range=xr.DataArray(ranges, dims="vcs_r"), method="nearest") ##选取插值的点
+            _, _, z = antenna_vectors_to_cartesian_vcs(vcs_data.range, vcs_data.azimuth, vcs_data.elevation,\
+                                             order_dat.scan_info.altitude.values, \
+                                             self.scan_info.beam_width.values[isweep])
+            mesh_xy.append(xy)
+            mesh_Z.append(z)
+            mesh_vcs.append(vcs_data.values.reshape(1,-1))
+        return mesh_xy, mesh_Z, mesh_vcs
+
+class PRD_AZ:
+    """
+    data obj for radar data, AZ as dims!
+    """
+    def __init__(self):
+        self.scan_info = None
+        self.fields = []
+
+
+
+
+

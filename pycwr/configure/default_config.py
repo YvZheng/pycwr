@@ -232,6 +232,13 @@ DEFAULT_METADATA = {
         'valid_max': 0,
         'valid_min': 1,
         'coordinates': 'elevation azimuth range'},
+    "beam_width":{
+        'units': 'degrees',
+        'standard_name': 'clutter_phase_alignment',
+        'long_name': 'Antenna beam width polarization',
+        'valid_max': 0,
+        'valid_min': 5,
+        'coordinates': 'sweep'},
 }
 
 # CINRAD files

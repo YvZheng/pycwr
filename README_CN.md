@@ -1,33 +1,7 @@
 # 中国天气雷达开源库
 
-- [英文版](README.md)
+- [English](README.md)
 - [开发人员](CONTRIBUTORS.txt)
-
-项目开发计划
-----------
-
-- [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持
-- [ ] Cfradial读取支持
-- [x] 读取的同时计算经纬度
-- [ ] PRD数据结构优化, 增加订正结果和反演结果的结构
-- [ ] 绘图增加fig, ax的传入部分
-- [x] NuistRadar类导出为Cfradial格式支持
-- [x] 自动识别雷达站点并获取经纬度信息(针对SA/SB/CB)
-- [x] 自动识别雷达数据格式类型
-- [x] 转换为Pyart Radar类
-- [x] 图形化界面支持
-- [x] 垂直剖面支持
-- [x] 雷达插值算法支持
-- [x] PPI绘图支持, 叠加地图支持
-- [ ] RHI绘图支持
-- [ ] 多雷达反演算法支持
-- [ ] 雷达数据产品生成算法支持
-- [ ] 多普勒雷达/双偏振雷达质控算法
-- [ ] 双偏振雷达雨滴谱反演算法支持
-- [ ] 多普勒雷达风场反演支持
-- [ ] 雷达定量估测降水算法支持
-- [ ] 雷达回波外推算法支持
-- [ ] 雷达定量预报降水算法支持
 
 安装pycwr库
 ----------
@@ -57,33 +31,66 @@ python setup.py install
 from pycwr.io.auto_io import radar_io 
 file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
 data = radar_io(file)
-PRD = data.ToPRD(withlatlon=True)
-print(PRD.scan_info)
-print(PRD.fields)
+NRadar = data.ToPRD()
 PyartRadar = data.ToPyartRadar()
 ```
 PRD类的数据结构如下:
 
 ![avatar](./examples/PRD_class.png)
 
-可视化雷达数据并叠加地图
+可视化PPI图像并叠加地图
 ----------
 ```
-from pycwr.draw.SingleRadarPlotMap import RadarGraphMap
-graph = RadarGraphMap(PRD)
-graph.plot(0, "dBZ")
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+from pycwr.draw.RadarPlot import Graph, GraphMap
+ax = plt.axes(projection=ccrs.PlateCarree())
+graph = GraphMap(NRadar, ccrs.PlateCarree())
+graph.plot_ppi_map(ax, 0, "dBZ", cmap="pyart_NWSRef")
+ax.set_title("example of PPI with map", fontsize=16)
 plt.show()
 ```
-如下图所示:
-
 ![avatar](examples/graph_map.png)
 
-画垂直剖面
+可视化PPI图像
 ----------
 ```
-from pycwr.draw.VerticalSectionPlot import VerticalSection
-vcs = VerticalSection(PRD)
-vcs.section((0,0), (150, 0), "dBZ", (0, 10))  # (start_x, start_y), (end_x, end_y) units:meters
+fig, ax = plt.subplots()
+graph = Graph(NRadar)
+graph.plot_ppi(ax, 0, "dBZ", cmap="pyart_NWSRef")
+graph.add_rings(ax, [0, 50, 100, 150, 200, 250, 300])
+ax.set_title("example of PPI", fontsize=16)
+ax.set_xlabel("Distance From Radar In East (km)", fontsize=14)
+ax.set_ylabel("Distance From Radar In North (km)", fontsize=14)
+```
+![avatar](examples/graph.png)
+
+
+根据起始点经纬度画垂直剖面
+----------
+```
+fig, ax = plt.subplots()
+graph = GraphMap(NRadar, ccrs.PlateCarree())
+graph.plot_vcs_map(ax, (120.8, 27.8), (122.9, 26.8), "dBZ", cmap="pyart_NWSRef")
+ax.set_ylim([0,15])
+ax.set_ylabel("Height (km)", fontsize=14)
+ax.set_xlabel("Latitude, Longitude", fontsize=14)
+ax.set_title("VCS exmaple", fontsize=16)
+plt.show()
+```
+
+![avatar](examples/vcs_map.png)
+
+根据起始点笛卡尔坐标画垂直剖面
+----------
+```
+fig, ax = plt.subplots()
+graph = Graph(NRadar)
+graph.plot_vcs(ax, (0,0), (150, 0), "dBZ", cmap="pyart_NWSRef")
+ax.set_ylim([0,15])
+ax.set_ylabel("Height (km)", fontsize=14)
+ax.set_xlabel("Distance From Section Start (Uints:km)", fontsize=14)
+ax.set_title("VCS exmaple", fontsize=16)
 plt.show()
 ```
 
@@ -123,3 +130,30 @@ plt.show()
 
 吕星超 - 南京信息工程大学, 大气物理学院
 
+张帅 - 南京信息工程大学, 大气物理学院
+
+项目开发计划
+----------
+
+- [x] 国内WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD支持
+- [ ] Cfradial读取支持
+- [x] 读取的同时计算经纬度
+- [ ] PRD数据结构优化, 增加订正结果和反演结果的结构
+- [ ] 绘图增加fig, ax的传入部分
+- [x] NuistRadar类导出为Cfradial格式支持
+- [x] 自动识别雷达站点并获取经纬度信息(针对SA/SB/CB)
+- [x] 自动识别雷达数据格式类型
+- [x] 转换为Pyart Radar类
+- [x] 图形化界面支持
+- [x] 垂直剖面支持
+- [x] 雷达插值算法支持
+- [x] PPI绘图支持, 叠加地图支持
+- [ ] RHI绘图支持
+- [ ] 多雷达反演算法支持
+- [ ] 雷达数据产品生成算法支持
+- [ ] 多普勒雷达/双偏振雷达质控算法
+- [ ] 双偏振雷达雨滴谱反演算法支持
+- [ ] 多普勒雷达风场反演支持
+- [ ] 雷达定量估测降水算法支持
+- [ ] 雷达回波外推算法支持
+- [ ] 雷达定量预报降水算法支持

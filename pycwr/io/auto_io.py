@@ -22,8 +22,8 @@ class radar_io(object):
         else:
             raise TypeError("unsupported radar type!")
 
-    def ToPRD(self, withlatlon=True):
-        return self.radar_obj.ToPRD(withlatlon=withlatlon)
+    def ToPRD(self):
+        return self.radar_obj.ToPRD()
 
     def ToPyartRadar(self):
         return self.radar_obj.ToPyartRadar()

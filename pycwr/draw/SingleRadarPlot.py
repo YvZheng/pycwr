@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
-from ..core.transforms import antenna_vectors_to_cartesian
 
 class RadarGraph(object):
     """雷达绘图显示部分"""
@@ -49,15 +48,12 @@ class RadarGraph(object):
             title = title + " Elevation : %.1f"%self.NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name] + " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
-        _range = self.NRadar.fields[sweep].range.values
-        azimuth = self.NRadar.fields[sweep].azimuth.values
-        elevation = self.NRadar.fields[sweep].elevation.values
         field = self.NRadar.fields[sweep][field_name]
-        RadarGraph.simple_plot_ppi(_range, azimuth, elevation, field, normvar=(vmin, vmax),
+        RadarGraph.simple_plot_ppi(field, normvar=(vmin, vmax),
                                    title=title, cmap=cmap, cmap_bins=cmap_bins,
                                    clabel=clabel, dark=dark, continuously=continuously)
     @staticmethod
-    def GUI_plot(NRadar,fig, ax, cx, sweep, field_name, normvar=None, title=None, clabel=None, continuously=False):
+    def GUI_plot(NRadar, fig, ax, cx, sweep, field_name, normvar=None, title=None, clabel=None, continuously=False):
         """
         绘图
         :param sweep: sweep从0开始
@@ -84,14 +80,9 @@ class RadarGraph(object):
             title = title + " Elevation : %.1f"%NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name]  + " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
-        _range = NRadar.fields[sweep].range.values
-        azimuth = NRadar.fields[sweep].azimuth.values
-        elevation = NRadar.fields[sweep].elevation.values
         field = NRadar.fields[sweep][field_name]
-        if hasattr(field, "x") and hasattr(field, "y"):
-            x, y = field.x, field.y
-        else:
-            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+        assert hasattr(field, "x") and hasattr(field, "y"), "check Nradar coords!"
+        x, y = field.x, field.y
         RadarGraph.plot_ppi(fig, ax, cx, x, y, field, normvar=(vmin, vmax),
                                 title=title, cmap=cmap, cmap_bins=cmap_bins,
                                 clabel=clabel, continuously=continuously)
@@ -127,7 +118,7 @@ class RadarGraph(object):
                                    cmap_bins, orient, label, clabel, continuously)
 
     @staticmethod
-    def simple_plot_ppi(_range, azimuth, elevation, radar_data, normvar=None, cmap=None,
+    def simple_plot_ppi(radar_data, normvar=None, cmap=None,
                         max_range=None, title=None, cmap_bins=16, orient="vertical",
                         label=None, clabel=None, dark=False, continuously=False):
         """
@@ -147,10 +138,8 @@ class RadarGraph(object):
         :param dark: 是否使用黑色背景
         :return:
         """
-        if hasattr(radar_data, "x") and hasattr(radar_data, "y"):
-            x, y = radar_data.x, radar_data.y
-        else:
-            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+        assert hasattr(radar_data, "x") and hasattr(radar_data, "y"), "check NRadar coords!"
+        x, y = radar_data.x, radar_data.y
         if dark:
             plt.style.use('dark_background')
         fig = plt.figure()

@@ -316,7 +316,7 @@ class SC2NRadar(object):
     def get_fixed_angle(self):
         return self.SC.header['LayerParam']['Swangles'] / 100.
 
-    def ToPRD(self, withlatlon=True):
+    def ToPRD(self):
         """将WSR98D数据转为PRD的数据格式"""
 
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
@@ -326,7 +326,7 @@ class SC2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, withlatlon=withlatlon)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
 
     def ToPyartRadar(self):
 

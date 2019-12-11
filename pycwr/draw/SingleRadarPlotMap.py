@@ -16,10 +16,9 @@ import math
 import cartopy.crs as ccrs
 import numpy as np
 import pandas as pd
-from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
+from ..core.transforms import cartesian_to_geographic_aeqd
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
-import xarray as xr
 
 class RadarGraphMap(object):
 
@@ -49,7 +48,6 @@ class RadarGraphMap(object):
 
         if normvar is not None:
             vmin, vmax = normvar
-
         cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
         cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
 
@@ -59,18 +57,13 @@ class RadarGraphMap(object):
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name]  +\
                      " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
-        longitude = self.NRadar.scan_info.longitude.values
-        latitude = self.NRadar.scan_info.latitude.values
-        _range = self.NRadar.fields[sweep].range.values
-        azimuth = self.NRadar.fields[sweep].azimuth.values
-        elevation = self.NRadar.fields[sweep].elevation.values
         field = self.NRadar.fields[sweep][field_name]
 
-        RadarGraphMap.simple_plot_ppi_map(_range, azimuth, elevation, field, (longitude, latitude), title,
-                                          (vmin, vmax), cmap, cmap_bins, clabel=clabel, continuously=continuously)
+        RadarGraphMap.simple_plot_ppi_map(field, title, (vmin, vmax), cmap, cmap_bins,\
+                                          clabel=clabel, continuously=continuously)
 
     @staticmethod
-    def GUI_plot(NRadar, fig, ax, cax, sweep, field_name, main_point=None,\
+    def GUI_plot(NRadar, fig, ax, cax, sweep, field_name,\
                  normvar=None, title=None, clabel=None, continuously=False):
         """
         带地图画图模块
@@ -102,26 +95,16 @@ class RadarGraphMap(object):
             title = title + " Elevation : %.1f" % NRadar.scan_info.fixed_angle[sweep].values
         if clabel is None:
             clabel = CINRAD_field_mapping[field_name] + " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
-        if main_point is None:
-            longitude = NRadar.scan_info.longitude.values
-            latitude = NRadar.scan_info.latitude.values
-        else:
-            longitude, latitude = main_point
-        _range = NRadar.fields[sweep].range.values
-        azimuth = NRadar.fields[sweep].azimuth.values
-        elevation = NRadar.fields[sweep].elevation.values
+
         field = NRadar.fields[sweep][field_name]
-        if hasattr(field, 'lat') and hasattr(field, 'lon'):
-            lon, lat = field.lon, field.lat
-        else:
-            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
-            lon, lat = cartesian_to_geographic_aeqd(x, y, longitude, latitude)
+        assert hasattr(field, 'lat') and hasattr(field, 'lon'), "check NRadar's lat lon coords!"
+        lon, lat = field.lon, field.lat
         RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, field, title=title,\
                                     normvar=(vmin, vmax), cmap = cmap, cmap_bins = cmap_bins,\
                                    clabel=clabel, continuously=continuously)
 
     @staticmethod
-    def simple_plot_ppi_map(_range, azimuth, elevation, radar_data, main_piont=None, title=None, normvar=None, cmap=None, \
+    def simple_plot_ppi_map(radar_data, title=None, normvar=None, cmap=None, \
                  cmap_bins=16, extend=None, projection=ccrs.PlateCarree(), orient="vertical", \
                 clabel=None, continuously=False):
         """
@@ -142,13 +125,8 @@ class RadarGraphMap(object):
         :param continuously: 是否使用连续的cmaps
         :return:
         """
-        if hasattr(radar_data, 'lat') and hasattr(radar_data, 'lon'):
-            lon, lat = radar_data.lon, radar_data.lat
-        else:
-            assert main_piont is not None, "should input (station_lon, station_lat) as main_point!"
-            main_lon, main_lat = main_piont
-            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
-            lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
+        assert hasattr(radar_data, 'lat') and hasattr(radar_data, 'lon'), "NRadar should have lat lon!"
+        lon, lat = radar_data.lon, radar_data.lat
         fig = plt.figure()
         ax = fig.add_axes([0.04, 0.1, 0.82, 0.82], projection=projection)
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
@@ -216,8 +194,6 @@ class RadarGraphMap(object):
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-
-        ax.set_global()
         pm = ax.pcolormesh(lon, lat, radar_data, transform=projection, cmap=cmap, norm = norm, zorder=4)
 
         ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
@@ -235,7 +211,7 @@ class RadarGraphMap(object):
             cbar = fig.colorbar(mappable=pm, cax=cx, ax=ax, orientation=orient, ticks=levels)
             cbar.set_ticklabels(RadarGraphMap._FixTicks(levels))
         cbar.set_label(clabel)
-        ax.set_aspect("equal")
+        #ax.set_aspect("equal")
         ax.set_title(title, fontsize=15)
         parallels = np.arange(int(min_lat), math.ceil(max_lat) + 1, 1)
         meridians = np.arange(int(min_lon), math.ceil(max_lon) + 1, 1)

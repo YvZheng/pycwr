@@ -7,8 +7,6 @@ from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins,\
     CINRAD_field_normvar, CINRAD_field_mapping
 import pandas as pd
 from ..core.transforms import geographic_to_cartesian_aeqd, cartesian_to_geographic_aeqd
-plt.rcParams['xtick.direction'] = 'in'
-plt.rcParams['ytick.direction'] = 'in'
 
 class VerticalSection(object):
 
@@ -46,6 +44,7 @@ class VerticalSection(object):
         fig = plt.figure()
         ax = fig.add_axes([0.1, 0.3, 0.8, 0.6])
         cax = fig.add_axes([0.1, 0.1, 0.8, 0.06])
+
         return VerticalSection.SectionPlot_VCS(fig, ax, cax, mesh_xy, mesh_z, grid_field, height, title=title,
                                            normvar=(vmin, vmax), cmap=cmap, cmap_bins=cmap_bins, clabel=clabel,
                                            continuously=continuously)
@@ -242,7 +241,8 @@ class VerticalSection(object):
         ax.spines['left'].set_linewidth(2)
         ax.set_ylim([min_h, max_h])
         ax.tick_params(axis='both', which='major', labelsize=12)
-
+        ax.tick_params(axis="y", which="both", direction='in')
+        ax.tick_params(axis="x", which="both", direction='in')
         if continuously:
             cbar = fig.colorbar(mappable=gci, cax=cx, orientation=orient)
         else:
@@ -253,18 +253,19 @@ class VerticalSection(object):
         plt.style.use('default')
 
     @staticmethod
-    def SectionPlot_VCS_map(fig, ax, cx, start_lonlat, end_lonlat, field_name, NRadar, height=(0, 18), title=None, normvar=None, cmap=None, \
-                    cmap_bins=16, orient="horizontal", label=None, clabel=None, continuously=False):
+    def SectionPlot_VCS_map(fig, ax, cx, start_lonlat, end_lonlat, field_name, NRadar, height=(0, 18),
+                            title=None, normvar=None, cmap=None, cmap_bins=16, orient="horizontal",
+                            label=None, clabel=None, continuously=False):
         """
 
-        :param fig:
-        :param ax:
-        :param cx:
-        :param start_lonlat:
-        :param end_lonlat:
-        :param field_name:
+        :param fig: matplotlib figure
+        :param ax: matplotlib axes
+        :param cx: matplotlib cbar axes
+        :param start_lonlat: (start_lon, start_lat), units:degree
+        :param end_lonlat: (end_lon, end_lat), units:degree
+        :param field_name: for exmaple "dBZ", "V"
         :param NRadar:
-        :param height:
+        :param height:(MIN_H, MAX_H)， units:km
         :param title:
         :param normvar:
         :param cmap:
@@ -307,6 +308,8 @@ class VerticalSection(object):
         ax.set_title(title, fontsize=16)
         ax.spines['bottom'].set_linewidth(2)
         ax.spines['left'].set_linewidth(2)
+        ax.tick_params(axis="y", which="both", direction='in')
+        ax.tick_params(axis="x", which="both", direction='in')
         ax.set_ylim([min_h, max_h])
         ax.tick_params(axis='both', which='major', labelsize=12)
         xticks_data = ax.get_xticks()
@@ -348,5 +351,4 @@ class VerticalSection(object):
         end_x, end_y = end_points
 
         rgs = np.sqrt((start_x-end_x)**2 + (start_y-end_y)**2)
-
         return distance_from_start/rgs*(end_x - start_x) + start_x, distance_from_start/rgs*(end_y - start_y) + start_y

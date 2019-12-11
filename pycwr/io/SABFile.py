@@ -378,7 +378,7 @@ class SAB2NRadar(object):
             fixed_angle = np.array([self.radial[idx]['El'] / 8. * 180. / 4096. for idx in self.sweep_start_ray_index])
         return fixed_angle
 
-    def ToPRD(self, withlatlon=True):
+    def ToPRD(self):
         """将WSR98D数据转为PRD的数据格式"""
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
@@ -387,7 +387,7 @@ class SAB2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, withlatlon=withlatlon)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
 
     def ToPyartRadar(self):
         """转化为Pyart Radar的对象"""

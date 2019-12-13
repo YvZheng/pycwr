@@ -175,16 +175,17 @@ class SAB2NRadar(object):
 
     def __init__(self, SAB):
         self.SAB = SAB
-        v_index_alone = self.get_v_idx()
-        dBZ_index_alone = self.get_dbz_idx()
-        for index_with_dbz, index_with_v in zip(dBZ_index_alone, v_index_alone):
+        self.v_index_alone = self.get_v_idx()
+        self.dBZ_index_alone = self.get_dbz_idx()
+        self.dBZ_Res = self.SAB.radial[0]["GateSizeOfReflectivity"] ##反射率因子的分辨率
+        for index_with_dbz, index_with_v in zip(self.dBZ_index_alone, self.v_index_alone):
             assert abs(self.SAB.get_elevation()[index_with_v] - \
                        self.SAB.get_elevation()[index_with_dbz]) < 0.5, "warning! maybe it is a problem."
             self.interp_dBZ(index_with_dbz, index_with_v)
         ind_remove = self.get_reomve_radial_num()
         self.radial = [iray for ind, iray in enumerate(self.SAB.radial) if ind not in ind_remove]
         self.nrays = len(self.radial)
-        self.nsweeps = self.SAB.nsweeps - dBZ_index_alone.size
+        self.nsweeps = self.SAB.nsweeps - self.dBZ_index_alone.size
         status = np.array([istatus['RadialStatus'] for istatus in self.radial[:]])
         self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
         self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
@@ -321,7 +322,7 @@ class SAB2NRadar(object):
         :param length:
         :return:
         """
-        Resolution = self.radial[0]["GateSizeOfReflectivity"]
+        Resolution = self.dBZ_Res
         start_range = self.radial[0]["GateSizeOfDoppler"]
         return np.linspace(start_range, start_range + Resolution * (length - 1), length)
 
@@ -347,6 +348,8 @@ class SAB2NRadar(object):
             match_data = interpolate.interp1d(dbz_range, dat_fields[key], kind="nearest",
                                               bounds_error=False, fill_value=np.nan)
             dat_ray = match_data(dop_range)
+            #print(dop_range, dbz_range)
+            #print(dat_ray)
             return dat_ray.ravel()
         else:
             dat_ray = dat_fields[key]

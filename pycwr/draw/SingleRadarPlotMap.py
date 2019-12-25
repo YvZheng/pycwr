@@ -16,7 +16,7 @@ import math
 import cartopy.crs as ccrs
 import numpy as np
 import pandas as pd
-from ..core.transforms import cartesian_to_geographic_aeqd
+from ..core.transforms import cartesian_to_geographic_aeqd, antenna_vectors_to_cartesian
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
 
@@ -104,9 +104,10 @@ class RadarGraphMap(object):
                                    clabel=clabel, continuously=continuously)
 
     @staticmethod
-    def simple_plot_ppi_map(radar_data, title=None, normvar=None, cmap=None, \
-                 cmap_bins=16, extend=None, projection=ccrs.PlateCarree(), orient="vertical", \
-                clabel=None, continuously=False):
+    def simple_plot_ppi_map(_range=None, azimuth=None, elevation=None, radar_data=None, main_piont=None,\
+                            title=None, normvar=None, cmap=None, cmap_bins=16, extend=None, \
+                            projection=ccrs.PlateCarree(), orient="vertical", \
+                            clabel=None, continuously=False):
         """
         使用方位角 距离库作ppi图像
         :param _range: 距离库 units:m
@@ -125,8 +126,14 @@ class RadarGraphMap(object):
         :param continuously: 是否使用连续的cmaps
         :return:
         """
-        assert hasattr(radar_data, 'lat') and hasattr(radar_data, 'lon'), "NRadar should have lat lon!"
-        lon, lat = radar_data.lon, radar_data.lat
+        assert radar_data is not None, "radar_data should not be None!"
+        if hasattr(radar_data, 'lat') and hasattr(radar_data, 'lon'):
+            lon, lat = radar_data.lon, radar_data.lat
+        else:
+            assert main_piont is not None, "should input (station_lon, station_lat) as main_point!"
+            main_lon, main_lat = main_piont
+            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+            lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
         fig = plt.figure()
         ax = fig.add_axes([0.04, 0.1, 0.82, 0.82], projection=projection)
         cax = fig.add_axes([0.85, 0.1, 0.028, 0.82])
@@ -134,6 +141,7 @@ class RadarGraphMap(object):
         ax.tick_params(axis="x", which="both", direction='in')
         return RadarGraphMap.plot_ppi_map(fig, ax, cax, lon, lat, radar_data, title, normvar, cmap, \
                  cmap_bins, extend, projection, orient, clabel, continuously)
+
     @staticmethod
     def simple_plot_ppi_xy_map(x, y, radar_data, main_piont, title=None, normvar=None, cmap=None, \
                  cmap_bins=16, extend=None, projection=ccrs.PlateCarree(), orient="vertical", \

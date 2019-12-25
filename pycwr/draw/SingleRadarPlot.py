@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
+from ..core.transforms import antenna_vectors_to_cartesian
 
 class RadarGraph(object):
     """雷达绘图显示部分"""
@@ -118,7 +119,7 @@ class RadarGraph(object):
                                    cmap_bins, orient, label, clabel, continuously)
 
     @staticmethod
-    def simple_plot_ppi(radar_data, normvar=None, cmap=None,
+    def simple_plot_ppi(_range=None, azimuth=None, elevation=None, radar_data=None, normvar=None, cmap=None,
                         max_range=None, title=None, cmap_bins=16, orient="vertical",
                         label=None, clabel=None, dark=False, continuously=False):
         """
@@ -138,8 +139,11 @@ class RadarGraph(object):
         :param dark: 是否使用黑色背景
         :return:
         """
-        assert hasattr(radar_data, "x") and hasattr(radar_data, "y"), "check NRadar coords!"
-        x, y = radar_data.x, radar_data.y
+        assert radar_data is not None, "radar_data should not be None!"
+        if hasattr(radar_data, "x") and hasattr(radar_data, "y"):
+            x, y = radar_data.x, radar_data.y
+        else:
+            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
         if dark:
             plt.style.use('dark_background')
         fig = plt.figure()

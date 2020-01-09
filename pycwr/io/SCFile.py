@@ -412,7 +412,7 @@ class SC2NRadar(object):
 
         # pulse width
         pulse_width = get_metadata('pulse_width')
-        pulse_width['data'] = self.range[0] / _LIGHT_SPEED  # nanosec->sec
+        pulse_width['data'] = np.array([self.range[0] / _LIGHT_SPEED,], dtype='float32')  # nanosec->sec
         # assume that the parameters in the first ray represent the beam widths,
         # bandwidth and frequency in the entire volume
         wavelength_hz = self.frequency * 10 ** 9

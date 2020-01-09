@@ -16,7 +16,7 @@ import math
 import cartopy.crs as ccrs
 import numpy as np
 import pandas as pd
-from ..core.transforms import cartesian_to_geographic_aeqd, antenna_vectors_to_cartesian
+from ..core.transforms import cartesian_to_geographic_aeqd, antenna_vectors_to_cartesian_cwr
 from ..configure.default_config import CINRAD_COLORMAP, CINRAD_field_bins, \
     CINRAD_field_normvar, CINRAD_field_mapping, DEFAULT_METADATA
 
@@ -59,7 +59,7 @@ class RadarGraphMap(object):
                      " (%s)"%DEFAULT_METADATA[CINRAD_field_mapping[field_name]]['units']
         field = self.NRadar.fields[sweep][field_name]
 
-        RadarGraphMap.simple_plot_ppi_map(field, title, (vmin, vmax), cmap, cmap_bins,\
+        RadarGraphMap.simple_plot_ppi_map(radar_data=field, title=title, normvar=(vmin, vmax), cmap=cmap, cmap_bins=cmap_bins,\
                                           clabel=clabel, continuously=continuously)
 
     @staticmethod
@@ -104,7 +104,7 @@ class RadarGraphMap(object):
                                    clabel=clabel, continuously=continuously)
 
     @staticmethod
-    def simple_plot_ppi_map(_range=None, azimuth=None, elevation=None, radar_data=None, main_piont=None,\
+    def simple_plot_ppi_map(radar_data, _range=None, azimuth=None, elevation=None, main_piont=None,\
                             title=None, normvar=None, cmap=None, cmap_bins=16, extend=None, \
                             projection=ccrs.PlateCarree(), orient="vertical", \
                             clabel=None, continuously=False):
@@ -126,13 +126,19 @@ class RadarGraphMap(object):
         :param continuously: 是否使用连续的cmaps
         :return:
         """
+        if hasattr(elevation, "values"):
+            elevation = elevation.values
+        if hasattr(azimuth, "values"):
+            azimuth = azimuth.values
+        if hasattr(_range, "values"):
+            _range = _range.values
         assert radar_data is not None, "radar_data should not be None!"
         if hasattr(radar_data, 'lat') and hasattr(radar_data, 'lon'):
             lon, lat = radar_data.lon, radar_data.lat
         else:
             assert main_piont is not None, "should input (station_lon, station_lat) as main_point!"
             main_lon, main_lat = main_piont
-            x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+            x, y, z = antenna_vectors_to_cartesian_cwr(_range, azimuth, elevation, h=0)
             lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
         fig = plt.figure()
         ax = fig.add_axes([0.04, 0.1, 0.82, 0.82], projection=projection)

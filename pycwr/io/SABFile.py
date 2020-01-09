@@ -472,7 +472,7 @@ class SAB2NRadar(object):
 
         # pulse width
         pulse_width = get_metadata('pulse_width')
-        pulse_width['data'] = self.radial[0]["GateSizeOfDoppler"] / _LIGHT_SPEED  # m->sec
+        pulse_width['data'] = np.array([self.radial[0]["GateSizeOfDoppler"] / _LIGHT_SPEED,], dtype='float32')  # m->sec
 
         # assume that the parameters in the first ray represent the beam widths,
         # bandwidth and frequency in the entire volume

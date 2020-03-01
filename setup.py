@@ -5,13 +5,15 @@ suggested by bugsuse(https://github.com/bugsuse)
 
 from setuptools import find_packages, setup
 import sys, os
+from Cython.Build import cythonize
+import numpy
 
 parent_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(parent_dir)
 
 DISTNAME = "pycwr"
 AUTHOR = "pycwr developers"
-AUTHOR_EMAIL = "zhengyunuist@gmail.com"
+AUTHOR_EMAIL = "YuZheng1206@outlook.com"
 URL = "https://github.com/YvZheng/pycwr"
 LICENSE='MIT'
 PYTHON_REQUIRES = ">=3.6"
@@ -50,5 +52,7 @@ setup(
     classifiers=CLASSIFIERS,
     include_package_data = True,
     packages=find_packages(parent_dir),
+    ext_modules=cythonize('./pycwr/core/RadarGridC.pyx'),
+    include_dirs=[numpy.get_include()]
 )
 

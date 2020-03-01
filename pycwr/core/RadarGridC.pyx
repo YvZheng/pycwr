@@ -96,6 +96,7 @@ def interp_ppi(double az, double r, double az_0, double az_1, double r_0, double
         interped = fillvalue
     return interped
 
+@cython.boundscheck(False)  # Deactivate bounds checking
 def ppi_to_grid(cnp.ndarray[cnp.float64_t, ndim=1] azimuth, cnp.ndarray[cnp.float64_t, ndim=1] ranges,
                 double elevation, cnp.ndarray[cnp.float64_t, ndim=2] mat_ppi, double radar_height,
                 cnp.ndarray[cnp.float64_t, ndim=2] GridX, cnp.ndarray[cnp.float64_t, ndim=2] GridY,
@@ -145,6 +146,7 @@ def ppi_to_grid(cnp.ndarray[cnp.float64_t, ndim=1] azimuth, cnp.ndarray[cnp.floa
                 GridValue[ix, iy] = interp_ppi(az, r, az_last, azimuth[iaz], ranges[ir-1], ranges[ir], mat_ppi[iaz-1, ir-1], mat_ppi[iaz-1, ir], mat_ppi[iaz, ir-1], mat_ppi[iaz, ir], fillvalue)
     return GridValue
 
+@cython.boundscheck(False)  # Deactivate bounds checking
 def get_CAPPI_xy(vol_azimuth, vol_range, cnp.ndarray[cnp.float64_t, ndim=1] fix_elevation, vol_value,
                  double radar_height, cnp.ndarray[cnp.float64_t, ndim=2] GridX,
                  cnp.ndarray[cnp.float64_t, ndim=2] GridY, double level_height,  double fillvalue):
@@ -229,6 +231,7 @@ def interp_azimuth(double az, double az_0, double az_1, double dat_0, double dat
     else:
         return dat_0
 
+@cython.boundscheck(False)  # Deactivate bounds checking
 def get_CR_xy(vol_azimuth, vol_range, cnp.ndarray[cnp.float64_t, ndim=1] fix_elevation, vol_value, double radar_height,
               cnp.ndarray[cnp.float64_t, ndim=2] GridX, cnp.ndarray[cnp.float64_t, ndim=2] GridY, double fillvalue):
     """

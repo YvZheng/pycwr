@@ -5,10 +5,12 @@
 """
 import numpy as np
 import xarray as xr
+import pyproj
 from ..configure.default_config import DEFAULT_METADATA, CINRAD_field_mapping
 from ..core.transforms import  cartesian_to_geographic_aeqd,\
     antenna_vectors_to_cartesian_cwr, antenna_vectors_to_cartesian_rhi, cartesian_to_antenna_cwr,\
     antenna_vectors_to_cartesian_vcs
+from .RadarGridC import get_CR_xy, get_CAPPI_xy
 
 class PRD(object):
     """
@@ -126,6 +128,8 @@ class PRD(object):
         self.nsweeps = nsweeps
         self.nrays = nrays
         self.sitename = sitename
+        self.get_vol_data()
+        self.product = xr.Dataset()
 
     def ordered_az(self, inplace=False):
         """
@@ -142,6 +146,159 @@ class PRD(object):
             for isweep in self.scan_info.sweep.values:
                 prd_dat.fields.append(self.fields[isweep].swap_dims({"time": "azimuth"}).sortby("azimuth"))
             return prd_dat
+
+    def add_product_CR_xy(self, XRange, YRange):
+        """
+        计算给定范围的组合反射率
+        :param XRange: np.ndarray, 1d, units:meters
+        :param YRange: np.ndarray, 1d, units:meters
+        :return:
+        """
+        GridX, GridY = np.meshgrid(XRange, YRange, indexing="ij")
+        vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,\
+        radar_lon_0, radar_lat_0 = self.vol
+        fillvalue = -999.
+        GridV = get_CR_xy(vol_azimuth, vol_range, fix_elevation, vol_value,\
+                          radar_height, GridX.astype(np.float64), GridY.astype(np.float64), -999.)
+        self.product.coords["x_cr"] = XRange
+        self.product.coords["y_cr"] = YRange
+        self.product["CR"] = (('x_cr', 'y_cr'), np.where(GridV==fillvalue, np.nan, GridV))
+        self.product.coords["x_cr"].attrs = {'units': 'meters',
+                                            'standard_name': 'CR_product_x_axis ',
+                                            'long_name': 'east_distance_from_radar',
+                                            'axis': 'xy_coordinate',
+                                            'comment': 'Distance from radar in east'}
+        self.product.coords["y_cr"].attrs = {'units': 'meters',
+                                             'standard_name': 'CR_product_y_axis ',
+                                             'long_name': 'north_distance_from_radar',
+                                             'axis': 'xy_coordinate',
+                                             'comment': 'Distance from radar in north'}
+        self.product["CR"].attrs = {'units': 'dBZ',
+                                    'standard_name': 'Composite_reflectivity_factor',
+                                    'long_name': 'Composite_reflectivity_factor',
+                                    'axis': 'xy_coordinate',
+                                    'comment': 'Maximum reflectance of all level',}
+
+    def add_product_CAPPI_xy(self, XRange, YRange, level_height):
+        """
+        计算给定范围的CAPPI的图像
+        :param XRange: np.ndarray, 1d, units:meters
+        :param YRange: np.ndarray, 1d, units:meters
+        :param level_height: 要插值的高度，常量, units:meters
+        :return:
+        """
+        GridX, GridY = np.meshgrid(XRange, YRange, indexing="ij")
+        vol_azimuth, vol_range, fix_elevation, vol_value, radar_height, \
+        radar_lon_0, radar_lat_0 = self.vol
+        fillvalue = -999.
+        GridV = get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
+                             GridX.astype(np.float64), GridY.astype(np.float64), level_height, fillvalue)
+        self.product.coords["x_cappi_%d"%level_height] = XRange
+        self.product.coords["y_cappi_%d"%level_height] = YRange
+        self.product["CAPPI_%d"%level_height] = (("x_cappi_%d"%level_height, "y_cappi_%d"%level_height),
+                                                 np.where(GridV==fillvalue, np.nan, GridV))
+        self.product.coords["x_cappi_%d"%level_height].attrs = {'units': 'meters',
+                                             'standard_name': 'CAPPI_product_x_axis ',
+                                             'long_name': 'east_distance_from_radar',
+                                             'axis': 'xy_coordinate',
+                                             'comment': 'Distance from radar in east'}
+        self.product.coords["y_cappi_%d"%level_height].attrs = {'units': 'meters',
+                                             'standard_name': 'CAPPI_product_y_axis ',
+                                             'long_name': 'north_distance_from_radar',
+                                             'axis': 'xy_coordinate',
+                                             'comment': 'Distance from radar in north'}
+        self.product["CAPPI_%d"%level_height].attrs = {'units': 'dBZ',
+                                    'standard_name': 'Constant_altitude_plan_position_indicator',
+                                    'long_name': 'Constant_altitude_plan_position_indicator',
+                                    'axis': 'xy_coordinate',
+                                    'comment': 'CAPPI of level %d m.'%level_height, }
+
+    def add_product_CR_lonlat(self, XLon, YLat):
+        """
+        计算给定经纬度范围的组合反射率
+        :param XLon:np.ndarray, 1d, units:degree
+        :param YLat:np.ndarray, 1d, units:degree
+        :return:
+        """
+        fillvalue = -999.
+        GridLon, GridLat = np.meshgrid(XLon, YLat, indexing="ij")
+        projparams = {"proj": "aeqd", "lon_0": self.scan_info["longitude"].values,
+                      "lat_0": self.scan_info["latitude"].values}
+        proj = pyproj.Proj(projparams)
+        GridX, GridY = proj(GridLon, GridLat, inverse=False)
+        vol_azimuth, vol_range, fix_elevation, vol_value, radar_height, \
+        radar_lon_0, radar_lat_0 = self.vol
+        GridV = get_CR_xy(vol_azimuth, vol_range, fix_elevation, vol_value, \
+                          radar_height, GridX.astype(np.float64), GridY.astype(np.float64), -999.)
+        self.product.coords["lon_cr"] = XLon
+        self.product.coords["lat_cr"] = YLat
+        self.product["CR_geo"] = (('lon_cr', 'lat_cr'), np.where(GridV == fillvalue, np.nan, GridV))
+        self.product.coords["lon_cr"].attrs = {'units': 'degrees',
+                                             'standard_name': 'CR_product_lon_axis ',
+                                             'long_name': 'longitude_cr',
+                                             'axis': 'lonlat_coordinate'}
+        self.product.coords["lat_cr"].attrs = {'units': 'degrees',
+                                             'standard_name': 'CR_product_lat_axis ',
+                                             'long_name': 'latitude_cr',
+                                             'axis': 'lonlat_coordinate'}
+        self.product["CR_geo"].attrs = {'units': 'dBZ',
+                                    'standard_name': 'Composite_reflectivity_factor_lonlat_grid',
+                                    'long_name': 'Composite_reflectivity_factor',
+                                    'axis': 'lonlat_coordinate',
+                                    'comment': 'Maximum reflectance of all level', }
+
+    def add_product_CAPPI_lonlat(self, XLon, YLat, level_height):
+        """
+        计算给定经纬度范围的CAPPI
+        :param XLon:np.ndarray, 1d, units:degrees
+        :param YLat:np.ndarray, 1d, units:degrees
+        :param level_height:常量，要计算的高度
+        :return:
+        """
+        fillvalue = -999.
+        GridLon, GridLat = np.meshgrid(XLon, YLat, indexing="ij")
+        projparams = {"proj": "aeqd", "lon_0": self.scan_info["longitude"].values,
+                      "lat_0": self.scan_info["latitude"].values}
+        proj = pyproj.Proj(projparams)
+        GridX, GridY = proj(GridLon, GridLat, inverse=False)
+        vol_azimuth, vol_range, fix_elevation, vol_value, radar_height, \
+        radar_lon_0, radar_lat_0 = self.vol
+        GridV = get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
+                             GridX.astype(np.float64), GridY.astype(np.float64), level_height, fillvalue)
+        self.product.coords["lon_cappi_%d" % level_height] = XLon
+        self.product.coords["lat_cappi_%d" % level_height] = YLat
+        self.product["CAPPI_geo_%d" % level_height] = (("lon_cappi_%d" % level_height, "lat_cappi_%d" % level_height),
+                                                   np.where(GridV == fillvalue, np.nan, GridV))
+        self.product.coords["lon_cappi_%d" % level_height].attrs = {'units': 'degrees',
+                                                                  'standard_name': 'CAPPI_product_lon_axis ',
+                                                                  'long_name': 'longitude_CAPPI',
+                                                                  'axis': 'lonlat_coordinate',}
+        self.product.coords["lat_cappi_%d" % level_height].attrs = {'units': 'degrees',
+                                                                  'standard_name': 'CAPPI_product_lat_axis ',
+                                                                  'long_name': 'latitude_CAPPI',
+                                                                  'axis': 'lonlat_coordinate',}
+        self.product["CAPPI_geo_%d" % level_height].attrs = {'units': 'dBZ',
+                                                         'standard_name': 'Constant_altitude_plan_position_indicator',
+                                                         'long_name': 'Constant_altitude_plan_position_indicator',
+                                                         'axis': 'lonlat_coordinate',
+                                                         'comment': 'CAPPI of level %d m' % level_height, }
+
+    def get_vol_data(self, field_name="dBZ", fillvalue=-999.):
+        """
+        获取用于插值的雷达体扫数据
+        :return:
+        """
+        order_vol = self.ordered_az()
+        order_vol.fields = [order_vol.fields[i] for i in order_vol.scan_info["fixed_angle"].argsort().values]
+        order_vol.scan_info["fixed_angle"] = order_vol.scan_info["fixed_angle"].sortby("sweep")
+        vol_azimuth = [ppi.azimuth.values for ppi in order_vol.fields]
+        vol_range = [ppi.range.values for ppi in order_vol.fields]
+        fix_elevation = order_vol.scan_info["fixed_angle"].values
+        vol_value = [np.where(np.isnan(ppi[field_name].values), fillvalue, ppi[field_name].values) for ppi in order_vol.fields]
+        radar_height = float(order_vol.scan_info["altitude"].values)
+        radar_lon_0 = float(order_vol.scan_info["longitude"].values)
+        radar_lat_0 = float(order_vol.scan_info["latitude"].values)
+        self.vol = vol_azimuth, vol_range, fix_elevation.astype(np.float64), vol_value, radar_height, radar_lon_0, radar_lat_0
 
     def get_RHI_data(self, az, field_name="dBZ"):
         """
@@ -209,6 +366,7 @@ class PRD_AZ:
     def __init__(self):
         self.scan_info = None
         self.fields = []
+        self.product = xr.Dataset()
 
 
 

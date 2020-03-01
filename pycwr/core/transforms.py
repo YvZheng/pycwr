@@ -153,6 +153,21 @@ def antenna_to_cartesian_cwr(ranges, azimuths, elevations, h):
 
     return x, y, z
 
+def cartesian_xyz_to_antenna(x, y, z, h):
+    """
+    根据采样点距离雷达的x,y的水平距离,以及高度z, 以及雷达高度h
+    x, units:meters
+    y, units:meters
+    z, units:meters
+    h, units:meters
+    return ranges, azimuth, elevation
+    """
+    R = 8494666.6666666661 #等效地球半径
+    ranges = ((R + h) ** 2 + (R + z) ** 2 - 2 * (R + h) * (R + z) * np.cos((x ** 2 + y ** 2) ** 0.5 / R)) ** 0.5
+    elevation = np.arccos((R + z) * np.sin((x ** 2 + y ** 2) ** 0.5 / R) / ranges) * 180. / np.pi
+    azimuth = _azimuth(x, y)
+    return azimuth, ranges, elevation
+
 def cartesian_to_antenna_cwr(x, y, elevation , h):
     """根据采样点距离雷达的x,y的水平距离,以及雷达仰角
     return x, y, z
@@ -165,7 +180,7 @@ def cartesian_to_antenna_cwr(x, y, elevation , h):
     R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
     s = np.sqrt(x**2+y**2)
     El = np.deg2rad(elevation)
-    ranges = np.tan(s/R)*(R+h)/np.cos(El)
+    ranges = np.tan(s/R)*(R+h)/np.cosh(El)
     z = (R+h)/np.cos(El + s/R)*np.cos(El) - R ##计算高度
     az = _azimuth(x, y) ##计算方位角
     return az, ranges, z

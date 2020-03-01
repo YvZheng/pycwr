@@ -1,5 +1,4 @@
 import numpy as np
-import pyproj
 from .transforms import cartesian_to_antenna_cwr, cartesian_xyz_to_antenna
 
 def interp_ppi(az, r, az_0, az_1, r_0, r_1, mat_00, mat_01, mat_10, mat_11, fillvalue=-999.):
@@ -107,27 +106,6 @@ def get_CR_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height, Gr
     GridValue = np.nanmax(np.where(GridValue == fillvalue, np.nan, GridValue), axis=0)
     return np.where(np.isnan(GridValue), fillvalue, GridValue)
 
-def get_CR_lonlat(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
-                  radar_lon_0, radar_lat_0, GridLon, GridLat, fillvalue=-999.):
-    """
-    对应经纬度网格, 插值组合反射率因子
-    :param vol_azimuth:存放多个仰角体扫方位角的列表, list, units:degree
-    :param vol_range:存放多个仰角体扫距离的列表, list, units:meters
-    :param fix_elevation:每个仰角体扫对应的仰角， np.ndarray， 1d
-    :param vol_value:存放多个仰角体扫数据的列表, list
-    :param radar_height:常量, 雷达距离海平面的高度， units:meters
-    :param radar_lon_0:常量，雷达站点所在的经度, units:degree
-    :param radar_lat_0:常量，雷达站点所在的纬度, units:degree
-    :param GridLon:要插值的二维格点Lon, np.ndarray, 2d, units:meters
-    :param GridLat:要插值的二维格点Lat, np.ndarray, 2d, units:meters
-    :param fillvalue: 常量，缺测值
-    :return:
-    """
-    projparams = {"proj":"aeqd", "lon_0":radar_lon_0, "lat_0":radar_lat_0}
-    proj = pyproj.Proj(projparams)
-    GridX, GridY = proj(GridLon, GridLat, inverse=False)
-    return get_CR_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height, GridX, GridY, fillvalue)
-
 def get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
                  GridX, GridY, level_height, fillvalue=-999.):
     """
@@ -197,33 +175,3 @@ def get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
                     IER1 = interp_azimuth(Grid_range[ix, iy], vol_range[ie][range_1 - 1], vol_range[ie][range_1], ER10, ER11, fillvalue)
                     GridValue[ix, iy] = interp_azimuth(Grid_el[ix, iy], fix_elevation[ie - 1], fix_elevation[ie], IER0, IER1, fillvalue)
     return GridValue
-
-def get_CAPPI_lonlat(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
-                 radar_lon_0, radar_lat_0, GridLon, GridLat, level_height, fillvalue=-999.):
-    """
-    对应经纬度网格，插值CAPPI图像
-    :param vol_azimuth:存放多个仰角体扫方位角的列表, list, units:degree
-    :param vol_range:存放多个仰角体扫距离的列表, list, units:meters
-    :param fix_elevation:每个仰角体扫对应的仰角， np.ndarray， 1d
-    :param vol_value:存放多个仰角体扫数据的列表, list
-    :param radar_height:常量, 雷达距离海平面的高度， units:meters
-    :param radar_lon_0:常量，雷达站点所在的经度, units:degree
-    :param radar_lat_0:常量，雷达站点所在的纬度, units:degree
-    :param GridLon:要插值的二维格点经度, np.ndarray, 2d, units:degree
-    :param GridLat:要插值的二维格点纬度, np.ndarray, 2d, units:degree
-    :param level_height:常量,待插值的高度， units:meters
-    :param fillvalue:常量, 缺测值
-    :return:
-    """
-    projparams = {"proj": "aeqd", "lon_0": radar_lon_0, "lat_0": radar_lat_0}
-    proj = pyproj.Proj(projparams)
-    GridX, GridY = proj(GridLon, GridLat, inverse=False)
-    return get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
-                 GridX, GridY, level_height, fillvalue)
-
-
-if __name__ == "__main__":
-    GridLon, GridLat = np.mgrid[110:115:0.01, 29:35:0.01]
-    projparams = {"proj": "aeqd", "lon_0": 112, "lat_0": 31}
-    proj = pyproj.Proj(projparams)
-    GridX, GridY = proj(GridLon, GridLat, inverse=False)

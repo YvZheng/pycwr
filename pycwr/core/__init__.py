@@ -1,3 +1,3 @@
-from . import NRadar, PyartRadar, transforms
+from . import NRadar, PyartRadar, transforms, RadarGrid, RadarGridC
 
-__all__ = ["NRadar", "PyartRadar", "transforms"]
+__all__ = ["NRadar", "PyartRadar", "transforms", "RadarGrid", "RadarGridC"]

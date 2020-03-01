@@ -17,7 +17,7 @@ AUTHOR_EMAIL = "YuZheng1206@outlook.com"
 URL = "https://github.com/YvZheng/pycwr"
 LICENSE='MIT'
 PYTHON_REQUIRES = ">=3.6"
-INSTALL_REQUIRES = ["matplotlib", "pyproj", "Cartopy", "xarray","numpy",\
+INSTALL_REQUIRES = ["matplotlib", "cython", "pyproj", "Cartopy", "xarray","numpy",\
                     "scipy", "pandas", "PyQt5", "netCDF4", 'easydict']
 DESCRIPTION = "China Weather Radar tools"
 LONG_DESCRIPTION = """The Weather Radar Toolkit, support most of China's radar formats

@@ -294,7 +294,7 @@ class PRD(object):
         vol_azimuth = [ppi.azimuth.values for ppi in order_vol.fields]
         vol_range = [ppi.range.values for ppi in order_vol.fields]
         fix_elevation = order_vol.scan_info["fixed_angle"].values
-        vol_value = [np.where(np.isnan(ppi[field_name].values), fillvalue, ppi[field_name].values) for ppi in order_vol.fields]
+        vol_value = [np.where(np.isnan(ppi[field_name].values), fillvalue, ppi[field_name].values).astype(np.float64) for ppi in order_vol.fields]
         radar_height = float(order_vol.scan_info["altitude"].values)
         radar_lon_0 = float(order_vol.scan_info["longitude"].values)
         radar_lat_0 = float(order_vol.scan_info["latitude"].values)

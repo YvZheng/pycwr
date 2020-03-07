@@ -99,11 +99,78 @@ class Graph(object):
             plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
         return gci
 
-    def plot_crf(self):
-        pass
+    def plot_crf(self, ax, cmap=CINRAD_COLORMAP[CINRAD_field_mapping["dBZ"]],
+                 min_max=CINRAD_field_normvar[CINRAD_field_mapping["dBZ"]],
+                 cmap_bins=CINRAD_field_bins[CINRAD_field_mapping["dBZ"]],\
+                 cbar=True, orientation="vertical", **kwargs):
+        """
+        显示组合反射率因子
+        :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
+        :param XRange: np.ndarray, 1d, units:meters
+        :param YRange: np.ndarray, 1d, units:meters
+        :param cmap: str or Colormap, optional, A Colormap instance or registered colormap name. to see cm.py!
+        :param min_max: The colorbar range(vmin, vmax). If None, suitable min/max values are automatically chosen by min max of data!
+        :param cmap_bins: bins of colormaps
+        :param cbar: if True, plot with colorbar, else not!
+        :param orientation: vertical or horizontal, if cbar is True , this is vaild!, colorbar oriention!
+        :param kwargs: other arguments for pcolormesh!
+        :return:
+        """
+        max_range = int(self.Radar.fields[0].range.max().values)
+        XRange = np.arange(-1 * max_range, max_range+1, 1000.)
+        YRange = XRange
+        self.Radar.add_product_CR_xy(XRange, YRange)
+        assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
 
-    def plot_cappi(self):
-        pass
+        vmin, vmax = min_max
+        ax.set_aspect("equal")
+        radar_data = self.Radar.product['CR'].values
+        x, y = np.meshgrid(self.Radar.product['CR'].x_cr.values,
+                           self.Radar.product['CR'].y_cr.values, indexing="ij")
+        cmaps = plt.get_cmap(cmap)
+        levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
+        norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
+        gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
+                            zorder=0, norm=norm, **kwargs)
+        if cbar:
+            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+        return gci
+
+    def plot_cappi(self, ax, level_height=3000, cmap=CINRAD_COLORMAP[CINRAD_field_mapping["dBZ"]],
+                 min_max=CINRAD_field_normvar[CINRAD_field_mapping["dBZ"]],
+                 cmap_bins=CINRAD_field_bins[CINRAD_field_mapping["dBZ"]],
+                   cbar=True, orientation="vertical", **kwargs):
+        """
+        显示CAPPI图像
+        :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
+        :param level_height: height of cappi， units:meters, default, 3000m
+        :param cmap: str or Colormap, optional, A Colormap instance or registered colormap name. to see cm.py!
+        :param min_max: The colorbar range(vmin, vmax). If None, suitable min/max values are automatically chosen by min max of data!
+        :param cmap_bins: bins of colormaps
+        :param cbar: if True, plot with colorbar, else not!
+        :param orientation: vertical or horizontal, if cbar is True , this is vaild!, colorbar oriention!
+        :param kwargs: other arguments for pcolormesh!
+        :return:
+        """
+        max_range = int(self.Radar.fields[0].range.max().values)
+        XRange = np.arange(-1 * max_range, max_range + 1, 1000.)
+        YRange = XRange
+        self.Radar.add_product_CAPPI_xy(XRange, YRange, level_height)
+        assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
+
+        vmin, vmax = min_max
+        ax.set_aspect("equal")
+        radar_data = self.Radar.product["CAPPI_%d"%level_height].values
+        x, y = np.meshgrid(self.Radar.product["CAPPI_%d"%level_height]['x_cappi_%d'%level_height].values,
+                           self.Radar.product["CAPPI_%d"%level_height]['y_cappi_%d'%level_height].values, indexing="ij")
+        cmaps = plt.get_cmap(cmap)
+        levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
+        norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
+        gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
+                            zorder=0, norm=norm, **kwargs)
+        if cbar:
+            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+        return gci
 
     def add_rings(self, ax, rings, color="#5B5B5B", linestyle='-', linewidth=0.6, **kwargs):
         """
@@ -188,7 +255,7 @@ class GraphMap(object):
         else:
             min_lon, max_lon, min_lat, max_lat = extend
 
-        ax.set_aspect("equal")
+        #ax.set_aspect("equal")
         radar_data = self.Radar.fields[sweep_num][field_name]
         lat, lon = radar_data.lat, radar_data.lon
         cmaps = plt.get_cmap(cmap)
@@ -218,11 +285,124 @@ class GraphMap(object):
             plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
         return ax
 
-    def plot_cappi_map(self):
-        pass
+    def plot_cappi_map(self,  ax, level_height, extend=None,
+                     cmap=CINRAD_COLORMAP[CINRAD_field_mapping['dBZ']],
+                    min_max=CINRAD_field_normvar[CINRAD_field_mapping['dBZ']],
+                    cmap_bins=CINRAD_field_bins[CINRAD_field_mapping['dBZ']],
+                     cbar=True, orientation="vertical", **kwargs):
+        """
+        显示CAPPI图像
+        :param ax: cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
+        :param level_height: height of cappi， units:meters, default, 3000m
+        :param extend: (min_lon, max_lon, min_lat, max_lat), Latitude and longitude range, units:degrees
+        :param cmap: str or Colormap, optional, A Colormap instance or registered colormap name. to see cm.py!
+        :param min_max: The colorbar range(vmin, vmax). If None, suitable min/max values are automatically chosen by min max of data!
+        :param cmap_bins:bins of cmaps, int
+        :param cbar: bool, if True, plot with colorbar,
+        :param orientation: vertical or horizontal, it is vaild when cbar is True
+        :param kwargs: kwargs: other arguments for pcolormesh!
+        :return:
+        """
+        assert isinstance(ax, cartopy.mpl.geoaxes.GeoAxesSubplot), "axes is not cartopy axes!"
+        vmin, vmax = min_max
 
-    def plot_crf_map(self):
-        pass
+        if extend is None:
+            min_lon = np.min(self.Radar.fields[0].lon)
+            max_lon = np.max(self.Radar.fields[0].lon)
+            min_lat = np.min(self.Radar.fields[0].lat)
+            max_lat = np.max(self.Radar.fields[0].lat)
+        else:
+            min_lon, max_lon, min_lat, max_lat = extend
+        XLON = np.arange(min_lon, max_lon, 0.01)
+        YLAT = np.arange(min_lat, max_lat, 0.01)
+        # ax.set_aspect("equal")
+        self.Radar.add_product_CAPPI_lonlat(XLON, YLAT, level_height)
+        radar_data = self.Radar.product["CAPPI_geo_%d" % level_height].values
+        lon, lat = np.meshgrid(XLON, YLAT, indexing="ij")
+        cmaps = plt.get_cmap(cmap)
+        levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
+        norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
+        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
+        # ax.set_extent([min_lon, max_lon, min_lat, max_lat], crs=self.transform)
+        ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
+        ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
+                                                    edgecolor='none', facecolor="white"), zorder=1)
+        ax.add_feature(cfeature.LAKES.with_scale('50m'), zorder=2)
+        ax.add_feature(cfeature.RIVERS.with_scale('50m'), zorder=3)
+
+        ax.add_feature(cfeature.ShapelyFeature(CN_shp_info.geometries(), self.transform, \
+                                               edgecolor='k', facecolor='none'), linewidth=0.5, \
+                       linestyle='-', zorder=5, alpha=0.8)
+        parallels = np.arange(int(min_lat), np.ceil(max_lat) + 1, 1)
+        meridians = np.arange(int(min_lon), np.ceil(max_lon) + 1, 1)
+        ax.set_xticks(meridians, crs=self.transform)
+        ax.set_yticks(parallels, crs=self.transform)
+        lon_formatter = LongitudeFormatter()
+        lat_formatter = LatitudeFormatter()
+        ax.xaxis.set_major_formatter(lon_formatter)
+        ax.yaxis.set_major_formatter(lat_formatter)
+        if cbar:
+            plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+        return ax
+
+    def plot_crf_map(self, ax, extend=None,
+                     cmap=CINRAD_COLORMAP[CINRAD_field_mapping['dBZ']],
+                    min_max=CINRAD_field_normvar[CINRAD_field_mapping['dBZ']],
+                    cmap_bins=CINRAD_field_bins[CINRAD_field_mapping['dBZ']],
+                     cbar=True, orientation="vertical", **kwargs):
+        """
+        显示组合反射率因子
+        :param ax: cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
+        :param extend: (min_lon, max_lon, min_lat, max_lat), Latitude and longitude range, units:degrees
+        :param cmap: str or Colormap, optional, A Colormap instance or registered colormap name. to see cm.py!
+        :param min_max: The colorbar range(vmin, vmax). If None, suitable min/max values are automatically chosen by min max of data!
+        :param cmap_bins:bins of cmaps, int
+        :param cbar: bool, if True, plot with colorbar,
+        :param orientation: vertical or horizontal, it is vaild when cbar is True
+        :param kwargs: kwargs: other arguments for pcolormesh!
+        :return:
+        """
+        assert isinstance(ax, cartopy.mpl.geoaxes.GeoAxesSubplot), "axes is not cartopy axes!"
+        vmin, vmax = min_max
+
+        if extend is None:
+            min_lon = np.min(self.Radar.fields[0].lon)
+            max_lon = np.max(self.Radar.fields[0].lon)
+            min_lat = np.min(self.Radar.fields[0].lat)
+            max_lat = np.max(self.Radar.fields[0].lat)
+        else:
+            min_lon, max_lon, min_lat, max_lat = extend
+        XLON = np.arange(min_lon, max_lon, 0.01)
+        YLAT = np.arange(min_lat, max_lat, 0.01)
+        #ax.set_aspect("equal")
+        self.Radar.add_product_CR_lonlat(XLON, YLAT)
+        radar_data = self.Radar.product["CR_geo"].values
+        lon, lat = np.meshgrid(XLON, YLAT, indexing="ij")
+        cmaps = plt.get_cmap(cmap)
+        levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
+        norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
+        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
+        #ax.set_extent([min_lon, max_lon, min_lat, max_lat], crs=self.transform)
+        ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
+        ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
+                                                    edgecolor='none', facecolor="white"), zorder=1)
+        ax.add_feature(cfeature.LAKES.with_scale('50m'), zorder=2)
+        ax.add_feature(cfeature.RIVERS.with_scale('50m'), zorder=3)
+
+        ax.add_feature(cfeature.ShapelyFeature(CN_shp_info.geometries(), self.transform, \
+                                               edgecolor='k', facecolor='none'), linewidth=0.5, \
+                       linestyle='-', zorder=5, alpha=0.8)
+        parallels = np.arange(int(min_lat), np.ceil(max_lat) + 1, 1)
+        meridians = np.arange(int(min_lon), np.ceil(max_lon) + 1, 1)
+        ax.set_xticks(meridians, crs=self.transform)
+        ax.set_yticks(parallels, crs=self.transform)
+        lon_formatter = LongitudeFormatter()
+        lat_formatter = LatitudeFormatter()
+        ax.xaxis.set_major_formatter(lon_formatter)
+        ax.yaxis.set_major_formatter(lat_formatter)
+        if cbar:
+            plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+        return ax
 
     def plot_vcs_map(self, ax, start_lonlat, end_lonlat, field_name, cmap=None, min_max=None,\
                  cmap_bins=None, cbar=True, orientation="vertical", **kwargs):

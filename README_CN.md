@@ -36,7 +36,7 @@ PyartRadar = data.ToPyartRadar()
 ```
 PRD类的数据结构如下:
 
-![avatar](./examples/PRD_class.png)
+![avatar](./pictures/PRD_class.png)
 
 可视化PPI图像并叠加地图
 ----------
@@ -50,7 +50,7 @@ graph.plot_ppi_map(ax, 0, "dBZ", cmap="pyart_NWSRef")
 ax.set_title("example of PPI with map", fontsize=16)
 plt.show()
 ```
-![avatar](examples/graph_map.png)
+![avatar](pictures/graph_map.png)
 
 可视化PPI图像
 ----------
@@ -63,7 +63,7 @@ ax.set_title("example of PPI", fontsize=16)
 ax.set_xlabel("Distance From Radar In East (km)", fontsize=14)
 ax.set_ylabel("Distance From Radar In North (km)", fontsize=14)
 ```
-![avatar](examples/graph.png)
+![avatar](pictures/graph.png)
 
 
 根据起始点经纬度画垂直剖面
@@ -79,7 +79,7 @@ ax.set_title("VCS exmaple", fontsize=16)
 plt.show()
 ```
 
-![avatar](examples/vcs_map.png)
+![avatar](pictures/vcs_map.png)
 
 根据起始点笛卡尔坐标画垂直剖面
 ----------
@@ -94,7 +94,7 @@ ax.set_title("VCS exmaple", fontsize=16)
 plt.show()
 ```
 
-![avatar](examples/vcs.png)
+![avatar](pictures/vcs.png)
 
 启动图形化界面
 ----------
@@ -105,7 +105,7 @@ plt.show()
 
 主窗口如下图所示:
 
-![avatar](examples/pycwr.png)
+![avatar](pictures/pycwr.png)
 
 更多个例参见[pycwr例子](./notebooks/pycwr_example.ipynb)
 

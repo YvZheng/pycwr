@@ -36,7 +36,7 @@ PyartRadar = data.ToPyartRadar()
 ```
 The data structure of the PRD is as follows:
 
-![avatar](./examples/PRD_class.png)
+![avatar](./pictures/PRD_class.png)
 
 Plotting PPI with map
 ----------
@@ -50,7 +50,7 @@ graph.plot_ppi_map(ax, 0, "dBZ", cmap="pyart_NWSRef")
 ax.set_title("example of PPI with map", fontsize=16)
 plt.show()
 ```
-![avatar](./examples/graph_map.png)
+![avatar](./pictures/graph_map.png)
 
 Plotting PPI
 ----------
@@ -63,7 +63,7 @@ ax.set_title("example of PPI", fontsize=16)
 ax.set_xlabel("Distance From Radar In East (km)", fontsize=14)
 ax.set_ylabel("Distance From Radar In North (km)", fontsize=14)
 ```
-![avatar](examples/graph.png)
+![avatar](pictures/graph.png)
 
 
 Plotting VCS with lat lon position
@@ -78,7 +78,7 @@ ax.set_xlabel("Latitude, Longitude", fontsize=14)
 ax.set_title("VCS exmaple", fontsize=16)
 plt.show()
 ```
-![avatar](examples/vcs_map.png)
+![avatar](pictures/vcs_map.png)
 
 Plotting VCS with x y position
 ----------
@@ -92,7 +92,7 @@ ax.set_xlabel("Distance From Section Start (Uints:km)", fontsize=14)
 ax.set_title("VCS exmaple", fontsize=16)
 plt.show()
 ```
-![avatar](examples/vcs.png)
+![avatar](pictures/vcs.png)
 
 Launch Graphical interface to show Radar Data
 ----------
@@ -103,7 +103,7 @@ Launch Graphical interface to show Radar Data
 
 The main window opens as shown below:
 
-![avatar](examples/pycwr.png)
+![avatar](pictures/pycwr.png)
 
 more example via: [exmaple](./notebooks/pycwr_example.ipynb)
 

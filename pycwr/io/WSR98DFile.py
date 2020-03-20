@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
 import numpy as np
+from numpy.ctypeslib import ndpointer
 from .BaseDataProtocol.WSR98DProtocol import dtype_98D
 from .util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
 from ..core.NRadar import PRD
@@ -7,6 +9,20 @@ from ..configure.pyart_config import get_metadata, get_fillvalue
 from ..configure.default_config import CINRAD_field_mapping
 from ..core.PyartRadar import Radar
 from netCDF4 import date2num
+import ctypes
+from ctypes import c_int, c_short, c_long, c_float, c_double, c_char, c_ubyte, c_char_p
+path0 = os.path.split(os.path.realpath(__file__))[0]
+
+dll_name = "subc_read_WSR98D"
+fullpath_dll = f"{path0}/lib_{dll_name}.so"
+if not os.path.exists(fullpath_dll):
+    cmd = f"gcc -fPIC -shared -O2 {path0}/{dll_name}.c -o {fullpath_dll}"
+    os.system(cmd)
+    print(cmd)
+dll_subc = ctypes.cdll.LoadLibrary(fullpath_dll)
+dll_subc.subc_read.argtypes = [ndpointer(c_float, ndim=1), c_int, c_int, c_int]
+dll_subc.subc_read.restype = None
+
 
 class WSR98DBaseData(object):
     """
@@ -65,31 +81,37 @@ class WSR98DBaseData(object):
 
     def _parse_radial(self):
         radial = []
-        buf = self.fid.read(dtype_98D.RadialHeaderBlockSize)
-        while len(buf) == dtype_98D.RadialHeaderBlockSize:  ##read until EOF
-            RadialDict, _ = _unpack_from_buf(buf, 0, dtype_98D.RadialHeader())
+        buf = self.fid.read()
+        position = 0
+        while position < len(buf):  ##read until EOF
+            buf_header = buf_raw[position : position+dtype_98D.RadialHeaderBlockSize]
+            positon += dtype_98D.RadialHeaderBlockSize
+            RadialDict, _ = _unpack_from_buf(buf_header, 0, dtype_98D.RadialHeader())
             self.MomentNum = RadialDict['MomentNumber']
             self.LengthOfData = RadialDict['LengthOfData']
-            RadialDict['fields'] = self._parse_radial_single()
+            buf_radial = buf_raw[position : position+self.LengthOfData]
+            position += self.LengthOfData
+            RadialDict['fields'] = self._parse_radial_single(buf_radial)
             radial.append(RadialDict)
-            buf = self.fid.read(dtype_98D.RadialHeaderBlockSize)
         return radial
 
-    def _parse_radial_single(self):
+    def _parse_radial_single(self, buf_radial):
         radial_var = {}
+        pos_buf = 0
         for _ in range(self.MomentNum):
-            Mom_buf = self.fid.read(dtype_98D.MomentHeaderBlockSize)
+            Mom_buf = buf_radial[pos_buf : pos_buf+dtype_98D.MomentHeaderBlockSize]
+            pos_buf += dtype_98D.MomentHeaderBlockSize
             Momheader, _ = _unpack_from_buf(Mom_buf, 0, dtype_98D.RadialData())
-            Data_buf = self.fid.read(Momheader['Length'])
+            Data_buf = buf_radial[pos_buf : pos_buf+Momheader['Length']]
+            pos_buf += Momheader['Length']
             assert (Momheader['BinLength'] == 1) | (Momheader['BinLength'] == 2), "Bin Length has problem!"
             if Momheader['BinLength'] == 1:
                 dat_tmp = (np.frombuffer(Data_buf, dtype="u1", offset=0)).astype(int)
             else:
                 dat_tmp = (np.frombuffer(Data_buf, dtype="u2", offset=0)).astype(int)
-            radial_var[dtype_98D.flag2Product[Momheader['DataType']]] = np.where(dat_tmp >= 5, \
-                                                                                 (dat_tmp - Momheader['Offset']) /
-                                                                                 Momheader['Scale'],
-                                                                                 np.nan).astype(np.float32)
+            DataType = dtype_98D.flag2Product[Momheader['DataType']]
+            dll_subc.subc_read(dat_tmp, len(dat_tmp), Momheader['Offset'], Momheader['Scale'])
+            radial_var[DataType] = dat_tmp
         return radial_var
 
     def get_nyquist_velocity(self):
@@ -477,7 +499,7 @@ class WSR98D2NRadar(object):
                 continue
             field_dic = get_metadata(field_name)
             field_dic['data'] = np.ma.masked_array(self.fields[field_name_abbr],\
-                                mask=np.isnan(self.fields[field_name_abbr]), fill_value=get_fillvalue())
+                mask=np.equal(self.fields[field_name_abbr], get_fillvalue()), fill_value=get_fillvalue())
             field_dic['_FillValue'] = get_fillvalue()
             fields[field_name] = field_dic
         return Radar(time, _range, fields, metadata, scan_type,

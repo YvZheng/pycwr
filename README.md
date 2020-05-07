@@ -35,7 +35,7 @@ PyartRadar = PRD.ToPyartRadar()
 ```
 The data structure of the PRD is as follows:
 
-![avatar](./pictures/PRD_class.png)
+<img src="./pictures/PRD_class.png" width="50%" height="50%"/>
 
 Plotting PPI with map
 ----------

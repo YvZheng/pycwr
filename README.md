@@ -1,4 +1,4 @@
-# pycwr (Python China Weather Radar tools libaray)
+# pycwr (Python China Weather Radar tools libraay)
 
 - [中文版](README_CN.md)
 - [Developers and contributors](CONTRIBUTORS.txt)
@@ -28,11 +28,10 @@ python setup.py install
 Read Radar Basedata to PRD (Polarimetry Radar Data) class or Py-ART Radar class
 ----------
 ```
-from pycwr.io.auto_io import radar_io 
+from pycwr.io import read_auto
 file = r"./Z_RADR_I_Z9898_20190828192401_O_DOR_SAD_CAP_FMT.bin.bz2"
-data = radar_io(file)
-NRadar = data.ToPRD()
-PyartRadar = data.ToPyartRadar()
+PRD = read_auto(file)
+PyartRadar = PRD.ToPyartRadar()
 ```
 The data structure of the PRD is as follows:
 
@@ -45,7 +44,7 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from pycwr.draw.RadarPlot import Graph, GraphMap
 ax = plt.axes(projection=ccrs.PlateCarree())
-graph = GraphMap(NRadar, ccrs.PlateCarree())
+graph = GraphMap(PRD, ccrs.PlateCarree())
 graph.plot_ppi_map(ax, 0, "dBZ", cmap="pyart_NWSRef")
 ax.set_title("example of PPI with map", fontsize=16)
 plt.show()
@@ -56,7 +55,7 @@ Plotting PPI
 ----------
 ```
 fig, ax = plt.subplots()
-graph = Graph(NRadar)
+graph = Graph(PRD)
 graph.plot_ppi(ax, 0, "dBZ", cmap="pyart_NWSRef")
 graph.add_rings(ax, [0, 50, 100, 150, 200, 250, 300])
 ax.set_title("example of PPI", fontsize=16)
@@ -70,7 +69,7 @@ Plotting VCS with lat lon position
 ----------
 ```
 fig, ax = plt.subplots()
-graph = GraphMap(NRadar, ccrs.PlateCarree())
+graph = GraphMap(PRD, ccrs.PlateCarree())
 graph.plot_vcs_map(ax, (120.8, 27.8), (122.9, 26.8), "dBZ", cmap="pyart_NWSRef")
 ax.set_ylim([0,15])
 ax.set_ylabel("Height (km)", fontsize=14)
@@ -84,7 +83,7 @@ Plotting VCS with x y position
 ----------
 ```
 fig, ax = plt.subplots()
-graph = Graph(NRadar)
+graph = Graph(PRD)
 graph.plot_vcs(ax, (0,0), (150, 0), "dBZ", cmap="pyart_NWSRef")
 ax.set_ylim([0,15])
 ax.set_ylabel("Height (km)", fontsize=14)

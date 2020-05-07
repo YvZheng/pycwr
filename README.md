@@ -1,4 +1,4 @@
-# pycwr (Python China Weather Radar tools libraay)
+# pycwr (Python China Weather Radar tools library)
 
 - [中文版](README_CN.md)
 - [Developers and contributors](CONTRIBUTORS.txt)

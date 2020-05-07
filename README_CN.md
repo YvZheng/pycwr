@@ -35,7 +35,7 @@ PyartRadar = PRD.ToPyartRadar()
 ```
 PRD类的数据结构如下:
 
-![avatar](./pictures/PRD_class.png)
+<img src="./pictures/PRD_class.png" width="50%" height="50%"/>
 
 可视化PPI图像并叠加地图
 ----------
@@ -104,7 +104,7 @@ plt.show()
 
 主窗口如下图所示:
 
-![avatar](pictures/pycwr.png)
+<img src="./pictures/pycwr.png" width="50%" height="50%"/>
 
 更多个例参见[pycwr例子](./notebooks/pycwr_example.ipynb)
 

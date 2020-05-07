@@ -102,7 +102,7 @@ Launch Graphical interface to show Radar Data
 
 The main window opens as shown below:
 
-![avatar](pictures/pycwr.png)
+<img src="./pictures/pycwr.png" width="50%" height="50%"/>
 
 more example via: [exmaple](./notebooks/pycwr_example.ipynb)
 

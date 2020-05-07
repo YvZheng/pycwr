@@ -1,2 +1,2 @@
-from . import WindField
-__all__ = ["WindField"]
+from . import WindField, HID
+__all__ = ["WindField", "HID"]

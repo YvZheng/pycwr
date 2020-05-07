@@ -75,7 +75,7 @@ class PRD(object):
     def __init__(self, fields,  scan_type, time, range, azimuth, elevation,latitude,
                  longitude, altitude, sweep_start_ray_index, sweep_end_ray_index,
                  fixed_angle, bins_per_sweep, nyquist_velocity, frequency, unambiguous_range,
-                 nrays, nsweeps, sitename):
+                 nrays, nsweeps, sitename, pyart_radar=None):
         super(PRD, self).__init__()
         keys = fields.keys()
         self.fields = []
@@ -130,6 +130,10 @@ class PRD(object):
         self.sitename = sitename
         self.get_vol_data()
         self.product = xr.Dataset()
+        self.PyartRadar = pyart_radar
+
+    def ToPyartRadar(self):
+        return self.PyartRadar
 
     def ordered_az(self, inplace=False):
         """

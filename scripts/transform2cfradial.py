@@ -1,4 +1,4 @@
-from pycwr.io.auto_io import radar_io
+from pycwr.io import read_auto
 import pyart
 import sys
 import os
@@ -9,7 +9,7 @@ def save_cfradial(china_radar_file, save_file=None):
     :param save_file: savename of cfradial format data
     :return:
     """
-    radar = radar_io(china_radar_file).ToPyartRadar()
+    radar = read_auto(china_radar_file).ToPyartRadar()
     if save_file is None:
         save_file = china_radar_file + ".nc"
     pyart.io.write_cfradial(save_file, radar)

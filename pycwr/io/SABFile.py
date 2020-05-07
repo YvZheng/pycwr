@@ -390,7 +390,7 @@ class SAB2NRadar(object):
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
                           bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
                           frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename)
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, pyart_radar=self.ToPyartRadar())
 
     def ToPyartRadar(self):
         """转化为Pyart Radar的对象"""

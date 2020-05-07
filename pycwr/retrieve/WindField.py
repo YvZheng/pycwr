@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def VVP(azimuth, elevation, PPI_Vr, az_num, bin_num, fillvalue=-999.):
     """
     VVP方法反演风场，基于均匀风假设

@@ -6,8 +6,8 @@ import numpy as np
 from pycwr.draw.RadarPlot import plot_xy, add_rings
 import pandas as pd
 
-file = r"C:\Users\zy\Desktop\HID\NUIST.20160707.001054.AR2"
-file_t = r"C:\Users\zy\Desktop\HID\nanjing\20160707.csv"
+file = r"C:\Users\zy\Desktop\HID\NUIST.20150627.002438.AR2"
+file_t = r"C:\Users\zy\Desktop\HID\nanjing\20150627.csv"
 temp = pd.read_csv(file_t, index_col=0, header=None, names=['temp'])
 
 
@@ -27,12 +27,13 @@ ticklabels = ['Drizzle', 'Rain', 'Ice Crystals', 'Aggregates',
 hcl = fhc_HCL(dBZ=dBZ, KDP=KDP, ZDR=ZDR, CC = CC, T=temp_2d)
 fig, ax = plt.subplots()
 plot_xy(ax, NRadar.fields[num].x, NRadar.fields[num].y, hcl,
-        cmap="CN_hcl", bounds=np.arange(0.5,10.6,1), cbar_ticks=ticks, cbar_ticklabels=ticklabels)
+        cmap="CN_hcl", bounds=np.arange(0.5,10.6,1),
+        cbar_ticks=ticks, cbar_ticklabels=ticklabels)
 add_rings(ax=ax, rings=[0, 50, 100, 150])
 ax.set_xlim([-150, 150])
 ax.set_ylim([-150, 150])
 ax.set_xlabel("Distance From Radar In East (km)", fontsize=12)
 ax.set_ylabel("Distance From Radar In North (km)", fontsize=12)
 ax.set_title("(e) Hydrometeor classification, El : 3.4", fontsize=14, loc="left")
-plt.savefig(r"C:\Users\zy\Desktop\HID\201607070010\hc.png", dpi=600)
+plt.savefig(r"C:\Users\zy\Desktop\HID\201506270024\hc.png", dpi=600)
 plt.show()

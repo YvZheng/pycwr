@@ -56,6 +56,7 @@ colormaps are available within matplotlib with names 'pyart_COLORMAP':
     * LangRainbow12
     * CN_ref
     * CN_vel
+    * CN_hcl
 
 """
 # the code for colormaps in this file were adapted from pyart by Helmus, J.J. & Collis, S.M.
@@ -158,3 +159,7 @@ for name, cmap in cmap_d.items():
         full_name = 'pyart_' + name
         matplotlib.cm.register_cmap(name=full_name, cmap=cmap)
 
+hid_colors = ['LightBlue', 'MediumBlue', 'DarkOrange', 'LightPink',
+              'Cyan', 'DarkGray', 'Lime', 'Yellow', 'Red', 'Fuchsia']
+cmaphid = colors.ListedColormap(hid_colors)
+matplotlib.cm.register_cmap(name="CN_hcl", cmap=cmaphid)

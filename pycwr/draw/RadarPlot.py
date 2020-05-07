@@ -16,8 +16,8 @@ class Graph(object):
     def __init__(self, NRadar):
         self.Radar = NRadar
 
-    def plot_ppi(self, ax, sweep_num, field_name, cmap=None, min_max=None,\
-                 cmap_bins=None, cbar=True, orientation="vertical", **kwargs):
+    def plot_ppi(self, ax, sweep_num, field_name, cmap=None, min_max=None,cmap_bins=None, cbar=True,
+                 orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
         :param sweep_num: The sweep_num volume scan to draw, from 0 start!
@@ -27,6 +27,8 @@ class Graph(object):
         :param cmap_bins: bins of colormaps
         :param cbar: if True, plot with colorbar, else not!
         :param orientation: vertical or horizontal, if cbar is True , this is vaild!, colorbar oriention!
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :param kwargs: other arguments for pcolormesh!
         :return:
         """
@@ -54,11 +56,22 @@ class Graph(object):
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
                             zorder=0, norm=norm, **kwargs)
         if cbar:
-            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            cb=plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return gci
 
-    def plot_vcs(self, ax, start_xy, end_xy, field_name, cmap=None, min_max=None,\
-                 cmap_bins=None, cbar=True, orientation="vertical", **kwargs):
+    def plot_vcs(self, ax, start_xy, end_xy, field_name, cmap=None, min_max=None,cmap_bins=None, cbar=True,
+                 orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
         :param start_xy: (start_x, start_y) units:km, VCS start position!
@@ -69,6 +82,8 @@ class Graph(object):
         :param cmap_bins: bins of colormap
         :param cbar: bool, if True, plot with colorbar,
         :param orientation: vertical or horizontal, it is vaild when cbar is True
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :return:
         """
         assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
@@ -86,6 +101,7 @@ class Graph(object):
             cmap = CINRAD_COLORMAP[CINRAD_field_mapping[field_name]]
         if cmap_bins is None:
             cmap_bins = CINRAD_field_bins[CINRAD_field_mapping[field_name]]
+
         start_point = (start_xy[0] * 1000., start_xy[1] * 1000) ##km to meters
         end_point = (end_xy[0] * 1000., end_xy[1] * 1000) ##km to meters
         mesh_xy, mesh_z, field_data = self.Radar.get_vcs_data(start_point, end_point, field_name)
@@ -96,13 +112,23 @@ class Graph(object):
             gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps,
                                 norm=norm, **kwargs)
         if cbar:
-            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return gci
 
     def plot_crf(self, ax, cmap=CINRAD_COLORMAP[CINRAD_field_mapping["dBZ"]],
-                 min_max=CINRAD_field_normvar[CINRAD_field_mapping["dBZ"]],
-                 cmap_bins=CINRAD_field_bins[CINRAD_field_mapping["dBZ"]],\
-                 cbar=True, orientation="vertical", **kwargs):
+                 min_max=CINRAD_field_normvar[CINRAD_field_mapping["dBZ"]], cmap_bins=CINRAD_field_bins[CINRAD_field_mapping["dBZ"]],
+                 cbar=True, orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         显示组合反射率因子
         :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
@@ -114,6 +140,8 @@ class Graph(object):
         :param cbar: if True, plot with colorbar, else not!
         :param orientation: vertical or horizontal, if cbar is True , this is vaild!, colorbar oriention!
         :param kwargs: other arguments for pcolormesh!
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :return:
         """
         max_range = int(self.Radar.fields[0].range.max().values)
@@ -133,13 +161,24 @@ class Graph(object):
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
                             zorder=0, norm=norm, **kwargs)
         if cbar:
-            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
+
         return gci
 
     def plot_cappi(self, ax, level_height=3000, cmap=CINRAD_COLORMAP[CINRAD_field_mapping["dBZ"]],
-                 min_max=CINRAD_field_normvar[CINRAD_field_mapping["dBZ"]],
-                 cmap_bins=CINRAD_field_bins[CINRAD_field_mapping["dBZ"]],
-                   cbar=True, orientation="vertical", **kwargs):
+                   min_max=CINRAD_field_normvar[CINRAD_field_mapping["dBZ"]], cmap_bins=CINRAD_field_bins[CINRAD_field_mapping["dBZ"]],
+                   cbar=True, orientation="vertical", cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         显示CAPPI图像
         :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
@@ -149,6 +188,8 @@ class Graph(object):
         :param cmap_bins: bins of colormaps
         :param cbar: if True, plot with colorbar, else not!
         :param orientation: vertical or horizontal, if cbar is True , this is vaild!, colorbar oriention!
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :param kwargs: other arguments for pcolormesh!
         :return:
         """
@@ -169,7 +210,18 @@ class Graph(object):
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
                             zorder=0, norm=norm, **kwargs)
         if cbar:
-            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return gci
 
     def add_rings(self, ax, rings, color="#5B5B5B", linestyle='-', linewidth=0.6, **kwargs):
@@ -218,7 +270,7 @@ class GraphMap(object):
         self.Radar = NRadar
         self.transform = transform
     def plot_ppi_map(self, ax, sweep_num, field_name, extend=None, cmap=None, min_max=None,\
-                 cmap_bins=None, cbar=True, orientation="vertical", **kwargs):
+                 cmap_bins=None, cbar=True, orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         :param ax: cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
         :param sweep_num:  The sweep_num volume scan to draw, from 0 start!
@@ -229,6 +281,8 @@ class GraphMap(object):
         :param cmap_bins:bins of cmaps, int
         :param cbar: bool, if True, plot with colorbar,
         :param orientation: vertical or horizontal, it is vaild when cbar is True
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :param kwargs: kwargs: other arguments for pcolormesh!
         :return:
         """
@@ -282,14 +336,23 @@ class GraphMap(object):
         ax.xaxis.set_major_formatter(lon_formatter)
         ax.yaxis.set_major_formatter(lat_formatter)
         if cbar:
-            plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return ax
 
-    def plot_cappi_map(self,  ax, level_height, extend=None,
-                     cmap=CINRAD_COLORMAP[CINRAD_field_mapping['dBZ']],
-                    min_max=CINRAD_field_normvar[CINRAD_field_mapping['dBZ']],
-                    cmap_bins=CINRAD_field_bins[CINRAD_field_mapping['dBZ']],
-                     cbar=True, orientation="vertical", **kwargs):
+    def plot_cappi_map(self,  ax, level_height, extend=None, cmap=CINRAD_COLORMAP[CINRAD_field_mapping['dBZ']],
+                    min_max=CINRAD_field_normvar[CINRAD_field_mapping['dBZ']], cmap_bins=CINRAD_field_bins[CINRAD_field_mapping['dBZ']],
+                     cbar=True, orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         显示CAPPI图像
         :param ax: cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
@@ -300,6 +363,8 @@ class GraphMap(object):
         :param cmap_bins:bins of cmaps, int
         :param cbar: bool, if True, plot with colorbar,
         :param orientation: vertical or horizontal, it is vaild when cbar is True
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :param kwargs: kwargs: other arguments for pcolormesh!
         :return:
         """
@@ -342,14 +407,23 @@ class GraphMap(object):
         ax.xaxis.set_major_formatter(lon_formatter)
         ax.yaxis.set_major_formatter(lat_formatter)
         if cbar:
-            plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return ax
 
-    def plot_crf_map(self, ax, extend=None,
-                     cmap=CINRAD_COLORMAP[CINRAD_field_mapping['dBZ']],
-                    min_max=CINRAD_field_normvar[CINRAD_field_mapping['dBZ']],
-                    cmap_bins=CINRAD_field_bins[CINRAD_field_mapping['dBZ']],
-                     cbar=True, orientation="vertical", **kwargs):
+    def plot_crf_map(self, ax, extend=None, cmap=CINRAD_COLORMAP[CINRAD_field_mapping['dBZ']],
+                    min_max=CINRAD_field_normvar[CINRAD_field_mapping['dBZ']], cmap_bins=CINRAD_field_bins[CINRAD_field_mapping['dBZ']],
+                     cbar=True, orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         显示组合反射率因子
         :param ax: cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
@@ -359,6 +433,8 @@ class GraphMap(object):
         :param cmap_bins:bins of cmaps, int
         :param cbar: bool, if True, plot with colorbar,
         :param orientation: vertical or horizontal, it is vaild when cbar is True
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
         :param kwargs: kwargs: other arguments for pcolormesh!
         :return:
         """
@@ -401,11 +477,22 @@ class GraphMap(object):
         ax.xaxis.set_major_formatter(lon_formatter)
         ax.yaxis.set_major_formatter(lat_formatter)
         if cbar:
-            plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return ax
 
     def plot_vcs_map(self, ax, start_lonlat, end_lonlat, field_name, cmap=None, min_max=None,\
-                 cmap_bins=None, cbar=True, orientation="vertical", **kwargs):
+                 cmap_bins=None, cbar=True, orientation="vertical", cbar_ticks=None, cbar_ticklabels=None, **kwargs):
         """
         :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
         :param start_lonlat:(startlon, startlat),  VCS start position!
@@ -416,7 +503,9 @@ class GraphMap(object):
         :param cmap_bins:bins of cmaps, int
         :param cbar:bool, if True, plot with colorbar,
         :param orientation:vertical or horizontal, it is vaild when cbar is True
-        :param kwargs:kwargs: other arguments for pcolormesh!
+        :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+        :param cbar_ticklabels: Set the text values of the tick labels.
+        :param kwargs: other arguments for pcolormesh!
         :return:
         """
         assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
@@ -459,7 +548,18 @@ class GraphMap(object):
         ax.set_xticklabels(["(%.2f, %.2f)" % (lon_point[i], lat_point[i]) \
                             for i, _ in enumerate(xticks_data)], rotation=15, fontsize=10)
         if cbar:
-            plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+            if cbar_ticks is None:
+                ticks = levels
+            else:
+                ticks = cbar_ticks
+            cb.set_ticks(ticks)
+
+        if cbar_ticklabels is not None:
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
         return gci
 
     def add_lines_map(self, ax, start_lonlat, end_lonlat, color='red', marker='x', **kwargs):
@@ -478,82 +578,65 @@ class GraphMap(object):
         gci = ax.plot(line_lon, line_lat, color=color, marker=marker, transform=self.transform,zorder=20, **kwargs)
         return gci
 
-
-class GraphMRadar(object):
-    def __init__(self, mradar):
-        """
-        :param mradar: a list with NRadar object
-        """
-        pass
-
-    def plot_cappi(self):
-        pass
-
-    def plot_vcs(self):
-        pass
-
-    def plot_crf(self):
-        pass
-
-    def add_lines(self):
-        pass
-
-class GraphMRadarMap(object):
-
-    def __init__(self, mradar, transform):
-        """
-        :param mradar: a list with NRadar object
-        """
-        self.transform = transform
-        self.mradar = mradar
-
-    def plot_cappi_map(self):
-        pass
-
-    def plot_vcs_map(self):
-        pass
-
-    def plot_crf_map(self):
-        pass
-
-    def add_lines(self):
-        pass
-
-
-def plot_xy(ax, x, y, data, cmap="CN_ref", min_max=None,\
-            cmap_bins=16, cbar=True, orientation="vertical", **kwargs):
+def plot_xy(ax, x, y, data, cmap="CN_ref", bounds=np.arange(-5, 76, 5), cbar=True, orientation="vertical",
+                cbar_ticks=None, cbar_ticklabels=None, **kwargs):
     """
     :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
     :param x: mesh grid x for data units: m
-    :param y: mesh grid y for data units: m
+    :param y: y: mesh grid y for data units: m
     :param data: radar data ,dims like x,y
     :param cmap: str or Colormap, optional, A Colormap instance or registered colormap name. to see cm.py!
-    :param min_max: The colorbar range(vmin, vmax). If None, suitable min/max values are automatically chosen by min max of data!
-    :param cmap_bins: bins of colormaps
-    :param cbar: if True, plot with colorbar, else not!
     :param orientation: vertical or horizontal, if cbar is True , this is vaild!, colorbar oriention!
-    :param kwargs: other arguments for pcolormesh!
+    :param cbar: if True, plot with colorbar, else not!
+    :param bounds: Monotonically increasing sequence of boundaries
+    :param cbar_ticks: Set the locations of the tick marks from sequence ticks
+    :param cbar_ticklabels: Set the text values of the tick labels.
+    :param kwargs:
     :return:
     """
-
     assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
-    if min_max is not None:
-        vmin, vmax = min_max
-    else:
-        vmax = np.max(np.abs(data))
-        vmin = -1*vmax
+
     ax.set_aspect("equal")
     cmaps = plt.get_cmap(cmap)
-    levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
-    norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
+    norm = BoundaryNorm(bounds, ncolors=cmaps.N, clip=True)
     gci = ax.pcolormesh(x / 1000., y / 1000., data, cmap=cmaps, \
                         zorder=0, norm=norm, **kwargs)
     if cbar:
-        plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+        cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
+        if cbar_ticks is not None and cbar_ticklabels is not None:
+            cb.set_ticks(cbar_ticks)
+            if orientation == "vertical":
+                cb.ax.set_yticklabels(cbar_ticklabels)
+            else:
+                cb.ax.set_xticklabels(cbar_ticklabels)
+        else:
+            cb.set_ticks(bounds)
     return gci
 
-def plot_az_ranges(ax, _range, azimuth, elevation, data, cmap="CN_ref", min_max=None,\
-            cmap_bins=16, cbar=True, orientation="vertical", **kwargs):
+def add_rings(ax, rings, color="#5B5B5B", linestyle='-', linewidth=0.6, **kwargs):
+    """
+    :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
+    :param rings: distance from radar (units:km)
+    :param color: line color for rings
+    :param linestyle: linestyle for rings, {'-', '--', '-.', ':', '', (offset, on-off-seq), ...}
+    :param linewidth: linewidth for rings , float
+    :param kwargs:  other arguments for ax.plot
+    :return:
+    """
+    theta = np.linspace(0, 2 * np.pi, 200)
+    for i in rings:
+        x0 = i * np.cos(theta)
+        y0 = i * np.sin(theta)
+        gci = ax.plot(x0, y0, linestyle=linestyle, linewidth=linewidth, color=color, **kwargs)
+    for rad in np.arange(0, np.pi, np.pi / 6):
+        gci = ax.plot([-1 * rings[-1] * np.sin(rad), rings[-1] * np.sin(rad)], \
+                [-1 * rings[-1] * np.cos(rad), rings[-1] * np.cos(rad)], \
+                linestyle=linestyle, linewidth=linewidth, color=color, **kwargs)
+    return gci
+
+
+def plot_az_ranges(ax, _range, azimuth, elevation, data, cmap="CN_ref", bounds=np.arange(-5,76,5), cbar=True,
+                   orientation="vertical", cbar_ticks=None, cbar_ticklabels=None, **kwargs):
     """
     :param ax:axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
     :param _range: data second dim's range, 1d, units:meters, numpy.ndarray
@@ -570,10 +653,11 @@ def plot_az_ranges(ax, _range, azimuth, elevation, data, cmap="CN_ref", min_max=
     """
     assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
     x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
-    return plot_xy(ax, x, y, data, cmap, min_max, cmap_bins, cbar, orientation, **kwargs)
+    return plot_xy(ax, x, y, data, cmap=cmap, bounds=bounds, cbar=cbar, orientation=orientation, cbar_ticks=cbar_ticks,
+                   cbar_ticklabels=cbar_ticklabels, **kwargs)
 
-def plot_lonlat_map(ax, lon, lat, data, transform, extend=None, cmap="CN_ref", min_max=None,\
-            cmap_bins=16, cbar=True, orientation="vertical", **kwargs):
+def plot_lonlat_map(ax, lon, lat, data, transform, extend=None, cmap="CN_ref", bounds=np.arange(-5,76,5),
+                    cbar=True, orientation="vertical",cbar_ticks=None, cbar_ticklabels=None, **kwargs):
     """
     :param ax:cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
     :param lon: lon mesh grid for data units: degree
@@ -590,11 +674,6 @@ def plot_lonlat_map(ax, lon, lat, data, transform, extend=None, cmap="CN_ref", m
     :return:  pcolor result
     """
     assert isinstance(ax, cartopy.mpl.geoaxes.GeoAxesSubplot), "axes is not cartopy axes!"
-    if min_max is not None:
-        vmin, vmax = min_max
-    else:
-        vmax = np.max(np.abs(data))
-        vmin = -1 * vmax
     if extend is None:
         min_lon = np.min(lon)
         max_lon = np.max(lon)
@@ -605,8 +684,7 @@ def plot_lonlat_map(ax, lon, lat, data, transform, extend=None, cmap="CN_ref", m
 
     ax.set_aspect("equal")
     cmaps = plt.get_cmap(cmap)
-    levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
-    norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
+    norm = BoundaryNorm(bounds, ncolors=cmaps.N, clip=True)
     pm = ax.pcolormesh(lon, lat, data, transform=transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
     ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
     ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
@@ -626,11 +704,23 @@ def plot_lonlat_map(ax, lon, lat, data, transform, extend=None, cmap="CN_ref", m
     ax.xaxis.set_major_formatter(lon_formatter)
     ax.yaxis.set_major_formatter(lat_formatter)
     if cbar:
-        plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+        cb = plt.colorbar(mappable=pm, ax=ax, orientation=orientation)
+        if cbar_ticks is None:
+            ticks = bounds
+        else:
+            ticks = cbar_ticks
+        cb.set_ticks(ticks)
+
+    if cbar_ticklabels is not None:
+        if orientation == "vertical":
+            cb.ax.set_yticklabels(cbar_ticklabels)
+        else:
+            cb.ax.set_xticklabels(cbar_ticklabels)
     return pm
 
-def plot_az_ranges_map(ax, _range, azimuth, elevation, data, main_point, transform, extend=None, cmap="CN_ref", min_max=None,\
-            cmap_bins=16, cbar=True, orientation="vertical", **kwargs):
+def plot_az_ranges_map(ax, _range, azimuth, elevation, data, main_point, transform, extend=None, cmap="CN_ref",
+                       bounds=np.arange(-5,76,5), cbar=True, orientation="vertical",cbar_ticks=None, cbar_ticklabels=None,
+                       **kwargs):
     """
     plot radar data with map, using range, azimuth, elevation
     :param ax:cartopy.mpl.geoaxes.GeoAxesSubplot, it should get from cartopy, eg:plt.axes(projection=ccrs.PlateCarree())
@@ -653,10 +743,4 @@ def plot_az_ranges_map(ax, _range, azimuth, elevation, data, main_point, transfo
     main_lon, main_lat = main_point
     x, y, z = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
     lon, lat = cartesian_to_geographic_aeqd(x, y, main_lon, main_lat)
-    return plot_lonlat_map(ax, lon, lat, data,transform, extend, cmap, min_max, cmap_bins, cbar, orientation, **kwargs)
-
-def plot_grid_object_map():
-    pass
-
-def plot_grid_object():
-    pass
+    return plot_lonlat_map(ax, lon, lat, data,transform, extend, cmap, bounds, cbar, orientation,cbar_ticks, cbar_ticklabels **kwargs)

@@ -18,10 +18,10 @@ class WSR98DFormat(object):
         self.MomentHeaderBlockSize = 32
         self.flag2Product = {1:'dBT', 2:'dBZ', 3:'V', 4:'W', 5:'SQI', 6:'CPA', 7:'ZDR', 8:'LDR',\
                              9:'CC', 10:'PhiDP', 11:'KDP', 12:'CP', 13:'FLAG', 14:'HCL', 15:'CF',\
-                             16:'SNRH', 17:'SNRV', 18:'Reserved', 19:"Reserved", 20:'Reserved',\
-                             21:"Reserved", 22:'Reserved', 23:"Reserved", 24:'Reserved', 25:'Reserved',\
-                             26:"Reserved", 27:'Reserved', 28:'Reserved', 29:"Reserved", 30:'Reserved',\
-                             31:'Reserved', 32:"Zc", 33:'Vc', 34:'Wc', 35:'ZDRc', 0:'Reserved'}
+                             16:'SNRH', 17:'SNRV', 18:'Flag', 19:"Flag", 20:'Flag',21:"Flag",\
+                             22:'Flag', 23:"Flag", 24:'Flag', 25:'Flag',26:"Flag", 27:'Flag', \
+                             28:'Flag', 29:"Flag", 30:'Flag',31:'Flag', 32:"Zc", 33:'Vc', 34:'Wc',\
+                             35:'ZDRc', 0:'Flag'}
         self.BaseDataHeader = dict(
         GenericHeaderBlock = (
             ('MagicWord', INT),  # 固定标志，用来指示雷达数据文件。

@@ -217,6 +217,15 @@ DEFAULT_METADATA = {
     'clutter_flag':{
         'standard_name': 'clutter_flag',
     },
+    "horizontal_signal_noise_ratio":{
+        'standard_name': 'horizontal signal noise ratio',
+    },
+    "vertical_signal_noise_ratio":{
+        'standard_name': 'vertical signal noise_ratio',
+    },
+    "flag_of_rpv_data":{
+        'standard_name': 'flag of rpv data',
+    },
     # Depolarization ratio fields
     'linear_depolarization_ratio': {
         'units': 'dB',
@@ -256,12 +265,14 @@ CINRAD_field_mapping = {
     'PhiDP': "differential_phase",
     'KDP': "specific_differential_phase",
     'CP': "clutter_probability",
-    'FLAG': "flag_of_rpv_data",
+    'Flag': "flag_of_rpv_data",
     'HCL': "hydro_class",
     'CF': "clutter_flag",
     'Zc': "corrected_reflectivity",
     'Vc': "corrected_velocity",
     'Wc': "spectrum_width_corrected",
+    'SNRH': "horizontal_signal_noise_ratio",
+    'SNRV': "vertical_signal_noise_ratio",
 }
 
 CINRAD_COLORMAP = {

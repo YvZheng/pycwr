@@ -1,7 +1,7 @@
 # 中国天气雷达开源库
 
 - [English](README.md)
-- [开发人员](CONTRIBUTORS.txt)
+- [开发人员](CONTRIBUTORS_CN.txt)
 
 安装pycwr库
 ----------

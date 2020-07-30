@@ -106,28 +106,6 @@ The main window opens as shown below:
 
 more example via: [exmaple](./notebooks/pycwr_example.ipynb)
 
-Developers and Contributors
-----------
-
-Yu Zheng - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Nan Li - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Wei Ming - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Zhigang Chu - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Sihui Fan - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Pengcheng Jia - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Yang Li - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Xin Zhang  - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Xingchao Lv - Nanjing University of Information Science and Technology, School of Atmospheric Physics
-
-Shuai Zhang - Nanjing University of Information Science and Technology, School of Atmospheric Physics
 
 Project development plan
 ----------
@@ -144,10 +122,10 @@ Project development plan
 - [x] PPI drawing support, overlay map support
 - [ ] RHI drawing support
 - [ ] Multi-radar inversion algorithm support
-- [ ] Radar product algorithm support
+- [x] Radar product algorithm support
 - [ ] Doppler Radar/Dual polarization radar quality control algorithm
 - [ ] DSD Algorithm Support for Dual Polarization Radar
-- [ ] Doppler radar wind field retrieve support
+- [x] Doppler radar wind field retrieve support
 - [ ] Radar quantitative precipitation estimation algorithm support
 - [ ] Radar extrapolation algorithm support
 - [ ] Radar quantitative precipitation forecast  algorithm support

@@ -294,7 +294,8 @@ class WSR98D2NRadar(object):
         获取每根径向的仰角
         :return: (nRays)
         """
-        return np.array([self.radial[iray]['Elevation'] for iray in range(self.nrays)])
+        elevation = np.array([self.radial[iray]['Elevation'] for iray in range(self.nrays)])
+        return np.where(elevation>180, elevation-360, elevation)
 
     def get_rays_per_sweep(self):
         """

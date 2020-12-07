@@ -7,6 +7,7 @@ from ..configure.pyart_config import get_metadata, get_fillvalue
 from ..configure.default_config import CINRAD_field_mapping
 from ..core.PyartRadar import Radar
 from netCDF4 import date2num
+from scipy import interpolate
 
 class WSR98DBaseData(object):
     """
@@ -183,11 +184,12 @@ class WSR98D2NRadar(object):
 
     def __init__(self, WSR98D):
         self.WSR98D = WSR98D
-        assert np.all(self.WSR98D.header['CutConfig']['LogResolution'] == \
-                      self.WSR98D.header['CutConfig']['DopplerResolution']), "dop not match dBZ!"
+        self.flag_match = np.all(self.WSR98D.header['CutConfig']['LogResolution'] == \
+                       self.WSR98D.header['CutConfig']['DopplerResolution'])
         self.v_index_alone = self.get_v_idx()
         self.dBZ_index_alone = self.get_dbz_idx()
-        if self.WSR98D.header["TaskConfig"]["TaskName"][:6] == b'VCP26D': #HZ Radar problem!
+
+        if self.WSR98D.header["TaskConfig"]["TaskName"][:6] in [b'VCP26D', b'VCP27D']: #HZ Radar problem!
             self.interp_VCP26(self.dBZ_index_alone, self.v_index_alone) ##process V and dBZ are not match
             self.dBZ_index_alone = self.dBZ_index_alone[:min(len(self.dBZ_index_alone), len(self.v_index_alone))] ##要去除的sweep
         else:
@@ -200,7 +202,7 @@ class WSR98D2NRadar(object):
 
         ind_remove = self.get_reomve_radial_num()
         self.radial = [iray for ind, iray in enumerate(self.WSR98D.radial) if ind not in ind_remove]
-        #self.nsweeps = self.WSR98D.nsweeps - dBZ_index_alone.size
+
         status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
         self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
         self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
@@ -357,24 +359,44 @@ class WSR98D2NRadar(object):
         Resolution = self.header['CutConfig']['DopplerResolution'][0]
         return np.linspace(Resolution, Resolution * length, length)
 
+    def get_dbz_range_per_radial(self, length):
+        """
+        确定径向每个库的距离
+        :param length:
+        :return:
+        """
+        Resolution = self.header['CutConfig']['LogResolution'][0]
+        return np.linspace(Resolution, Resolution * length, length)
+
     def _get_fields(self):
         """将所有的field的数据提取出来"""
         fields = {}
         field_keys = self.radial[0]['fields'].keys()
         for ikey in field_keys:
-            fields[ikey] = np.array([self._add_or_del_field(iray['fields'], ikey) for iray in self.radial])
+            fields[ikey] = np.array([self._add_or_del_field(iray['fields'], ikey, self.flag_match) for iray in self.radial])
         return fields
 
-    def _add_or_del_field(self, dat_fields, key):
+    def _add_or_del_field(self, dat_fields, key, flag_match=True):
         """
         根据fields的key提取数据
         :param dat_fields: fields的数据
         :param key: key words
+        :param flag_match: dop和dbz分辨率是否匹配, 匹配则为True，不匹配为False
         :return:
         """
         length = self.max_bins
         if key not in dat_fields.keys():
             return np.full((length,), np.nan)
+
+        if flag_match == False:
+            if key == "dBZ":
+                dbz_range = self.get_dbz_range_per_radial(dat_fields[key].size)
+                dop_range = self.get_range_per_radial(length)
+                match_data = interpolate.interp1d(dbz_range, dat_fields[key], kind="nearest",
+                                                  bounds_error=False, fill_value=np.nan)
+                dat_ray = match_data(dop_range)
+                return dat_ray.ravel()
+
         dat_ray = dat_fields[key]
         assert dat_ray.ndim == 1, "check dat_ray"
         if dat_ray.size >= length:

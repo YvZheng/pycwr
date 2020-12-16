@@ -1,4 +1,8 @@
+<div align=center>
+
 ![avatar](./pictures/NJIAS.png)
+
+</div>
 
 # 中国业务天气雷达开源库
 

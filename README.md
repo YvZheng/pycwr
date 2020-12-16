@@ -1,6 +1,8 @@
+![avatar](./pictures/NJIAS.png)
+
 # pycwr (Python China Weather Radar tools library)
 
-- [中文版](README_CN.md)
+- [中文](README_CN.md)
 - [Developers and contributors](CONTRIBUTORS.txt)
 
 Install pycwr Library

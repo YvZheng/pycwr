@@ -1,4 +1,6 @@
-# 中国天气雷达开源库
+![avatar](./pictures/NJIAS.png)
+
+# 中国业务天气雷达开源库
 
 - [English](README.md)
 - [开发人员](CONTRIBUTORS_CN.txt)

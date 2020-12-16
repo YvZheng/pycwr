@@ -1,4 +1,8 @@
+<div align=center>
+
 ![avatar](./pictures/NJIAS.png)
+
+</div>
 
 # pycwr (Python China Weather Radar tools library)
 

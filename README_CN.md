@@ -9,6 +9,11 @@
 - [English](README.md)
 - [开发人员](CONTRIBUTORS_CN.txt)
 
+文档
+--------------
+PyCWR库的文档正在readthedocs网站不断更新，具体可以查看[PyCWR文档](https://pycwr.readthedocs.io/en/latest/)。
+
+
 安装pycwr库
 ----------
 ### 可以使用conda和pip来安装pycwr库

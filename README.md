@@ -9,6 +9,10 @@
 - [中文](README_CN.md)
 - [Developers and contributors](CONTRIBUTORS.txt)
 
+Documents
+----------
+The documentation will be built on readthedocs and is available at the [pycwr documents website](https://pycwr.readthedocs.io/en/latest/).
+
 Install pycwr Library
 ----------
 ### The easiest route to installing pycwr is through pip and conda:

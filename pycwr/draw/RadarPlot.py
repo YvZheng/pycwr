@@ -54,7 +54,7 @@ class Graph(object):
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
-                            zorder=0, norm=norm, shading='auto', **kwargs)
+                            zorder=0, norm=norm, snap=True, shading='auto', **kwargs)
         if cbar:
             cb=plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
             if cbar_ticks is None:
@@ -100,7 +100,7 @@ class Graph(object):
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
 
         gci = ax.pcolormesh(mesh_xy/1000., mesh_z/1000., field_data, cmap=cmaps,
-                                norm=norm, shading='auto', **kwargs)
+                                norm=norm, snap=True, shading='auto', **kwargs)
         if cbar:
             cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
             if cbar_ticks is None:
@@ -159,7 +159,7 @@ class Graph(object):
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         for isweep, _ in enumerate(mesh_xy):
             gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps,
-                                norm=norm, shading='auto', **kwargs)
+                                norm=norm,snap=True, shading='auto', **kwargs)
         if cbar:
             cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
             if cbar_ticks is None:
@@ -211,7 +211,7 @@ class Graph(object):
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
-                            zorder=0, norm=norm, shading='auto', **kwargs)
+                            zorder=0,snap=True, norm=norm, shading='auto', **kwargs)
         if cbar:
             cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
             if cbar_ticks is None:
@@ -262,7 +262,7 @@ class Graph(object):
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
-                            zorder=0, norm=norm,shading='auto', **kwargs)
+                            zorder=0,snap=True, norm=norm,shading='auto', **kwargs)
         if cbar:
             cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
             if cbar_ticks is None:
@@ -374,7 +374,7 @@ class GraphMap(object):
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
 
-        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
+        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap,snap=True, norm=norm, zorder=4, **kwargs)
 
         ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
         ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
@@ -448,7 +448,7 @@ class GraphMap(object):
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
+        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm,snap=True, zorder=4, **kwargs)
         # ax.set_extent([min_lon, max_lon, min_lat, max_lat], crs=self.transform)
         ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
         ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
@@ -521,7 +521,7 @@ class GraphMap(object):
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
-        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
+        pm = ax.pcolormesh(lon, lat, radar_data, transform=self.transform, cmap=cmap, norm=norm, zorder=4, snap=True, **kwargs)
         #ax.set_extent([min_lon, max_lon, min_lat, max_lat], crs=self.transform)
         ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
         ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
@@ -604,7 +604,7 @@ class GraphMap(object):
         mesh_xy, mesh_z, field_data = self.Radar.get_vcs_data((start_x[0], start_y[0]), (end_x[0], end_y[0]), field_name)
         for isweep, _ in enumerate(mesh_xy):
             gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps,
-                                norm=norm, **kwargs)
+                                norm=norm, snap=True, **kwargs)
 
         xticks_data = ax.get_xticks()
         x_points_tk, y_points_tk = VerticalSection.get_points_from_ranges((start_x[0] / 1000., start_y[0] / 1000),
@@ -671,7 +671,7 @@ def plot_xy(ax, x, y, data, cmap="CN_ref", bounds=np.arange(-5, 76, 5), cbar=Tru
     cmaps = plt.get_cmap(cmap)
     norm = BoundaryNorm(bounds, ncolors=cmaps.N, clip=True)
     gci = ax.pcolormesh(x / 1000., y / 1000., data, cmap=cmaps, \
-                        zorder=0, norm=norm, **kwargs)
+                        zorder=0,snap=True, norm=norm, **kwargs)
     if cbar:
         cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
         if cbar_ticks is not None and cbar_ticklabels is not None:
@@ -760,7 +760,7 @@ def plot_lonlat_map(ax, lon, lat, data, transform, extend=None, cmap="CN_ref", b
     ax.set_aspect("equal")
     cmaps = plt.get_cmap(cmap)
     norm = BoundaryNorm(bounds, ncolors=cmaps.N, clip=True)
-    pm = ax.pcolormesh(lon, lat, data, transform=transform, cmap=cmap, norm=norm, zorder=4, **kwargs)
+    pm = ax.pcolormesh(lon, lat, data, transform=transform, cmap=cmap, norm=norm, snap=True, zorder=4, **kwargs)
     ax.add_feature(cfeature.OCEAN.with_scale('50m'), zorder=0)
     ax.add_feature(cfeature.NaturalEarthFeature('physical', 'land', '50m', \
                                                 edgecolor='none', facecolor="white"), zorder=1)

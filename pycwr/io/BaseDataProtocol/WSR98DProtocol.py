@@ -110,7 +110,55 @@ class WSR98DFormat(object):
             ('GroundClutterFilterNotchWidth', 'i2'),  # 地物滤波宽度
             ('GroundClutterFilterWindow', 'i2'),  # 滤波窗口类型
             ('Reserved', '72V')  # 保留
-            ]))
+            ]),
+        HZCutConfigurationBlock = np.dtype([
+            ('ProcessMode', 'i4'),  # 处理模式     1-PPP 2-FFT
+            ('WaveForm', 'i4'),  # 波形类别
+            ('PRF_1', 'f4'),  # 脉冲重复频率1 双PRF表示高PRF 单PRF表示唯一值 Hz
+            ('PRF_2', 'f4'),  # 脉冲重复频率2 双PRF表示低PRF 单PRF无效 Hz
+            ('UnfoldMode', 'i4'),  # 速度退模糊方法1 – 单PRF 2 –双PRF3:2模式 3 –双PRF4:3模式 4 –双PRF 5:4模式
+            ('Azimuth', 'f4'),  # 方位角 degree
+            ('Elevation', 'f4'),  # 俯仰角 degree
+            ('StartAngle', 'f4'),  # 起始角度 degree
+            ('EndAngle', 'f4'),  # 起始角度 degree
+            ('AngleResolution', 'f4'),  # 角度分辨率 degree
+            ('ScanSpeed', 'f4'),  # 扫描速度   degree/sec
+            ('LogResolution', 'f4'),  # 强度分辨率 强度数据的距离分辨率 meter
+            ('DopplerResolution', 'f4'),  # 多普勒数据的距离分辨率 meter
+            ('MaximumRange', 'i4'),  # 对应PRF1的最大探测距离 meter
+            ('MaximumRange2', 'i4'),  # 对应PRF2的最大探测距离  meter
+            ('StartRange', 'i4'),  # 数据探测的起始距离 meter
+            ('Sample_1', 'i4'),  # 对应于脉冲重复频率1的采样个数
+            ('Sample_2', 'i4'),  # 对应于脉冲重复频率2的采样个数
+            ('PhaseMode', 'i4'),  # 相位编码模式1 – 固定相位2 – 随机相位 3 – SZ编码
+            ('AtmosphericLoss', 'f4'),  # 双程大气衰减值，精度为小数点后保留6位 dB/km
+            ('NyquistSpeed', 'f4'),  # 理论最大不模糊速度  m/s
+            ('MomentsMask', 'i8'),  # 数据类型掩码 0–不允许获取数据1 –允许获取数据。
+            ('MomentsSizeMask', 'i8'),  # 数据大小掩码
+            ('MiscFilterMask', 'i4'),  # 滤波设置掩码
+            ('SQIThreshold', 'f4'),  # SQI门限
+            ('SIGThreshold', 'f4'),  # SIG门限
+            ('CSRThreshold', 'f4'),  # CSR门限
+            ('LOGThreshold', 'f4'),  # LOG门限
+            ('CPAThreshold', 'f4'),  # CPA门限
+            ('PMIThreshold', 'f4'),  # PMI门限
+            ('DPLOGThreshold', 'f4'),  # DPLOG门限
+            ('ThresholdsReserved', '4V'),  # 保留字段
+            ('dBTMask', 'i4'),  # dBT质控掩码 0应用 1未应用
+            ('dBZMask', 'i4'),  # dBZ质控掩码
+            ('Velocity', 'i4'),  # VEL质控掩码
+            ('SpectrumWidthMask', 'i4'),  # SW质控掩码
+            ('ZDRMask', 'i4'),  # ZDR质控掩码
+            ('MaskResvered', '12V'),  # 保留
+            ('ScanSync', 'i4'),  # 扫描同步标志   用于多部雷达同步
+            ('Direction', 'i4'),  # 天线运行方向 ppi有效 0顺时针 1逆时针
+            ('GroundClutterClassifierType', 'i2'),  # 地物杂波图类型
+            ('GroundClutterFilterType', 'i2'),  # 地物滤波类型
+            ('GroundClutterFilterNotchWidth', 'i2'),  # 地物滤波宽度
+            ('GroundClutterFilterWindow', 'i2'),  # 滤波窗口类型
+            ('Reserved', '72V')  # 保留
+            ])
+            )
     def RadialHeader(self):
         RadialHeaderBlock = (
             ('RadialState', INT),  # 径向数据状态

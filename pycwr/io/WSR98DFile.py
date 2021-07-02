@@ -61,7 +61,11 @@ class WSR98DBaseData(object):
                                                            dtype_98D.BaseDataHeader['TaskConfigurationBlock'])
         cut_buf = self.fid.read(dtype_98D.CutConfigurationBlockSize * \
                                 BaseDataHeader['TaskConfig']['CutNumber'])
-        BaseDataHeader['CutConfig'] = np.frombuffer(cut_buf, dtype_98D.BaseDataHeader['CutConfigurationBlock'])
+        BaseDataHeader['CutConfig'] = np.frombuffer(cut_buf, dtype_98D.BaseDataHeader['CutConfigurationBlock']).copy()
+        if BaseDataHeader['CutConfig']['DopplerResolution'][0] == 39018: #huzhou
+            BaseDataHeader['CutConfig'] = BaseDataHeader['CutConfig'].astype(dtype_98D.BaseDataHeader['HZCutConfigurationBlock'])
+            BaseDataHeader['CutConfig']['DopplerResolution'][:] = 62.5
+            BaseDataHeader['CutConfig']['LogResolution'][:] = 62.5
         return BaseDataHeader
 
     def _parse_radial(self):

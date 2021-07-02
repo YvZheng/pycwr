@@ -18,7 +18,7 @@ URL = "https://github.com/YvZheng/pycwr"
 LICENSE='MIT'
 PYTHON_REQUIRES = ">=3.6"
 INSTALL_REQUIRES = ["matplotlib", "cython", "pyproj", "Cartopy", "xarray","numpy",\
-                    "scipy", "pandas", "PyQt5", "netCDF4", 'easydict']
+                    "scipy", "pandas", "netCDF4", 'easydict']
 DESCRIPTION = "China Weather Radar tools"
 LONG_DESCRIPTION = """The Weather Radar Toolkit, support most of China's radar formats
 (WSR98D, CINRAD/SA/SB/CB, CINRAD/CC/CCJ, CINRAD/SC/CD)"""

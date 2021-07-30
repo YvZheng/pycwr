@@ -8,7 +8,7 @@ LONG = "q"
 UINT16 = "H"
 UINT32 = "I"
 
-class WSR98DFormat(object):
+class PAFormat(object):
 
     def __init__(self):
         self.GenericHeaderBlockPos = 0
@@ -164,4 +164,4 @@ class WSR98DFormat(object):
         )
         return MomentHeaderBlock
 
-dtype_PA = WSR98DFormat()
+dtype_PA = PAFormat()

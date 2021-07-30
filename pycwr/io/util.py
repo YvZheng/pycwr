@@ -137,6 +137,8 @@ def radar_format(filename):
         return "CC"
     elif (size-1024)%4000 == 0 and (sc_flag == b"CINRAD/SC" or sc_flag == b"CINRAD/CD"):
         return "SC"
+    elif flag[8:12] == b'\x10\x00\x00\x00':
+        return "PA"
     else:
         return _get_radar_type(filename)
 

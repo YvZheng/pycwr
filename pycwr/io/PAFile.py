@@ -30,10 +30,9 @@ class PABaseData(object):
         self.header = self._parse_BaseDataHeader()
         self.radial = self._parse_radial()
         self.nrays = len(self.radial)
-        status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
-        self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
-        self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
-        self.nsweeps = len(self.sweep_start_ray_index)
+        self.nsweeps = self.header['TaskConfig']['CutNumber']
+        self.sweep_start_ray_index = np.arange(0, self.nrays, self.nrays // self.nsweeps)
+        self.sweep_end_ray_index = self.sweep_start_ray_index + self.nrays // self.nsweeps - 1
         self.fid.close()
 
     def _check_standard_basedata(self):
@@ -58,16 +57,13 @@ class PABaseData(object):
         BaseDataHeader['TaskConfig'], _ = _unpack_from_buf(fixed_buf,
                                                            dtype_PA.TaskConfigurationBlockPos,
                                                            dtype_PA.BaseDataHeader['TaskConfigurationBlock'])
-        # print(BaseDataHeader)
+
         beam_buf = self.fid.read(dtype_PA.BeamConfigurationBlockSize * \
                                 BaseDataHeader['TaskConfig']['BeamNumber'])
         cut_buf = self.fid.read(dtype_PA.CutConfigurationBlockSize * \
                                 BaseDataHeader['TaskConfig']['CutNumber'])
         BaseDataHeader["BeamConfig"] = np.frombuffer(beam_buf, dtype_PA.BaseDataHeader['BeamConfigurationBlock'])
         BaseDataHeader['CutConfig'] = np.frombuffer(cut_buf, dtype_PA.BaseDataHeader['CutConfigurationBlock'])
-        # print(BaseDataHeader["BeamConfig"])
-        # print(BaseDataHeader['CutConfig'])
-        #print(BaseDataHeader)
         return BaseDataHeader
 
     def _parse_radial(self):
@@ -75,7 +71,6 @@ class PABaseData(object):
         buf = self.fid.read(dtype_PA.RadialHeaderBlockSize)
         while len(buf) == dtype_PA.RadialHeaderBlockSize:  ##read until EOF
             RadialDict, _ = _unpack_from_buf(buf, 0, dtype_PA.RadialHeader())
-            #print(RadialDict)
             self.MomentNum = RadialDict['MomentNumber']
             self.LengthOfData = RadialDict['LengthOfData']
             RadialDict['fields'] = self._parse_radial_single()
@@ -88,7 +83,6 @@ class PABaseData(object):
         for _ in range(self.MomentNum):
             Mom_buf = self.fid.read(dtype_PA.MomentHeaderBlockSize)
             Momheader, _ = _unpack_from_buf(Mom_buf, 0, dtype_PA.RadialData())
-            #print(Momheader)
             Data_buf = self.fid.read(Momheader['Length'])
             assert (Momheader['BinLength'] == 1) | (Momheader['BinLength'] == 2), "Bin Length has problem!"
             if Momheader['BinLength'] == 1:
@@ -210,8 +204,8 @@ class PA2NRadar(object):
         self.fields = self._get_fields()
         self.rays_per_sweep = self.nrays // self.nsweeps
         self.sitename = self.WSR98D.get_sitename()
-        self.sweep_start_ray_index = np.cumsum(self.bins_per_sweep) - self.bins_per_sweep
-        self.sweep_end_ray_index = np.cumsum(self.bins_per_sweep) - 1
+        self.sweep_start_ray_index = self.WSR98D.sweep_start_ray_index
+        self.sweep_end_ray_index = self.WSR98D.sweep_end_ray_index
 
     def get_nbins_per_sweep(self):
         """

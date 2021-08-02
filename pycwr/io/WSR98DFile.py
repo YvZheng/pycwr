@@ -31,10 +31,15 @@ class WSR98DBaseData(object):
         self.header = self._parse_BaseDataHeader()
         self.radial = self._parse_radial()
         self.nrays = len(self.radial)
-        status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
-        self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
-        self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
-        self.nsweeps = len(self.sweep_start_ray_index)
+        if self.header["SiteConfig"]["RadarType"] == 0:
+            self.nsweeps = self.header["TaskConfig"]["CutNumber"]
+            self.sweep_start_ray_index = np.arange(0, self.nrays, self.nrays//self.nsweeps)
+            self.sweep_end_ray_index = self.sweep_start_ray_index + self.nrays//self.nsweeps - 1
+        else:
+            status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
+            self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
+            self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
+            self.nsweeps = len(self.sweep_start_ray_index)
         self.fid.close()
 
     def _check_standard_basedata(self):
@@ -203,9 +208,9 @@ class WSR98D2NRadar(object):
         ind_remove = self.get_reomve_radial_num()
         self.radial = [iray for ind, iray in enumerate(self.WSR98D.radial) if ind not in ind_remove]
 
-        status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
-        self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
-        self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
+        # status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
+        self.sweep_start_ray_index = self.WSR98D.sweep_start_ray_index
+        self.sweep_end_ray_index = self.WSR98D.sweep_end_ray_index
         self.nsweeps = len(self.sweep_start_ray_index)
         self.nrays = len(self.radial)
         self.scan_type = self.WSR98D.get_scan_type()

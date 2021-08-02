@@ -55,3 +55,29 @@ def VVP(azimuth, elevation, PPI_Vr, az_num, bin_num, fillvalue=-999.):
                 wind_u[i - half_azs, j] = x[0]
                 wind_v[i - half_azs, j] = x[1]
     return wind_u, wind_v
+
+def VAD(azimuth, elevation, PPI_Vr, fillvalue=-999.):
+    """
+    Parameters
+    ----------
+    azimuth np.ndarray,1d, 一维的方位角，对应PPI_Vr的第一维度
+    elevation constant, 常量，该层PPI扫描的仰角
+    PPI_Vr: 1D PPI扫描的径向速度，已退模糊
+    fillvalue
+
+    Returns
+    -------
+
+    """
+    flag = (PPI_Vr != fillvalue)
+    assert flag.sum()/flag.size > 0.3, "too less vaild data!"
+    az_cal = azimuth[flag]
+    Vr_cal = PPI_Vr[flag]
+    vaild_size = flag.sum()
+    a1 = 2 * np.sum(Vr_cal * np.cos(np.deg2rad(az_cal))) / vaild_size
+    b1 = 2 * np.sum(Vr_cal * np.sin(np.deg2rad(az_cal))) / vaild_size
+    U = b1/np.cos(np.deg2rad(elevation))
+    V = a1/np.sin(np.deg2rad(elevation))
+    return U, V
+
+

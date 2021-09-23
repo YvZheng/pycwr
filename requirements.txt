@@ -8,4 +8,3 @@ pyproj
 scipy
 numpy
 netCDF4
-PyQt5>=5.8

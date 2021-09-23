@@ -39,7 +39,7 @@ CLASSIFIERS = [
     'Operating System :: Microsoft :: Windows']
 setup(
     name=DISTNAME,
-    version="0.3.1",
+    version="0.3.2",
     author=AUTHOR,
     license=LICENSE,
     author_email=AUTHOR_EMAIL,

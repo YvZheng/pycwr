@@ -3,7 +3,7 @@ from pycwr.draw.RadarPlot import Graph
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = "/Users/zhengyu/Downloads/Z_RADR_I_ZGZ01_20200820220246_O_DOR_DXK_CAR.bin.bz2"
+file = "/Users/zhengyu/Downloads/Z_RADR_I_Z0001_20200521191950_O_DOR_DXK_CAR.bin"
 PRD = read_PA(file)
 x = PAFile.PABaseData(file)
 

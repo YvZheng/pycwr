@@ -30,6 +30,7 @@ class PABaseData(object):
         self.header = self._parse_BaseDataHeader()
         self.radial = self._parse_radial()
         self.nrays = len(self.radial)
+        print(self.nrays)
         self.nsweeps = self.header['TaskConfig']['CutNumber']
         self.sweep_start_ray_index = np.arange(0, self.nrays, self.nrays // self.nsweeps)
         self.sweep_end_ray_index = self.sweep_start_ray_index + self.nrays // self.nsweeps - 1
@@ -74,7 +75,8 @@ class PABaseData(object):
             self.MomentNum = RadialDict['MomentNumber']
             self.LengthOfData = RadialDict['LengthOfData']
             RadialDict['fields'] = self._parse_radial_single()
-            radial.append(RadialDict)
+            if RadialDict["fields"]:
+                radial.append(RadialDict)
             buf = self.fid.read(dtype_PA.RadialHeaderBlockSize)
         return radial
 

@@ -191,9 +191,16 @@ class PA2NRadar(object):
         self.WSR98D = WSR98D
         self.nrays = len(self.WSR98D.radial)
         self.nsweeps = self.WSR98D.header['TaskConfig']['CutNumber']
+        print(self.nsweeps, self.nrays)
+        self.rays_per_sweep = self.nrays // self.nsweeps
         self.radial = []
-        for i in range(self.nsweeps):
-            self.radial.extend(self.WSR98D.radial[i::self.nsweeps])
+        if self.WSR98D.get_azimuth()[0] == self.WSR98D.get_azimuth()[1]:
+            for i in range(self.nsweeps):
+                self.radial.extend(self.WSR98D.radial[i::self.nsweeps])
+        else:
+            for i in range(self.nsweeps):
+                self.radial.extend(
+                    self.WSR98D.radial[i * self.rays_per_sweep:i * self.rays_per_sweep + self.rays_per_sweep])
         self.scan_type = self.WSR98D.get_scan_type()
         self.latitude, self.longitude, self.altitude, self.frequency = \
             self.WSR98D.get_latitude_longitude_altitude_frequency()
@@ -204,10 +211,10 @@ class PA2NRadar(object):
         self.azimuth = self.get_azimuth()
         self.elevation = self.get_elevation()
         self.fields = self._get_fields()
-        self.rays_per_sweep = self.nrays // self.nsweeps
         self.sitename = self.WSR98D.get_sitename()
         self.sweep_start_ray_index = self.WSR98D.sweep_start_ray_index
         self.sweep_end_ray_index = self.WSR98D.sweep_end_ray_index
+
 
     def get_nbins_per_sweep(self):
         """
@@ -259,7 +266,10 @@ class PA2NRadar(object):
         :return:
         """
         Resolution = self.header['CutConfig']['DopplerResolution'][0]
-        return np.linspace(Resolution, Resolution * length, length)
+        if Resolution == 0:
+            return np.linspace(30, 30 * length, length)
+        else:
+            return np.linspace(Resolution, Resolution * length, length)
 
     def get_dbz_range_per_radial(self, length):
         """
@@ -268,7 +278,10 @@ class PA2NRadar(object):
         :return:
         """
         Resolution = self.header['CutConfig']['LogResolution'][0]
-        return np.linspace(Resolution, Resolution * length, length)
+        if Resolution == 0:
+            return np.linspace(30, 30 * length, length)
+        else:
+            return np.linspace(Resolution, Resolution * length, length)
 
     def _get_fields(self):
         """将所有的field的数据提取出来"""

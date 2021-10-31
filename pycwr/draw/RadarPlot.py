@@ -33,11 +33,11 @@ class Graph(object):
         :return:
         """
         assert isinstance(ax, matplotlib.axes._axes.Axes), "axes should be matplotlib axes not cartopy axes!"
-        if field_name == "V":
+        if min_max is not None:
+            vmin, vmax = min_max
+        elif field_name == "V":
             vmax = self.Radar.scan_info.nyquist_velocity[sweep_num].values
             vmin = -1 * vmax
-        elif min_max is not None:
-            vmin, vmax = min_max
         elif CINRAD_field_normvar[CINRAD_field_mapping[field_name]] == -1:
             vmax = np.nanmax(self.Radar.fields[sweep_num][field_name])
             vmin = np.nanmin(self.Radar.fields[sweep_num][field_name])

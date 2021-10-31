@@ -191,7 +191,7 @@ class PA2NRadar(object):
         self.WSR98D = WSR98D
         self.nrays = len(self.WSR98D.radial)
         self.nsweeps = self.WSR98D.header['TaskConfig']['CutNumber']
-        print(self.nsweeps, self.nrays)
+        # print(self.nsweeps, self.nrays)
         self.rays_per_sweep = self.nrays // self.nsweeps
         self.radial = []
         if self.WSR98D.get_azimuth()[0] == self.WSR98D.get_azimuth()[1]:
@@ -206,7 +206,7 @@ class PA2NRadar(object):
             self.WSR98D.get_latitude_longitude_altitude_frequency()
         self.header = self.WSR98D.header
         self.bins_per_sweep = self.get_nbins_per_sweep()
-        #print(self.bins_per_sweep)
+        # print(self.bins_per_sweep)
         self.range = self.get_range_per_radial(self.bins_per_sweep.max())
         self.azimuth = self.get_azimuth()
         self.elevation = self.get_elevation()

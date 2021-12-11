@@ -188,6 +188,12 @@ class WSR98D2NRadar(object):
 
     def __init__(self, WSR98D):
         self.WSR98D = WSR98D
+        flag = False
+        if self.WSR98D.sweep_start_ray_index.shape[0] != self.WSR98D.sweep_end_ray_index.shape[0]:
+            tmp_start = np.zeros_like(self.WSR98D.sweep_end_ray_index)
+            tmp_start[1:] = (self.WSR98D.sweep_end_ray_index + 1)[:-1]
+            self.WSR98D.sweep_start_ray_index = tmp_start
+            flag = True
         self.flag_match = np.all(self.WSR98D.header['CutConfig']['LogResolution'] == \
                        self.WSR98D.header['CutConfig']['DopplerResolution'])
         self.v_index_alone = self.get_v_idx()
@@ -208,8 +214,14 @@ class WSR98D2NRadar(object):
         self.radial = [iray for ind, iray in enumerate(self.WSR98D.radial) if ind not in ind_remove]
 
         status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
-        self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
+        # self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
         self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
+        if flag:
+            tmp_start = np.zeros_like(self.sweep_end_ray_index)
+            tmp_start[1:] = (self.sweep_end_ray_index + 1)[:-1]
+            self.sweep_start_ray_index = tmp_start
+        else:
+            self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
         self.nsweeps = len(self.sweep_start_ray_index)
         self.nrays = len(self.radial)
         self.scan_type = self.WSR98D.get_scan_type()

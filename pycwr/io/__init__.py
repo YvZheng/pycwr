@@ -1,4 +1,4 @@
-from . import SCFile, WSR98DFile, SABFile, CCFile, PAFile
+from . import SCFile, WSR98DFile, SABFile, CCFile, PAFile, NCFile
 from .util import radar_format
 
 __all__ = ["read_auto", "CCFile", "SCFile", "WSR98DFile", "SABFile"]
@@ -68,3 +68,11 @@ def read_PA(filename, station_lon=None, station_lat=None, station_alt=None):
     :param station_alt:  radar station altitude //units: meters
     """
     return PAFile.PA2NRadar(PAFile.PABaseData(filename, station_lon, station_lat, station_alt)).ToPRD()
+
+def read_NC(filename, band = "S", ScanDuration=6):
+    """
+    :param filename:  radar netcdf filename
+    :param band:  radar band ["S", "X", "C"] //units: degree east
+    :param ScanDuration:  radar scan duration time //units: minutes
+    """
+    return NCFile.NC2NRadar(filename, band, ScanDuration).ToPRD()

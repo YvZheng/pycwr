@@ -40,7 +40,7 @@ class NC2NRadar(object):
         self.fields = self._get_fields()
         self.sitename = "Unknown"
         self.scan_time = (pd.timedelta_range(start="0 min", end="%d min"%ScanDuration, periods=self.nrays) + self.StartScanTime).to_pydatetime()
-        print(self.scan_time)
+        # print(self.scan_time)
         self.fixed_angle = self.NC.Dim1.values
         self.nyquist_velocity = self.NC.VMax.values #np.expand_dims(self.NC.VMax.values, 1).repeat(self.NC.Dim2.shape[0], axis=1).ravel()
         self.unambiguous_range = np.full_like(self.nyquist_velocity, self.range.max())
@@ -53,9 +53,11 @@ class NC2NRadar(object):
                      "pdp": "PhiDP", "kdp": "KDP"}
         fields = {}
         for ikey in field_keys:
-            print(tmp_nc[ikey])
+            # print(tmp_nc[ikey])
             fields[vars2keys[ikey]] = tmp_nc[ikey].values.reshape(-1, tmp_nc.Dim3.shape[0])
         return fields
+    def get_nyquist_velocity(self):
+        return np.expand_dims(self.NC.VMax.values, 1).repeat(self.NC.Dim2.shape[0], axis=1).ravel()
 
     def ToPRD(self):
         """将WSR98D数据转为PRD 的数据格式"""
@@ -174,7 +176,7 @@ class NC2NRadar(object):
 
         # nyquist velocity if defined
         nyquist_velocity = get_metadata('nyquist_velocity')
-        nyquist_velocity['data'] = self.nyquist_velocity
+        nyquist_velocity['data'] = self.get_nyquist_velocity()
         instrument_parameters['nyquist_velocity'] = nyquist_velocity
         return instrument_parameters
 

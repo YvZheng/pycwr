@@ -158,7 +158,7 @@ class Graph(object):
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         for isweep, _ in enumerate(mesh_xy):
-            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps,
+            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep][:,:-1], cmap=cmaps,
                                 norm=norm, shading='auto', **kwargs)
         if cbar:
             cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
@@ -262,7 +262,7 @@ class Graph(object):
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         gci = ax.pcolormesh(x / 1000., y / 1000., radar_data, cmap=cmaps, \
-                            zorder=0, norm=norm,shading='auto', **kwargs)
+                            zorder=0, norm=norm, shading='auto', **kwargs)
         if cbar:
             cb = plt.colorbar(mappable=gci, ax=ax, orientation=orientation)
             if cbar_ticks is None:
@@ -603,7 +603,7 @@ class GraphMap(object):
                                                     lon_0=self.Radar.scan_info.longitude.values)
         mesh_xy, mesh_z, field_data = self.Radar.get_vcs_data((start_x[0], start_y[0]), (end_x[0], end_y[0]), field_name)
         for isweep, _ in enumerate(mesh_xy):
-            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps,
+            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep][:,:-1], cmap=cmaps,
                                 norm=norm, **kwargs)
 
         xticks_data = ax.get_xticks()

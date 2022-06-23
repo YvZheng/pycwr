@@ -15,7 +15,7 @@ class PAFormat(object):
         self.SiteConfigurationBlockPos = 32
         self.TaskConfigurationBlockPos = 160
         self.BeamConfigurationBlockPos = 416
-        self.BeamConfigurationBlockSize = 384
+        self.BeamConfigurationBlockSize = 640
         self.CutConfigurationBlockSize = 256
         self.RadialHeaderBlockSize = 128
         self.MomentHeaderBlockSize = 32
@@ -73,7 +73,7 @@ class PAFormat(object):
             ('SubPulseFrequency', 'f4'),  # PPI模式的俯仰角
             ('SubPulseBandWidth', 'f4'),  # 在本接收方向上，发射波束的增益
             ('SubPulseWidth', 'i4'),  #
-            ('Reserved01', '236V'),  # 处理模式     1-PPP 2-FFT
+            ('Reserved01', '492V'),  # 处理模式     1-PPP 2-FFT
             ]),
         CutConfigurationBlock = np.dtype([
             ('CutIndex', 'i2'),  # 基数据仰角编号

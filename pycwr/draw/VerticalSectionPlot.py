@@ -228,12 +228,12 @@ class VerticalSection(object):
             clabel = ""
         if continuously:
             cmap_bins = 256
-        min_h, max_h = height
+        min_h, max_h = heigh
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)
         for isweep, _ in enumerate(mesh_xy):
-            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps, norm=norm)
+            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep][:,:-1], cmap=cmaps, norm=norm)
         ax.set_xlabel(xlabel, fontsize=14)
         ax.set_ylabel(ylabel, fontsize=14)
         ax.set_title(title, fontsize=16)
@@ -302,7 +302,7 @@ class VerticalSection(object):
         end_x, end_y = geographic_to_cartesian_aeqd(lat=end_lonlat[1], lon=end_lonlat[0], lat_0=lat_0, lon_0=lon_0)
         mesh_xy, mesh_z, field_data = NRadar.get_vcs_data((start_x[0], start_y[0]), (end_x[0], end_y[0]), field_name)
         for isweep, _ in enumerate(mesh_xy):
-            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep], cmap=cmaps, norm=norm)
+            gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep][:,:-1], cmap=cmaps, norm=norm)
         ax.set_xlabel(xlabel, fontsize=14)
         ax.set_ylabel(ylabel, fontsize=14)
         ax.set_title(title, fontsize=16)

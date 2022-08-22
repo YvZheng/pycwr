@@ -50,7 +50,7 @@ class NC2NRadar(object):
         tmp_nc = self.NC.drop_vars("tim")
         field_keys = list([ikey for ikey in tmp_nc.keys() if tmp_nc[ikey].ndim == 3])
         vars2keys = {"ref": "dBZ", "vel": "V", "wid": "W", "zdr": "ZDR", "rhv": "CC",
-                     "pdp": "PhiDP", "kdp": "KDP"}
+                     "pdp": "PhiDP", "kdp": "KDP", "dbt": "dBT", "snr": "SNRH", "ncp": "NCP", "ldr": "LDR"}
         fields = {}
         for ikey in field_keys:
             # print(tmp_nc[ikey])

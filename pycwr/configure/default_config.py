@@ -217,6 +217,9 @@ DEFAULT_METADATA = {
     'clutter_flag':{
         'standard_name': 'clutter_flag',
     },
+    'hydro_class':{
+        'standard_name': 'hydro_class',
+    },
     "horizontal_signal_noise_ratio":{
         'standard_name': 'horizontal signal noise ratio',
     },

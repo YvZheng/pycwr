@@ -87,7 +87,7 @@ class PRD(object):
                                             'elevation': (['time',], elevation[istart:iend+1]),
                                              'x':(['time','range'], x),
                                              'y':(['time', 'range'], y),
-                                             'z':(['time', 'range'], z+altitude),
+                                             'z':(['time', 'range'], z),
                                              'lat':(['time','range'], lat),
                                              'lon':(['time','range'], lon),
                                             'range': range[:bins_per_sweep[idx]], 'time': time[istart:iend+1]})

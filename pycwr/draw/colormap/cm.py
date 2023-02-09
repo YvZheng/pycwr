@@ -156,7 +156,7 @@ for name, cmap in cmap_d.items():
     if name in ["ref", "vel"]:
         matplotlib.cm.register_cmap(name="CN_"+name, cmap=cmap)
     else:
-        full_name = 'pyart_' + name
+        full_name = 'copy_pyart_' + name
         matplotlib.cm.register_cmap(name=full_name, cmap=cmap)
 
 hid_colors = ['LightBlue', 'MediumBlue', 'DarkOrange', 'LightPink',

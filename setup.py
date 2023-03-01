@@ -16,7 +16,7 @@ AUTHOR = "pycwr developers"
 AUTHOR_EMAIL = "YuZheng1206@outlook.com"
 URL = "https://github.com/YvZheng/pycwr"
 LICENSE='MIT'
-PYTHON_REQUIRES = ">=3.6"
+PYTHON_REQUIRES = ">=3.8"
 INSTALL_REQUIRES = ["matplotlib", "cython", "pyproj", "Cartopy", "xarray","numpy",\
                     "scipy", "pandas", "netCDF4", 'easydict']
 DESCRIPTION = "China Weather Radar tools"
@@ -30,16 +30,12 @@ CLASSIFIERS = [
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
-    'Programming Language :: Python :: 3.7',
     'Topic :: Scientific/Engineering',
     'Topic :: Scientific/Engineering :: Atmospheric Science',
-    'Operating System :: POSIX :: Linux',
-    'Operating System :: MacOS :: MacOS X',
-    'Operating System :: Microsoft :: Windows']
+    "Operating System :: OS Independent",]
 setup(
     name=DISTNAME,
-    version="0.3.5",
+    version="0.3.6",
     author=AUTHOR,
     license=LICENSE,
     author_email=AUTHOR_EMAIL,

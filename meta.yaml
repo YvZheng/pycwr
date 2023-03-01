@@ -1,6 +1,6 @@
 package:
     name: pycwr
-    version: 0.3.5
+    version: 0.3.6
 
 build:
     skip: True # [py<35]
@@ -17,7 +17,7 @@ requirements:
        - setuptools
 
     run:
-        - 'python>=3.6'
+        - 'python>=3.8'
         - 'numpy'
         - 'scipy'
         - 'matplotlib'

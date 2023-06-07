@@ -107,11 +107,11 @@ class PRD(object):
         self.scan_info = xr.Dataset(data_vars={"latitude":latitude,"longitude":longitude,
                         "altitude":altitude,"scan_type":scan_type,  "frequency":frequency,
                         "start_time":time[0], "end_time":time[-1],
-                         "nyquist_velocity":(['sweep',], nyquist_velocity),
-                        "unambiguous_range":(['sweep',], unambiguous_range),
-                        "rays_per_sweep": (['sweep',], sweep_end_ray_index-sweep_start_ray_index+1),
-                        "fixed_angle": (["sweep",], fixed_angle),
-                        "beam_width":(["sweep",], 360./(sweep_end_ray_index-sweep_start_ray_index+1))},
+                         "nyquist_velocity":(['sweep',], nyquist_velocity[:nsweeps]),
+                        "unambiguous_range":(['sweep',], unambiguous_range[:nsweeps]),
+                        "rays_per_sweep": (['sweep',], (sweep_end_ray_index-sweep_start_ray_index+1)[:nsweeps]),
+                        "fixed_angle": (["sweep",], fixed_angle[:nsweeps]),
+                        "beam_width":(["sweep",], 360./(sweep_end_ray_index-sweep_start_ray_index+1)[:nsweeps])},
                         coords={"sweep": np.arange(nsweeps, dtype=int)})
         self.scan_info['latitude'].attrs = DEFAULT_METADATA['latitude']
         self.scan_info['longitude'].attrs = DEFAULT_METADATA['longitude']

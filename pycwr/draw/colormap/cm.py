@@ -110,7 +110,7 @@ def _reverse_cmap_spec(spec):
     type specs."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
-        if 'red' in spec:
+        if isinstance(spec, dict) and 'red' in spec:
             return revcmap(spec)
         else:
             revspec = list(reversed(spec))
@@ -126,7 +126,7 @@ def _generate_cmap(name, lutsize):
     spec = datad[name]
 
     # Generate the colormap object.
-    if 'red' in spec:
+    if isinstance(spec, dict) and 'red' in spec:
         return colors.LinearSegmentedColormap(name, spec, lutsize)
     else:
         return colors.LinearSegmentedColormap.from_list(name, spec, lutsize)

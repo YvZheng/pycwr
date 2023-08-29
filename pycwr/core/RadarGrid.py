@@ -133,9 +133,11 @@ def get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
                         break
                 for iaz_0, temp_az in enumerate(vol_azimuth[ie - 1]):
                     if Grid_az[ix, iy] < temp_az:
+                        Grid_az_0 = Grid_az[ix, iy]
                         break
                 else:
                     iaz_0 = 0
+                    Grid_az_0 = Grid_az[ix, iy] - 360
 
                 for range_0, temp_range in enumerate(vol_range[ie - 1]):
                     if Grid_range[ix, iy] < temp_range:
@@ -148,9 +150,11 @@ def get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
 
                 for iaz_1, temp_az in enumerate(vol_azimuth[ie]):
                     if Grid_az[ix, iy] < temp_az:
+                        Grid_az_1 = Grid_az[ix, iy]
                         break
                 else:
                     iaz_1 = 0
+                    Grid_az_1 = Grid_az[ix, iy] - 360
 
                 for range_1, temp_range in enumerate(vol_range[ie]):
                     if Grid_range[ix, iy] < temp_range:
@@ -161,17 +165,18 @@ def get_CAPPI_xy(vol_azimuth, vol_range, fix_elevation, vol_value, radar_height,
                 else:
                     az_last_1 = vol_azimuth[ie][iaz_1 - 1]
                 if (Grid_range[ix, iy] <= vol_range[ie][-1]) and (Grid_range[ix, iy] <= vol_range[ie - 1][-1]):
-                    ER00 = interp_azimuth(Grid_az[ix, iy], az_last_0, vol_azimuth[ie - 1][iaz_0],
+                    ER00 = interp_azimuth(Grid_az_0, az_last_0, vol_azimuth[ie - 1][iaz_0],
                                           vol_value[ie - 1][iaz_0 - 1, range_0 - 1],
                                           vol_value[ie - 1][iaz_0, range_0 - 1], fillvalue)
-                    ER01 = interp_azimuth(Grid_az[ix, iy], az_last_0, vol_azimuth[ie - 1][iaz_0],
+                    ER01 = interp_azimuth(Grid_az_0, az_last_0, vol_azimuth[ie - 1][iaz_0],
                                           vol_value[ie - 1][iaz_0 - 1, range_0], vol_value[ie - 1][iaz_0, range_0], fillvalue)
-                    ER10 = interp_azimuth(Grid_az[ix, iy], az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1 - 1, range_1 - 1],
+                    ER10 = interp_azimuth(Grid_az_1, az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1 - 1, range_1 - 1],
                                           vol_value[ie][iaz_1, range_1 - 1], fillvalue)
-                    ER11 = interp_azimuth(Grid_az[ix, iy], az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1 - 1, range_1],
+                    ER11 = interp_azimuth(Grid_az_1, az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1 - 1, range_1],
                                           vol_value[ie][iaz_1, range_1], fillvalue)
                     IER0 = interp_azimuth(Grid_range[ix, iy], vol_range[ie - 1][range_0 - 1], vol_range[ie - 1][range_0], ER00, ER01,
                                           fillvalue)
                     IER1 = interp_azimuth(Grid_range[ix, iy], vol_range[ie][range_1 - 1], vol_range[ie][range_1], ER10, ER11, fillvalue)
                     GridValue[ix, iy] = interp_azimuth(Grid_el[ix, iy], fix_elevation[ie - 1], fix_elevation[ie], IER0, IER1, fillvalue)
+
     return GridValue

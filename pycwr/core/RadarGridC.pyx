@@ -170,22 +170,25 @@ def get_CAPPI_xy(vol_azimuth, vol_range, cnp.ndarray[cnp.float64_t, ndim=1] fix_
     cdef int Ny = GridX.shape[1]
     cdef cnp.ndarray GridValue = np.full([Nx, Ny], fillvalue, dtype=np.float64)
     cdef int ix, iy, ie, iaz_0, iaz_1, range_0, range_1
-    cdef double az, el, r, temp_az, temp_range, az_last_0, az_last_1
+    cdef double az, el, r, temp_az, temp_range, az_last_0, az_last_1, az_values_0, az_values_1
     cdef double ER00, ER01, ER10, ER11, IER0, IER1
     for ix in range(Nx):
         for iy in range(Ny):
             az, r, el = cartesian_to_antenna(GridX[ix, iy], GridY[ix, iy], level_height, radar_height)
             if (el <= fix_elevation[-1]) and (el >= fix_elevation[0]):
+                # Check elevation bounds
                 for ie in range(Ne):
                     if el < fix_elevation[ie]:
                         break
+                # Check azimuth bounds
                 for iaz_0, temp_az in enumerate(vol_azimuth[ie-1]):
                     if az < temp_az:
+                        az_values_0 = az #第一层仰角
                         break
                 else:
                     iaz_0 = 0
-                    az = az - 360.
-
+                    az_values_0 = az - 360.
+                # Check range bounds
                 for range_0, temp_range in enumerate(vol_range[ie-1]):
                     if r < temp_range:
                         break
@@ -197,9 +200,12 @@ def get_CAPPI_xy(vol_azimuth, vol_range, cnp.ndarray[cnp.float64_t, ndim=1] fix_
 
                 for iaz_1, temp_az in enumerate(vol_azimuth[ie]):
                     if az < temp_az:
-                        break
+                        az_values_1 = az
+                        break #第一层仰角
                 else:
                     iaz_1 = 0
+                    az_values_1 = az - 360.
+
                 for range_1, temp_range in enumerate(vol_range[ie]):
                     if r < temp_range:
                         break
@@ -209,13 +215,13 @@ def get_CAPPI_xy(vol_azimuth, vol_range, cnp.ndarray[cnp.float64_t, ndim=1] fix_
                     az_last_1 = vol_azimuth[ie][iaz_1-1]
 
                 if (r <= vol_range[ie][-1]) and (r <= vol_range[ie-1][-1]):
-                    ER00 = interp_azimuth(az, az_last_0, vol_azimuth[ie-1][iaz_0], vol_value[ie-1][iaz_0-1, range_0-1],
+                    ER00 = interp_azimuth(az_values_0, az_last_0, vol_azimuth[ie-1][iaz_0], vol_value[ie-1][iaz_0-1, range_0-1],
                                           vol_value[ie-1][iaz_0, range_0-1], fillvalue)
-                    ER01 = interp_azimuth(az, az_last_0, vol_azimuth[ie-1][iaz_0], vol_value[ie-1][iaz_0-1, range_0],
+                    ER01 = interp_azimuth(az_values_0, az_last_0, vol_azimuth[ie-1][iaz_0], vol_value[ie-1][iaz_0-1, range_0],
                                           vol_value[ie-1][iaz_0, range_0], fillvalue)
-                    ER10 = interp_azimuth(az, az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1-1, range_1-1],
+                    ER10 = interp_azimuth(az_values_1, az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1-1, range_1-1],
                                           vol_value[ie][iaz_1, range_1-1], fillvalue)
-                    ER11 = interp_azimuth(az, az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1-1, range_1],
+                    ER11 = interp_azimuth(az_values_1, az_last_1, vol_azimuth[ie][iaz_1], vol_value[ie][iaz_1-1, range_1],
                                           vol_value[ie][iaz_1, range_1], fillvalue)
                     IER0 = interp_azimuth(r, vol_range[ie-1][range_0-1], vol_range[ie-1][range_0], ER00, ER01, fillvalue)
                     IER1 = interp_azimuth(r, vol_range[ie][range_1-1], vol_range[ie][range_1], ER10, ER11, fillvalue)
@@ -226,12 +232,20 @@ def interp_azimuth(double az, double az_0, double az_1, double dat_0, double dat
     """
     在两个方位角或者距离之间进行插值
     """
-    if (dat_0 != fillvalue) and (dat_1 != fillvalue):
-        return ((az_1 - az)*dat_0 + (az - az_0) * dat_1)/(az_1 - az_0)
+    # Check for division by zero
+    if az_1 == az_0:
+        return fillvalue  # or some other value that makes sense in your context
+
+    # Check for missing values
+    if (dat_0 == fillvalue) and (dat_1 == fillvalue):
+        return fillvalue
     elif dat_0 == fillvalue:
         return dat_1
-    else:
+    elif dat_1 == fillvalue:
         return dat_0
+
+    # Perform linear interpolation
+    return ((az_1 - az) * dat_0 + (az - az_0) * dat_1) / (az_1 - az_0)
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 def get_CR_xy(vol_azimuth, vol_range, cnp.ndarray[cnp.float64_t, ndim=1] fix_elevation, vol_value, double radar_height,

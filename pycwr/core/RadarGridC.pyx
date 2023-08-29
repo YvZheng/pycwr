@@ -41,7 +41,9 @@ def cartesian_to_antenna(double x, double y, double z, double h):
     cdef double R = 8494666.6666666661
     cdef double elevation, ranges, azimuth
     ranges = ((R+h)**2 + (R+z)**2 - 2*(R+h)*(R+z)*cos((x**2 + y**2)**0.5/R))**0.5
-    elevation = acos((R+z)*sin((x**2 + y**2)**0.5/R)/ranges) * 180./PI
+    # elevation = acos((R+z)*sin((x**2 + y**2)**0.5/R)/ranges) * 180./PI
+    elevation = (acos(
+        ((R + h) ** 2 + ranges ** 2 - (R + z) ** 2) / (2 * (R + h) * ranges)) - PI / 2) * 180. / PI
     azimuth = xy_to_azimuth(x, y)
     return azimuth, ranges, elevation
 

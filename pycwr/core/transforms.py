@@ -164,7 +164,9 @@ def cartesian_xyz_to_antenna(x, y, z, h):
     """
     R = 8494666.6666666661 #等效地球半径
     ranges = ((R + h) ** 2 + (R + z) ** 2 - 2 * (R + h) * (R + z) * np.cos((x ** 2 + y ** 2) ** 0.5 / R)) ** 0.5
-    elevation = np.arccos((R + z) * np.sin((x ** 2 + y ** 2) ** 0.5 / R) / ranges) * 180. / np.pi
+    #elevation = np.arccos((R + z) * np.sin((x ** 2 + y ** 2) ** 0.5 / R) / ranges) * 180. / np.pi
+    elevation = (np.arccos(((R + h) ** 2 + ranges ** 2 - (R + z) ** 2) / (2 * (R + h) * ranges)) - np.pi / 2) * 180. / np.pi
+
     azimuth = _azimuth(x, y)
     return azimuth, ranges, elevation
 

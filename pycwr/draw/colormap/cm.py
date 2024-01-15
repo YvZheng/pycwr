@@ -110,7 +110,7 @@ def _reverse_cmap_spec(spec):
     type specs."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
-        if 'red' in spec:
+        if isinstance(spec, dict) and "red" in spec.keys():
             return revcmap(spec)
         else:
             revspec = list(reversed(spec))

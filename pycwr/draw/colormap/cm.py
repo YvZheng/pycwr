@@ -104,20 +104,31 @@ def revcmap(data):
         data_r[key] = valnew
     return data_r
 
-
+#
+# def _reverse_cmap_spec(spec):
+#     """Reverses cmap specification *spec*, can handle both dict and tuple
+#     type specs."""
+#     with warnings.catch_warnings():
+#         warnings.simplefilter("ignore", FutureWarning)
+#         if 'red' in spec:
+#             return revcmap(spec)
+#         else:
+#             revspec = list(reversed(spec))
+#             if len(revspec[0]) == 2:    # e.g., (1, (1.0, 0.0, 1.0))
+#                 revspec = [(1.0 - a, b) for a, b in revspec]
+#             return revspec
 def _reverse_cmap_spec(spec):
     """Reverses cmap specification *spec*, can handle both dict and tuple
     type specs."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
-        if 'red' in spec:
+        if isinstance(spec, dict) and "red" in spec.keys():
             return revcmap(spec)
         else:
             revspec = list(reversed(spec))
-            if len(revspec[0]) == 2:    # e.g., (1, (1.0, 0.0, 1.0))
+            if len(revspec[0]) == 2:  # e.g., (1, (1.0, 0.0, 1.0))
                 revspec = [(1.0 - a, b) for a, b in revspec]
             return revspec
-
 
 def _generate_cmap(name, lutsize):
     """Generates the requested cmap from it's name *name*.  The lut size is

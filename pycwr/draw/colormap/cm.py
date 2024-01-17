@@ -137,7 +137,7 @@ def _generate_cmap(name, lutsize):
     spec = datad[name]
 
     # Generate the colormap object.
-    if 'red' in spec:
+    if isinstance(spec, dict) and "red" in spec.keys():
         return colors.LinearSegmentedColormap(name, spec, lutsize)
     else:
         return colors.LinearSegmentedColormap.from_list(name, spec, lutsize)

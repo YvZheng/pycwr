@@ -135,7 +135,7 @@ Project development plan
 - [x] Radar product algorithm support
 - [ ] Doppler Radar/Dual polarization radar quality control algorithm
 - [ ] DSD Algorithm Support for Dual Polarization Radar
-- [x] Doppler radar wind field retrieve support
+- [ ] Doppler radar wind field retrieve support
 - [ ] Radar quantitative precipitation estimation algorithm support
 - [ ] Radar extrapolation algorithm support
 - [ ] Radar quantitative precipitation forecast  algorithm support

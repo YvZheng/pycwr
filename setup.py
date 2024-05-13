@@ -35,7 +35,7 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",]
 setup(
     name=DISTNAME,
-    version="0.3.7",
+    version="0.4.0",
     author=AUTHOR,
     license=LICENSE,
     author_email=AUTHOR_EMAIL,

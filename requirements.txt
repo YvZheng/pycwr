@@ -8,3 +8,4 @@ pyproj
 scipy
 numpy
 netCDF4
+python>=3.8

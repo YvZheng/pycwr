@@ -10,6 +10,7 @@ from ..core.transforms import geographic_to_cartesian_aeqd, cartesian_to_geograp
 from .VerticalSectionPlot import VerticalSection
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import cartopy, matplotlib
+import xarray as xr
 
 class Graph(object):
     """Improved mapping function, cartesian coords, recommended"""
@@ -560,7 +561,7 @@ class GraphMap(object):
 
     def plot_vcs_map(self, ax, start_lonlat, end_lonlat, field_name, cmap=None, min_max=None,\
                  cmap_bins=None, cbar=True, orientation="vertical", cbar_ticks=None, cbar_ticklabels=None,\
-                     clabel=None, **kwargs):
+                 terrain_file=None, clabel=None, **kwargs):
         """
         :param ax: axes.Axes object or array of Axes objects., eg: fig, ax = plt.subplots
         :param start_lonlat:(startlon, startlat),  VCS start position!
@@ -605,7 +606,7 @@ class GraphMap(object):
         for isweep, _ in enumerate(mesh_xy):
             gci = ax.pcolormesh(mesh_xy[isweep] / 1000., mesh_z[isweep] / 1000., field_data[isweep][:,:-1], cmap=cmaps,
                                 norm=norm, **kwargs)
-
+              
         xticks_data = ax.get_xticks()
         x_points_tk, y_points_tk = VerticalSection.get_points_from_ranges((start_x[0] / 1000., start_y[0] / 1000),
                                                                           (end_x[0] / 1000, end_y[0] / 1000),
@@ -631,6 +632,25 @@ class GraphMap(object):
             else:
                 cb.ax.set_xticklabels(cbar_ticklabels)
 
+        if terrain_file is not None:            
+            #get the coordinate dimension information
+            bins_res = (self.Radar.fields[0].range[1] - self.Radar.fields[0].range[0]).values
+            start_end_dis = np.sqrt((start_x - end_x) ** 2 + (start_y - end_y) ** 2)
+            npoints = int(start_end_dis/bins_res + 1)
+            x_line = np.linspace(start_x, end_x, npoints)
+            y_line = np.linspace(start_y, end_y, npoints)
+            xy_line_1d = np.linspace(0, start_end_dis, npoints)            
+            R_lon,R_lat=cartesian_to_geographic_aeqd(x_line, y_line, lon_0=start_lonlat[0], lat_0=start_lonlat[1], R=6370997.)
+
+            # #interp_terrain height
+            #terrain_file=r"/mnt/e/Study/4 站点降水日变化特征/WPRD_DEM/BIGFUJIAN.nc"
+            ds=xr.open_dataset(terrain_file)
+            terrain=[]
+            for ilon,lonv in enumerate(R_lon):
+                    terraintmp=ds.Band1.sel(lon=lonv,lat=R_lat[ilon],method="nearest")
+                    terrain.append(float(terraintmp))                    
+            terrain1=np.asarray(terrain,dtype=np.float32)
+            ax.plot(xy_line_1d/1000.,terrain1/1000.,linewidth=1,c='red',zorder=4)
         return gci
 
     def add_lines_map(self, ax, start_lonlat, end_lonlat, color='red', marker='x', **kwargs):

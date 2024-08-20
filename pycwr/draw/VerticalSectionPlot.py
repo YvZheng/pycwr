@@ -228,7 +228,7 @@ class VerticalSection(object):
             clabel = ""
         if continuously:
             cmap_bins = 256
-        min_h, max_h = heigh
+        min_h, max_h = height
         cmaps = plt.get_cmap(cmap)
         levels = MaxNLocator(nbins=cmap_bins).tick_values(vmin, vmax)
         norm = BoundaryNorm(levels, ncolors=cmaps.N, clip=True)

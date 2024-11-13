@@ -87,10 +87,11 @@ class WSR98DBaseData(object):
                 dat_tmp = (np.frombuffer(Data_buf, dtype="u1", offset=0)).astype(int)
             else:
                 dat_tmp = (np.frombuffer(Data_buf, dtype="u2", offset=0)).astype(int)
-            radial_var[dtype_98D.flag2Product[Momheader['DataType']]] = np.where(dat_tmp >= 5, \
-                                                                                 (dat_tmp - Momheader['Offset']) /
-                                                                                 Momheader['Scale'],
-                                                                                 np.nan).astype(np.float32)
+            if Momheader['DataType'] <= 35:
+                radial_var[dtype_98D.flag2Product[Momheader['DataType']]] = np.where(dat_tmp >= 5, \
+                                                                                     (dat_tmp - Momheader['Offset']) /
+                                                                                     Momheader['Scale'],
+                                                                                     np.nan).astype(np.float32)
         return radial_var
 
     def get_nyquist_velocity(self):

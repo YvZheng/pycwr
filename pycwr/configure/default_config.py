@@ -182,6 +182,13 @@ DEFAULT_METADATA = {
         'valid_max': 8.0,
         'valid_min': -2.0,
         'coordinates': 'elevation azimuth range'},
+    'corrected_differential_reflectivity': {
+        'units': 'dB',
+        'standard_name': 'corrected_log_differential_reflectivity_hv',
+        'long_name': 'Corrected Differential reflectivity',
+        'valid_max': 8.0,
+        'valid_min': -2.0,
+        'coordinates': 'elevation azimuth range'},
 
     'cross_correlation_ratio': {
         'units': 'ratio',
@@ -276,6 +283,7 @@ CINRAD_field_mapping = {
     'Wc': "spectrum_width_corrected",
     'SNRH': "horizontal_signal_noise_ratio",
     'SNRV': "vertical_signal_noise_ratio",
+    'ZDRc': "corrected_differential_reflectivity"
 }
 
 CINRAD_COLORMAP = {

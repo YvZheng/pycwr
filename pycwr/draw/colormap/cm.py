@@ -74,6 +74,21 @@ import matplotlib.colors as colors
 from ._cm import datad
 import matplotlib.cm
 
+import matplotlib
+from matplotlib import colors
+# 检查 Matplotlib 版本
+version = matplotlib.__version__.split('.')
+major_version = int(version[0])
+minor_version = int(version[1])
+
+# 根据版本选择适当的 colormap 注册方法
+if major_version > 3 or (major_version == 3 and minor_version >= 9):
+    # Matplotlib 3.9.0 及以上版本
+    register_cmap = matplotlib.colormaps.register
+else:
+    # Matplotlib 3.8.x 及以下版本
+    register_cmap = matplotlib.cm.register_cmap
+
 cmap_d = dict()
 
 # reverse all the colormaps.
@@ -165,12 +180,12 @@ locals().update(cmap_d)
 # register the colormaps so that can be accessed with the names pyart_XXX
 for name, cmap in cmap_d.items():
     if name in ["ref", "vel"]:
-        matplotlib.cm.register_cmap(name="CN_"+name, cmap=cmap)
+        register_cmap(name="CN_"+name, cmap=cmap)
     else:
         full_name = 'copy_pyart_' + name
-        matplotlib.cm.register_cmap(name=full_name, cmap=cmap)
+        register_cmap(name=full_name, cmap=cmap)
 
 hid_colors = ['LightBlue', 'MediumBlue', 'DarkOrange', 'LightPink',
               'Cyan', 'DarkGray', 'Lime', 'Yellow', 'Red', 'Fuchsia']
 cmaphid = colors.ListedColormap(hid_colors)
-matplotlib.cm.register_cmap(name="CN_hcl", cmap=cmaphid)
+register_cmap(name="CN_hcl", cmap=cmaphid)

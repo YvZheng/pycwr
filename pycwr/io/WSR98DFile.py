@@ -2,6 +2,7 @@
 import numpy as np
 from .BaseDataProtocol.WSR98DProtocol import dtype_98D
 from .util import _prepare_for_read, _unpack_from_buf, julian2date_SEC, make_time_unit_str
+from .errors import CINRADFormatError
 from ..core.NRadar import PRD
 from ..configure.pyart_config import get_metadata, get_fillvalue
 from ..configure.default_config import CINRAD_field_mapping
@@ -14,7 +15,7 @@ class WSR98DBaseData(object):
     解码新一代双偏振的数据格式
     """
 
-    def __init__(self, filename, station_lon=None, station_lat=None, station_alt=None):
+    def __init__(self, filename, station_lon=None, station_lat=None, station_alt=None, *, strict=False):
         """
         :param filename:  radar basedata filename
         :param station_lon:  radar station longitude //units: degree east
@@ -26,6 +27,7 @@ class WSR98DBaseData(object):
         self.station_lon = station_lon
         self.station_lat = station_lat
         self.station_alt = station_alt
+        self.strict = strict
         self.fid = _prepare_for_read(self.filename)  ##对压缩的文件进行解码
         self._check_standard_basedata()  ##确定文件是standard文件
         self.header = self._parse_BaseDataHeader()
@@ -42,7 +44,9 @@ class WSR98DBaseData(object):
         :param fid: file fid
         :return:
         """
-        assert self.fid.read(4) == b'RSTM', 'file in not a stardand WSR-98D file!'
+        magic = self.fid.read(4)
+        if magic != b'RSTM':
+            raise CINRADFormatError('Not a standard WSR-98D file: bad magic header')
         self.fid.seek(0, 0)
         return
 
@@ -82,7 +86,8 @@ class WSR98DBaseData(object):
             Mom_buf = self.fid.read(dtype_98D.MomentHeaderBlockSize)
             Momheader, _ = _unpack_from_buf(Mom_buf, 0, dtype_98D.RadialData())
             Data_buf = self.fid.read(Momheader['Length'])
-            assert (Momheader['BinLength'] == 1) | (Momheader['BinLength'] == 2), "Bin Length has problem!"
+            if not ((Momheader['BinLength'] == 1) | (Momheader['BinLength'] == 2)):
+                raise CINRADFormatError("Invalid BinLength in moment header; expected 1 or 2")
             if Momheader['BinLength'] == 1:
                 dat_tmp = (np.frombuffer(Data_buf, dtype="u1", offset=0)).astype(int)
             else:
@@ -183,8 +188,10 @@ class WSR98DBaseData(object):
 class WSR98D2NRadar(object):
     """到NusitRadar object 的桥梁"""
 
-    def __init__(self, WSR98D):
+    def __init__(self, WSR98D, *, strict=False, repair_missing=False):
         self.WSR98D = WSR98D
+        self.strict = strict
+        self.repair_missing = repair_missing
         self.flag_match = np.all(self.WSR98D.header['CutConfig']['LogResolution'] == \
                        self.WSR98D.header['CutConfig']['DopplerResolution'])
         self.v_index_alone = self.get_v_idx()
@@ -194,11 +201,28 @@ class WSR98D2NRadar(object):
             self.interp_VCP26(self.dBZ_index_alone, self.v_index_alone) ##process V and dBZ are not match
             self.dBZ_index_alone = self.dBZ_index_alone[:min(len(self.dBZ_index_alone), len(self.v_index_alone))] ##要去除的sweep
         else:
-            assert np.all(self.v_index_alone == (self.dBZ_index_alone + 1)), """v and dBZ not equal!"""
+            if not np.all(self.v_index_alone == (self.dBZ_index_alone + 1)):
+                if self.repair_missing:
+                    same_sweeps = min(len(self.dBZ_index_alone), len(self.v_index_alone))
+                    for isweep in range(same_sweeps):
+                        self.interp_dBZ(self.dBZ_index_alone[isweep], self.v_index_alone[isweep])
+                    for dbz_dense in self.dBZ_index_alone[same_sweeps:]:
+                        # fill absent V/W if needed using NaNs
+                        for index in range(self.WSR98D.sweep_start_ray_index[dbz_dense],
+                                           self.WSR98D.sweep_end_ray_index[dbz_dense] + 1):
+                            self.WSR98D.radial[index]["fields"].setdefault("V", np.full_like(
+                                self.WSR98D.radial[index]["fields"].get("dBZ", np.array([], dtype=np.float32)),
+                                np.nan, dtype=np.float32))
+                            self.WSR98D.radial[index]["fields"].setdefault("W", np.full_like(
+                                self.WSR98D.radial[index]["fields"].get("dBZ", np.array([], dtype=np.float32)),
+                                np.nan, dtype=np.float32))
+                else:
+                    raise CINRADFormatError("V and dBZ sweeps are not aligned")
             for index_with_dbz, index_with_v in zip(self.dBZ_index_alone, self.v_index_alone):
-                assert (self.WSR98D.header["CutConfig"]["Elevation"][index_with_v] - \
-                        self.WSR98D.header["CutConfig"]["Elevation"][index_with_dbz]) < 0.5, \
-                    "warning! maybe it is a problem."
+                diff = (self.WSR98D.header["CutConfig"]["Elevation"][index_with_v] - \
+                        self.WSR98D.header["CutConfig"]["Elevation"][index_with_dbz])
+                if diff >= 0.5 and self.strict:
+                    raise CINRADFormatError("Elevation mismatch between V and dBZ sweeps exceeds tolerance")
                 self.interp_dBZ(index_with_dbz, index_with_v)
 
         ind_remove = self.get_reomve_radial_num()
@@ -207,6 +231,12 @@ class WSR98D2NRadar(object):
         status = np.array([istatus['RadialState'] for istatus in self.radial[:]])
         self.sweep_start_ray_index = np.where((status == 0) | (status == 3))[0]
         self.sweep_end_ray_index = np.where((status == 2) | (status == 4))[0]
+        if self.repair_missing:
+            # Basic repair to ensure equal lengths and valid ordering
+            n = min(len(self.sweep_start_ray_index), len(self.sweep_end_ray_index))
+            self.sweep_start_ray_index = self.sweep_start_ray_index[:n]
+            self.sweep_end_ray_index = self.sweep_end_ray_index[:n]
+            self.sweep_end_ray_index = np.maximum(self.sweep_end_ray_index, self.sweep_start_ray_index)
         self.nsweeps = len(self.sweep_start_ray_index)
         self.nrays = len(self.radial)
         self.scan_type = self.WSR98D.get_scan_type()
@@ -349,7 +379,16 @@ class WSR98D2NRadar(object):
         确定每个sweep V探测的库数
         :return:
         """
-        return np.array([self.radial[idx]['fields']['V'].size for idx in self.sweep_start_ray_index])
+        key = None
+        if len(self.radial) > 0:
+            key_candidates = list(self.radial[0]['fields'].keys())
+            if 'V' in key_candidates:
+                key = 'V'
+            elif len(key_candidates) > 0:
+                key = key_candidates[0]
+        if key is None:
+            return np.array([0 for _ in self.sweep_start_ray_index])
+        return np.array([self.radial[idx]['fields'][key].size for idx in self.sweep_start_ray_index])
 
     def get_range_per_radial(self, length):
         """
@@ -399,7 +438,9 @@ class WSR98D2NRadar(object):
                 return dat_ray.ravel()
 
         dat_ray = dat_fields[key]
-        assert dat_ray.ndim == 1, "check dat_ray"
+        if dat_ray.ndim != 1:
+            # flatten defensively
+            dat_ray = np.ravel(dat_ray)
         if dat_ray.size >= length:
             return dat_ray[:length]
         else:

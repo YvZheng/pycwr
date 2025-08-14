@@ -148,12 +148,18 @@ def test_inconsistent_v_dbz_mapping_asserts():
         WSR98D2NRadar(fake)
 
 
-@pytest.mark.skip(reason="Enabled in io-robustness PR")
 def test_repair_missing_sweep_indices():
-    pass
+    # Missing end repaired when flag set
+    rays = [_mk_ray(0), _mk_ray(1), _mk_ray(1)]
+    fake = FakeWSR98D(rays, sweep_starts=[0], sweep_ends=[])
+    obj = WSR98D2NRadar(fake, repair_missing=True)
+    counts = obj.get_rays_per_sweep()
+    # repaired to length 1, end clamped to start
+    assert counts.shape == (1,)
+    assert counts[0] >= 1
 
 
 def test_bad_magic_raises_cinrad_format_error():
     bio = io.BytesIO(b"NOTRSTM" + b"\x00" * 100)
-    with pytest.raises((CINRADFormatError, AssertionError)):
+    with pytest.raises(CINRADFormatError):
         WSR98DBaseData(bio)

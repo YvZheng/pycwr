@@ -1,9 +1,11 @@
 from . import SCFile, WSR98DFile, SABFile, CCFile, PAFile
 from .util import radar_format
+from .errors import CINRADFormatError
 
 __all__ = ["read_auto", "CCFile", "SCFile", "WSR98DFile", "SABFile"]
 
-def read_auto(filename, station_lon=None, station_lat=None, station_alt=None):
+def read_auto(filename, station_lon=None, station_lat=None, station_alt=None,
+              *, strict=False, repair_missing=False):
     """
     :param filename:  radar basedata filename
     :param station_lon:  radar station longitude //units: degree east
@@ -12,7 +14,11 @@ def read_auto(filename, station_lon=None, station_lat=None, station_alt=None):
     """
     radar_type = radar_format(filename)
     if radar_type == "WSR98D":
-        return WSR98DFile.WSR98D2NRadar(WSR98DFile.WSR98DBaseData(filename, station_lon, station_lat, station_alt)).ToPRD()
+        return WSR98DFile.WSR98D2NRadar(
+            WSR98DFile.WSR98DBaseData(filename, station_lon, station_lat, station_alt,
+                                       strict=strict),
+            strict=strict, repair_missing=repair_missing
+        ).ToPRD()
     elif radar_type == "SAB":
         return SABFile.SAB2NRadar(SABFile.SABBaseData(filename, station_lon, station_lat, station_alt)).ToPRD()
     elif radar_type == "CC":
@@ -51,14 +57,18 @@ def read_SC(filename, station_lon=None, station_lat=None, station_alt=None):
     """
     return SCFile.SC2NRadar(SCFile.SCBaseData(filename, station_lon, station_lat, station_alt)).ToPRD()
 
-def read_WSR98D(filename, station_lon=None, station_lat=None, station_alt=None):
+def read_WSR98D(filename, station_lon=None, station_lat=None, station_alt=None,
+                *, strict=False, repair_missing=False):
     """
     :param filename:  radar basedata filename
     :param station_lon:  radar station longitude //units: degree east
     :param station_lat:  radar station latitude //units:degree north
     :param station_alt:  radar station altitude //units: meters
     """
-    return WSR98DFile.WSR98D2NRadar(WSR98DFile.WSR98DBaseData(filename, station_lon, station_lat, station_alt)).ToPRD()
+    return WSR98DFile.WSR98D2NRadar(
+        WSR98DFile.WSR98DBaseData(filename, station_lon, station_lat, station_alt, strict=strict),
+        strict=strict, repair_missing=repair_missing
+    ).ToPRD()
 
 def read_PA(filename, station_lon=None, station_lat=None, station_alt=None):
     """

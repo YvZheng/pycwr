@@ -42,7 +42,11 @@ def _prepare_for_read(filename):
     if hasattr(filename, 'read'):  # file-like object
         return filename
     # look for compressed data by examining the first few bytes
-    fh = open(filename, 'rb')
+    try:
+        fh = open(filename, 'rb')
+    except Exception as e:
+        # Defer to caller; keep standard IOError to avoid breaking behavior
+        raise
     magic = fh.read(3)
     fh.close()
     if magic.startswith(b'\x1f\x8b'):
@@ -145,4 +149,3 @@ def radar_format(filename):
 def make_time_unit_str(dtobj):
     """ Return a time unit string from a datetime object. """
     return "seconds since " + dtobj.strftime("%Y-%m-%dT%H:%M:%SZ")
-

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ["py38", "py39", "py310", "py311"]
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.ruff]
+line-length = 88
+select = [
+  "E", "F", "W",  # pycodestyle/pyflakes
+  "I",              # isort
+]
+ignore = [
+  "E402",  # module level import not at top (kept for backward compat)
+]
+target-version = "py38"
+src = ["pycwr", "tests"]
+
+[tool.ruff.isort]
+known-first-party = ["pycwr"]
+
+[tool.coverage.run]
+branch = true
+source = ["pycwr"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+

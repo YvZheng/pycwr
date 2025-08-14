@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        args: ["--line-length=88"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.1
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile=black", "--line-length=88"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        additional_dependencies: []
+
+  - repo: https://github.com/pytest-dev/pytest
+    rev: 8.2.0
+    hooks:
+      - id: pytest
+        additional_dependencies:
+          - pytest-cov
+          - pytest-xdist
+        args: ["-q"]
+

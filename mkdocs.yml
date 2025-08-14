@@ -1,0 +1,12 @@
+site_name: pycwr (local customized)
+repo_url: https://example.com/your-fork
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Robustness: robustness.md
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+

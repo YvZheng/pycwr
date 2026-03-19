@@ -176,13 +176,13 @@ def cartesian_to_antenna_cwr(x, y, elevation , h):
     和高度,计算该点雷达的斜距
     ..math::
         s = sqrt(x^2 + y^2)
-        r = sin(s/R)*(R+h)/cos(elevation)
+        r = tan(s/R)*(R+h)/cos(elevation)
         R为地球半径m,h为雷达高度m,elevation为仰角degree
     """
     R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
     s = np.sqrt(x**2+y**2)
     El = np.deg2rad(elevation)
-    ranges = np.tan(s/R)*(R+h)/np.cosh(El)
+    ranges = np.tan(s/R)*(R+h)/np.cos(El)
     z = (R+h)/np.cos(El + s/R)*np.cos(El) - R ##计算高度
     az = _azimuth(x, y) ##计算方位角
     return az, ranges, z

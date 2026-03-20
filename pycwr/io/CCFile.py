@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from .BaseDataProtocol.CCProtocol import dtype_cc
-from .util import _prepare_for_read, _unpack_from_buf, make_time_unit_str, get_radar_sitename
+from .util import _prepare_for_read, _read_all, _read_exact, _unpack_from_buf, make_time_unit_str, get_radar_sitename, date2num
 import datetime
 import pandas as pd
 from ..core.NRadar import PRD
 from ..configure.pyart_config import get_metadata, get_fillvalue
 from ..configure.default_config import CINRAD_field_mapping, _LIGHT_SPEED
 from ..core.PyartRadar import Radar
-from netCDF4 import date2num
 
 class CCBaseData(object):
-    """
-        解码CC/CCJ的数据格式
-    """
+    """Decode CC/CCJ base data."""
 
     def __init__(self, filename, station_lon=None, station_lat=None, station_alt=None):
         """
@@ -27,48 +24,50 @@ class CCBaseData(object):
         self.station_lon = station_lon
         self.station_lat = station_lat
         self.station_alt = station_alt
-        self.fid = _prepare_for_read(self.filename)  ##判断是否是压缩文件
-        # print(len(self.fid.read()))
-        buf_header = self.fid.read(dtype_cc.BaseDataHeaderSize)  ##取出header的buf
+        self.fid = _prepare_for_read(self.filename)
+        buf_header = _read_exact(self.fid, dtype_cc.BaseDataHeaderSize, "CC header")
         self.header = self._parse_BaseDataHeader(buf_header)
-        self._check_cc_basedata()
-        self.fid.seek(dtype_cc.BaseDataHeaderSize, 0)  ##移动到径向数据的位置
+        self._radial_buf = self._check_cc_basedata()
         self.radial = self._parse_radial()
+        self.fid.close()
 
     def _check_cc_basedata(self):
-        """检查雷达数据是否完整"""
-        buf_radial_data = self.fid.read()
-        assert len(buf_radial_data) == self.nrays * dtype_cc.PerRadialSize, "CC basedata size has problems!"
-        return
+        """Check that the radial payload length matches the header metadata."""
+        buf_radial_data = _read_all(self.fid, "CC radial payload")
+        expected = self.nrays * dtype_cc.PerRadialSize
+        if len(buf_radial_data) != expected:
+            raise ValueError("CC radial payload size does not match the header metadata.")
+        return buf_radial_data
 
     def _parse_BaseDataHeader(self, buf_header):
         """
-        :param buf_header: 只包含头文件的buf
+        :param buf_header: header-only byte buffer
         :return:
         """
         BaseDataHeader_dict = {}
-        ##解码第一部分观测参数
+        # Decode the first observation-parameter block.
         BaseDataHeader_dict['ObsParam1'], _ = _unpack_from_buf(buf_header, \
                                                                dtype_cc.HeaderSize1_pos,
                                                                dtype_cc.BaseDataHeader['RadarHeader1'])
-        ##解码不同仰角的观测参数
-        assert BaseDataHeader_dict['ObsParam1']['ucScanMode'] > 100, "only vol support!"
+        # Decode per-sweep cut configuration.
+        if BaseDataHeader_dict['ObsParam1']['ucScanMode'] <= 100:
+            raise ValueError("Only volume-scan CC files are supported.")
         self.nsweeps = BaseDataHeader_dict['ObsParam1']['ucScanMode'] - 100
         BaseDataHeader_dict['CutConfig'] = np.frombuffer(buf_header, \
                                                          dtype_cc.BaseDataHeader['CutConfigX30'], count=self.nsweeps,
                                                          offset=dtype_cc.CutSize_pos)
-        ##解码第二部分观测参数
+        # Decode the second observation-parameter block.
         BaseDataHeader_dict['ObsParam2'], _ = _unpack_from_buf(buf_header, \
                                                                dtype_cc.HeaderSize2_pos,
                                                                dtype_cc.BaseDataHeader['RadarHeader2'])
 
         self.nrays = np.sum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])
-        self.sweep_end_ray_index_add1 = (np.cumsum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])).astype(int)  ##python格式的结束
+        self.sweep_end_ray_index_add1 = (np.cumsum(BaseDataHeader_dict['CutConfig']['usRecordNumber'])).astype(int)
         self.sweep_start_ray_index = (self.sweep_end_ray_index_add1 - BaseDataHeader_dict['CutConfig']['usRecordNumber']).astype(int)
         return BaseDataHeader_dict
 
     def _parse_radial_single(self, buf_radial, radialnumber):
-        """解析径向的数据"""
+        """Parse one CC radial."""
         Radial = {}
         RadialData = np.frombuffer(buf_radial, dtype_cc.RadialData(radialnumber))
         Radial['fields'] = {}
@@ -82,37 +81,31 @@ class CCBaseData(object):
 
     def _parse_radial(self):
         radial = []
+        payload = self._radial_buf
+        pos = 0
         for isweep in range(self.nsweeps):
             radialnumber = self.header['CutConfig']['usBinNumber'][isweep]
             for _ in range(self.header['CutConfig']['usRecordNumber'][isweep]):
-                buf_radial = self.fid.read(dtype_cc.PerRadialSize)
+                buf_radial = payload[pos:pos + dtype_cc.PerRadialSize]
+                pos += dtype_cc.PerRadialSize
                 radial.append(self._parse_radial_single(buf_radial, radialnumber))
         return radial
 
     def get_nyquist_velocity(self):
-        """get nyquist vel per ray
-        获取每根径向的不模糊速度
-        :return:(nRays)
-        """
+        """Return the per-ray Nyquist velocity."""
         nyquist_velocity = np.concatenate([np.array([self.header['CutConfig']['usMaxV'][isweep] / 100.] \
                                                     * self.header['CutConfig']['usRecordNumber'][isweep]) for \
                                            isweep in range(self.nsweeps)])
         return nyquist_velocity.astype(np.float32)
 
     def get_unambiguous_range(self):
-        """
-        获取每根径向的不模糊距离
-        :return:(nRays)
-        """
+        """Return the per-ray unambiguous range."""
         return np.concatenate([np.array([self.header['CutConfig']['usMaxL'][isweep] * 10. \
                                          ] * self.header['CutConfig']['usRecordNumber'][isweep]) for \
                                isweep in range(self.nsweeps)])
 
     def get_scan_time(self):
-        """
-        获取每根径向的扫描时间
-        :return:(nRays)
-        """
+        """Return the acquisition time for each ray."""
         params = self.header['ObsParam1']
         start_year = params['ucSYear1'] * 100 + params['ucSYear2']
         end_year = params['ucEYear1'] * 100 + params['ucEYear2']
@@ -125,48 +118,30 @@ class CCBaseData(object):
         return pd.date_range(start_time, end_time, periods=self.nrays).to_pydatetime()
 
     def get_sweep_end_ray_index(self):
-        """
-        获取每个sweep的结束的index，包含在内
-        :return:(nsweep)
-        """
+        """Return the inclusive end index of each sweep."""
         return self.sweep_end_ray_index_add1 - 1
 
     def get_sweep_start_ray_index(self):
-        """
-        获取每个sweep的开始的index
-        :return:(nsweep)
-        """
+        """Return the start index of each sweep."""
         return self.sweep_start_ray_index
 
     def get_rays_per_sweep(self):
-        """
-        获取每个sweep的径向数
-        :return:(nsweep)
-        """
+        """Return the number of rays in each sweep."""
         return (self.header['CutConfig']['usRecordNumber']).astype(np.int32)
 
     def get_azimuth(self):
-        """
-        获取每根径向的方位角
-        :return:(nRays)
-        """
+        """Return the azimuth angle for each ray."""
         return np.concatenate([np.linspace(0, 360, self.header['CutConfig']['usRecordNumber'][isweep]) \
                                for isweep in range(self.nsweeps)], axis=0)
 
     def get_elevation(self):
-        """
-        获取每根径向的仰角
-        :return: (nRays)
-        """
+        """Return the elevation angle for each ray."""
         return np.concatenate([np.array([self.header['CutConfig']['usAngle'][isweep] / 100. \
                                          ] * self.header['CutConfig']['usRecordNumber'][isweep]) for \
                                isweep in range(self.nsweeps)])
 
     def get_latitude_longitude_altitude_frequency(self):
-        """
-        获取经纬度高度，雷达频率
-        :return:lat, lon, alt, frequency
-        """
+        """Return latitude, longitude, altitude, and radar frequency."""
         lat, lon, alt, frequency =  self.header['ObsParam1']['lLatitudeValue'] / 3600000.,\
                                     self.header['ObsParam1']['lLongitudeValue'] / 3600000., \
                                     self.header['ObsParam1']['lHeight'] / 1000.,\
@@ -180,18 +155,15 @@ class CCBaseData(object):
         return lat, lon, alt, frequency
 
     def get_scan_type(self):
-        """
-        获取扫描的类型
-        :return:
-        """
-        ## only ppi support!
+        """Return the scan type string."""
+        # Only PPI is supported in the current CC reader.
         return "ppi"
 
     def get_sitename(self):
         return get_radar_sitename(self.filename)
 
 class CC2NRadar(object):
-    """到NusitRadar object 的桥梁"""
+    """Bridge from raw CC data to an NRadar object."""
 
     def __init__(self, CC):
         self.CC = CC
@@ -212,186 +184,98 @@ class CC2NRadar(object):
         self.sitename = self.CC.get_sitename()
 
     def get_azimuth(self):
-        """
-        获取每根径向的方位角
-        :return:(nRays)
-        """
+        """Return the azimuth angle for each ray."""
         return self.CC.get_azimuth()
 
     def get_elevation(self):
-        """
-        获取每根径向的仰角
-        :return: (nRays)
-        """
+        """Return the elevation angle for each ray."""
         return self.CC.get_elevation()
 
     def get_rays_per_sweep(self):
-        """
-        获取每个sweep的径向数
-        :return:(nsweep)
-        """
+        """Return the number of rays in each sweep."""
         return (self.CC.header['CutConfig']['usRecordNumber']).astype(int)
 
     def get_scan_time(self):
-        """
-        获取每根径向的扫描时间
-        :return:(nRays)
-        """
+        """Return the acquisition time for each ray."""
         return self.CC.get_scan_time()
 
     def get_nyquist_velocity(self):
-        """get nyquist vel per ray
-        获取每根径向的不模糊速度
-        :return:(nRays)
-        """
+        """Return the per-ray Nyquist velocity."""
         return self.CC.get_nyquist_velocity()
 
     def get_unambiguous_range(self):
-        """
-        获取每根径向的不模糊距离
-        :return:(nRays)
-        """
+        """Return the per-ray unambiguous range."""
         return self.CC.get_unambiguous_range()
 
     def get_sweep_end_ray_index(self):
-        """
-        获取每个sweep的结束的index，包含在内
-        :return:(nsweep)
-        """
+        """Return the inclusive end index of each sweep."""
         return self.CC.sweep_end_ray_index_add1 - 1
 
     def get_sweep_start_ray_index(self):
-        """
-        获取每个sweep的开始的index
-        :return:(nsweep)
-        """
+        """Return the start index of each sweep."""
         return self.CC.sweep_start_ray_index
 
     def get_nbins_per_sweep(self):
-        """
-        确定每个sweep V探测的库数
-        :return:
-        """
+        """Return the gate count for each sweep."""
         return (self.CC.header['CutConfig']['usBinNumber']).astype(int)
 
     def get_range_per_radial(self, length):
-        """
-        确定径向每个库的距离
-        :param length:
-        :return:
-        """
+        """Return gate-center ranges for a radial of ``length`` bins."""
         Resolution = self.CC.header['CutConfig']['usBindWidth'][0] * 2
         return np.linspace(Resolution, Resolution * length, length)
 
     def _get_fields(self):
-        """将所有的field的数据提取出来"""
+        """Assemble all fields into dense 2-D arrays."""
         fields = {}
         field_keys = self.radial[0]['fields'].keys()
         for ikey in field_keys:
             fields[ikey] = np.array([(iray['fields'][ikey]).ravel() for iray in self.radial])
         return fields
 
-    def get_NRadar_nyquist_speed(self):
+    def get_nradar_nyquist_speed(self):
         """array shape (nsweeps)"""
         return self.CC.header['CutConfig']['usMaxV'] / 100.
 
-    def get_NRadar_unambiguous_range(self):
+    def get_NRadar_nyquist_speed(self):
+        """Backward-compatible alias for ``get_nradar_nyquist_speed``."""
+        return self.get_nradar_nyquist_speed()
+
+    def get_nradar_unambiguous_range(self):
         """array shape (nsweeps)"""
         return self.CC.header['CutConfig']['usMaxL'] * 10.
+
+    def get_NRadar_unambiguous_range(self):
+        """Backward-compatible alias for ``get_nradar_unambiguous_range``."""
+        return self.get_nradar_unambiguous_range()
 
     def get_fixed_angle(self):
         return self.CC.header['CutConfig']['usAngle'] / 100.
 
-    def ToPRD(self):
-        """将WSR98D数据转为PRD 的数据格式"""
+    def to_prd(self, effective_earth_radius=None):
+        """Build an ``NRadar.PRD`` object from the decoded CC volume."""
 
         return PRD(fields=self.fields, scan_type=self.scan_type, time=self.get_scan_time(), \
                           range=self.range, azimuth=self.azimuth, elevation=self.elevation, latitude=self.latitude, \
                           longitude=self.longitude, altitude=self.altitude,
                           sweep_start_ray_index=self.sweep_start_ray_index, \
                           sweep_end_ray_index=self.sweep_end_ray_index, fixed_angle=self.get_fixed_angle(), \
-                          bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_NRadar_nyquist_speed(), \
-                          frequency=self.frequency, unambiguous_range=self.get_NRadar_unambiguous_range(), \
-                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename, pyart_radar=self.ToPyartRadar())
+                          bins_per_sweep=self.bins_per_sweep, nyquist_velocity=self.get_nradar_nyquist_speed(), \
+                          frequency=self.frequency, unambiguous_range=self.get_nradar_unambiguous_range(), \
+                          nrays=self.nrays, nsweeps=self.nsweeps, sitename = self.sitename,
+                          pyart_radar=None, effective_earth_radius=effective_earth_radius,
+                          metadata={"original_container": "CINRAD/CC", "radar_name": "CINRAD/CC"})
 
-    def ToPyartRadar(self):
+    def ToPRD(self, effective_earth_radius=None):
+        """Backward-compatible alias for ``to_prd``."""
+        return self.to_prd(effective_earth_radius=effective_earth_radius)
 
-        dts = self.get_scan_time()
-        units = make_time_unit_str(min(dts))
-        time = get_metadata('time')
-        time['units'] = units
-        time['data'] = date2num(dts, units).astype('float32')
+    def to_pyart_radar(self, effective_earth_radius=None, **kwargs):
+        """Export the decoded CC volume through the PRD Py-ART adapter."""
+        return self.to_prd(effective_earth_radius=effective_earth_radius).to_pyart_radar(**kwargs)
 
-        # range
-        _range = get_metadata('range')
-        # assume that the number of gates and spacing from the first ray is
-        # representative of the entire volume
-        _range['data'] = self.range
-        _range['meters_to_center_of_first_gate'] = self.CC.header['CutConfig']['usBindWidth'][0] * 2
-        _range['meters_between_gates'] = self.CC.header['CutConfig']['usBindWidth'][0] * 2
-
-        latitude = get_metadata('latitude')
-        longitude = get_metadata('longitude')
-        altitude = get_metadata('altitude')
-        latitude['data'] = np.array([self.latitude], dtype='float64')
-        longitude['data'] = np.array([self.longitude], dtype='float64')
-        altitude['data'] = np.array([self.altitude], dtype='float64')
-
-        metadata = get_metadata('metadata')
-        metadata['original_container'] = 'CINRAD/CC'
-        metadata['site_name'] = self.sitename
-        metadata['radar_name'] = "CINRAD/CC"
-
-        sweep_start_ray_index = get_metadata('sweep_start_ray_index')
-        sweep_end_ray_index = get_metadata('sweep_end_ray_index')
-        sweep_start_ray_index['data'] = self.sweep_start_ray_index
-        sweep_end_ray_index['data'] = self.sweep_end_ray_index
-
-        sweep_number = get_metadata('sweep_number')
-        sweep_number['data'] = np.arange(self.nsweeps, dtype='int32')
-
-        scan_type = self.scan_type
-
-        sweep_mode = get_metadata('sweep_mode')
-        if self.scan_type == "ppi":
-            sweep_mode['data'] = np.array(self.nsweeps * ['azimuth_surveillance'], dtype='S')
-        elif self.scan_type == "rhi":
-            sweep_mode['data'] = np.array(self.nsweeps * ['rhi'], dtype='S')
-        else:
-            sweep_mode['data'] = np.array(self.nsweeps * ['sector'], dtype='S')
-
-        # elevation
-        elevation = get_metadata('elevation')
-        elevation['data'] = self.elevation
-
-        # azimuth
-        azimuth = get_metadata('azimuth')
-        azimuth['data'] = self.azimuth
-
-        # fixed_angle
-        fixed_angle = get_metadata('fixed_angle')
-        fixed_angle['data'] = self.get_fixed_angle()
-
-        # instrument_parameters
-        instrument_parameters = self._get_instrument_parameters()
-
-        # fields
-        fields = {}
-        for field_name_abbr in self.fields.keys():
-            field_name = CINRAD_field_mapping[field_name_abbr]
-            if field_name is None:
-                continue
-            field_dic = get_metadata(field_name)
-            field_dic['data'] = np.ma.masked_array(self.fields[field_name_abbr],\
-                                mask=np.isnan(self.fields[field_name_abbr]), fill_value=get_fillvalue())
-            field_dic['_FillValue'] = get_fillvalue()
-            fields[field_name] = field_dic
-        return Radar(time, _range, fields, metadata, scan_type,
-                     latitude, longitude, altitude,
-                     sweep_number, sweep_mode, fixed_angle, sweep_start_ray_index,
-                     sweep_end_ray_index,
-                     azimuth, elevation,
-                     instrument_parameters=instrument_parameters)
+    def ToPyartRadar(self, effective_earth_radius=None, **kwargs):
+        """Backward-compatible alias for ``to_pyart_radar``."""
+        return self.to_pyart_radar(effective_earth_radius=effective_earth_radius, **kwargs)
 
     def _get_instrument_parameters(self):
         """ Return a dictionary containing instrument parameters. """

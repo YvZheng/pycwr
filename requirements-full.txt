@@ -1,0 +1,7 @@
+-r requirements-core.txt
+matplotlib
+cartopy
+Flask>=3.0
+arm_pyart>=2.1,<3
+xradar>=0.7
+xarray-datatree>=0.0.14

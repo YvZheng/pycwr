@@ -1,0 +1,7 @@
+numpy
+pandas<3
+pyproj
+scipy
+xarray
+netCDF4
+easydict

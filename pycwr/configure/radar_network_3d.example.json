@@ -1,0 +1,93 @@
+{
+  "network": {
+    "radar_dirs": [
+      "/home/njiasai/work/radrx/testdata/Z9046",
+      "/home/njiasai/work/radrx/testdata/Z9047"
+    ],
+    "field_names": [
+      "dBZ",
+      "ZDR"
+    ],
+    "field_range_mode": {
+      "dBZ": "native",
+      "ZDR": "aligned"
+    },
+    "lon_min": 117.0,
+    "lon_max": 121.8,
+    "lat_min": 32.0,
+    "lat_max": 34.8,
+    "lon_res_deg": 0.01,
+    "lat_res_deg": 0.01,
+    "level_heights": [
+      1000.0,
+      3000.0,
+      5000.0
+    ],
+    "product_level_heights": [
+      500.0,
+      1000.0,
+      1500.0,
+      2000.0,
+      2500.0,
+      3000.0,
+      3500.0,
+      4000.0,
+      4500.0,
+      5000.0
+    ],
+    "max_range_km": 460.0,
+    "time_tolerance_minutes": 10,
+    "composite_method": "quality_weighted",
+    "influence_radius_m": 300000.0,
+    "quality_weight_terms": [
+      "range",
+      "beam",
+      "vertical",
+      "qc",
+      "blockage"
+    ],
+    "range_decay_m": 230000.0,
+    "beam_radius_ref_m": 3000.0,
+    "vertical_gap_ref_deg": 0.5,
+    "qc_weight_field": "QC_MASK",
+    "blockage_config": {
+      "Z9046": 1.0,
+      "Z9047": 1.0
+    },
+    "fillvalue": -999.0,
+    "output_dir": "/tmp",
+    "effective_earth_radius": null,
+    "file_pattern": "*.bin*",
+    "parallel": true,
+    "max_workers": null,
+    "blind_method": "hybrid",
+    "output_products": [
+      "CR",
+      "VIL",
+      "ET"
+    ],
+    "plot_overview": true,
+    "plot_height_levels": [
+      1000.0,
+      3000.0,
+      5000.0
+    ],
+    "plot_output_dir": "/tmp",
+    "plot_format": "png",
+    "plot_product_for_levels": "CAPPI",
+    "coverage_policy": "observable_only",
+    "vil_min_dbz": 18.0,
+    "vil_max_dbz_cap": 56.0,
+    "et_threshold_dbz": 18.0,
+    "use_qc": false,
+    "qc_method": "dualpol",
+    "qc_band": "C",
+    "qc_use_existing_kdp": true,
+    "qc_fallback": "original",
+    "qc_clear_air_mode": "mask",
+    "qc_clear_air_max_ref": 15.0,
+    "qc_clear_air_max_rhohv": 0.97,
+    "qc_clear_air_max_phidp_texture": 10.0,
+    "qc_clear_air_max_snr": 20.0
+  }
+}

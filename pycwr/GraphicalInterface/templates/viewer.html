@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pycwr Radar Workspace</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}">
+</head>
+<body>
+<main
+    class="workspace"
+    data-default-directory="{{ default_directory }}"
+    data-api-token="{{ api_token }}"
+    data-allowed-roots="{{ allowed_roots }}"
+>
+    <header class="topbar">
+        <div class="topbar-primary">
+            <button id="controls-toggle-button" class="toolbar-button" type="button">Controls</button>
+            <div class="brand-block">
+                <p class="eyebrow">pycwr Radar Workspace</p>
+                <h1>Single-Station Radar Analysis</h1>
+            </div>
+        </div>
+
+        <div class="current-strip">
+            <div class="current-chip">
+                <span class="current-label">Station</span>
+                <span id="current-station" class="current-value">-</span>
+            </div>
+            <div class="current-chip">
+                <span class="current-label">Time</span>
+                <span id="current-time" class="current-value">-</span>
+            </div>
+            <div class="current-chip">
+                <span class="current-label">Field</span>
+                <span id="current-field" class="current-value">-</span>
+            </div>
+            <div class="current-chip">
+                <span class="current-label">Sweep</span>
+                <span id="current-sweep" class="current-value">-</span>
+            </div>
+        </div>
+
+        <div class="topbar-actions">
+            <button id="section-toggle-button" class="toolbar-button" type="button">Section</button>
+            <button id="scan-button" class="toolbar-button" type="button">Refresh</button>
+            <a id="save-link" class="save-link toolbar-button" href="#" download="pycwr-view.png">Export PNG</a>
+        </div>
+    </header>
+
+    <div id="drawer-scrim" class="drawer-scrim" hidden></div>
+
+    <div class="workbench">
+        <aside id="control-drawer" class="control-drawer" aria-hidden="true">
+            <div class="drawer-header">
+                <div>
+                    <p class="eyebrow">Controls</p>
+                    <h2>Radar Controls</h2>
+                </div>
+                <button id="controls-close-button" class="toolbar-button drawer-close" type="button">Close</button>
+            </div>
+
+            <div class="drawer-content">
+                <section class="panel-card">
+                    <h3>Data Source</h3>
+                    <label class="input-group" for="directory-input">
+                        <span>Radar Directory</span>
+                        <input id="directory-input" type="text" spellcheck="false">
+                    </label>
+                    <p id="directory-hint" class="subtle">Scan a directory to build the station and timeline catalog.</p>
+                </section>
+
+                <section class="panel-card panel-card-fill">
+                    <h3>Station</h3>
+                    <label class="input-group" for="station-search">
+                        <span>Search</span>
+                        <input id="station-search" type="text" spellcheck="false" placeholder="Station ID">
+                    </label>
+                    <select id="station-list" size="12"></select>
+                </section>
+
+                <section class="panel-card">
+                    <h3>Product</h3>
+                    <div id="field-chip-strip" class="field-chip-strip"></div>
+                    <div class="compact-grid">
+                        <label class="input-group" for="sweep-select">
+                            <span>Sweep</span>
+                            <select id="sweep-select"></select>
+                        </label>
+                        <label class="toggle-chip" for="map-toggle">
+                            <input id="map-toggle" type="checkbox">
+                            <span>Province Overlay</span>
+                        </label>
+                    </div>
+                </section>
+
+                <details class="panel-details">
+                    <summary>Metadata</summary>
+                    <dl id="metadata-list" class="metadata-list"></dl>
+                </details>
+            </div>
+        </aside>
+
+        <div class="viewer-shell">
+            <section class="viewer-panel">
+                <div class="viewer-header">
+                    <div class="viewer-heading">
+                        <h2 id="viewer-title">No file selected</h2>
+                        <p id="viewer-subtitle" class="subtle">Select a station and a timeline frame to load radar data.</p>
+                    </div>
+                </div>
+
+                <div class="image-stage">
+                    <canvas id="plot-canvas"></canvas>
+                    <div class="canvas-hud">
+                        <span id="canvas-hint">Wheel zoom | Drag pan | Double-click reset</span>
+                    </div>
+                    <div id="section-floating-hud" class="section-floating-hud">
+                        <div class="section-floating-copy">
+                            <span class="section-floating-label">Section</span>
+                            <span id="section-floating-status" class="section-floating-status">Press Section to start picking.</span>
+                        </div>
+                        <div class="section-floating-actions">
+                            <button id="section-pick-button" class="toolbar-button" type="button">Pick Line</button>
+                            <button id="section-open-button" class="toolbar-button" type="button">Open Panel</button>
+                            <button id="section-clear-inline-button" class="toolbar-button" type="button">Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside id="section-panel" class="section-drawer" aria-hidden="true">
+                <div class="drawer-header">
+                    <div>
+                        <p class="eyebrow">Section</p>
+                        <h2>Vertical Section</h2>
+                    </div>
+                    <button id="section-close-button" class="toolbar-button drawer-close" type="button">Close</button>
+                </div>
+
+                <div class="drawer-content section-drawer-content">
+                    <section class="panel-card">
+                        <input id="section-mode-toggle" type="checkbox" hidden>
+                        <p id="section-summary" class="subtle">Pick start and end points to build a vertical cross-section.</p>
+                        <div class="section-point-grid">
+                            <label class="input-group" for="section-start-x">
+                                <span>Start X (km)</span>
+                                <input id="section-start-x" type="number" step="0.1">
+                            </label>
+                            <label class="input-group" for="section-start-y">
+                                <span>Start Y (km)</span>
+                                <input id="section-start-y" type="number" step="0.1">
+                            </label>
+                            <label class="input-group" for="section-end-x">
+                                <span>End X (km)</span>
+                                <input id="section-end-x" type="number" step="0.1">
+                            </label>
+                            <label class="input-group" for="section-end-y">
+                                <span>End Y (km)</span>
+                                <input id="section-end-y" type="number" step="0.1">
+                            </label>
+                        </div>
+                        <div class="section-actions">
+                            <button id="section-pick-again-button" type="button">Pick Again</button>
+                            <button id="section-render-button" type="button">Render Section</button>
+                            <button id="section-clear-button" type="button">Clear</button>
+                            <a id="section-save-link" class="save-link" href="#" download="pycwr-section.png">Export Section</a>
+                        </div>
+                    </section>
+
+                    <section class="section-result-card">
+                        <div class="section-result-header">
+                            <h3>Section Preview</h3>
+                            <p class="subtle">The section follows the current file, field, and selected path.</p>
+                        </div>
+                        <div class="section-stage">
+                            <img id="section-image" alt="Vertical section preview">
+                            <p id="section-placeholder" class="section-placeholder">No section rendered yet.</p>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <footer class="timeline-bar">
+        <div class="timeline-controls">
+            <button id="prev-button" class="toolbar-button" type="button">Prev</button>
+            <button id="play-button" class="toolbar-button" type="button">Play</button>
+            <button id="next-button" class="toolbar-button" type="button">Next</button>
+            <label class="input-group timeline-speed" for="speed-select">
+                <span>Speed</span>
+                <select id="speed-select">
+                    <option value="1">1x</option>
+                    <option value="2">2x</option>
+                    <option value="4">4x</option>
+                </select>
+            </label>
+        </div>
+        <div class="timeline-track">
+            <div id="timeline-list" class="timeline-list"></div>
+        </div>
+        <p id="status-line" class="status-line">Ready.</p>
+    </footer>
+</main>
+
+<script src="{{ url_for('static', filename='viewer.js') }}"></script>
+</body>
+</html>

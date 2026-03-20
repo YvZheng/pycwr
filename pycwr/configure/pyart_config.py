@@ -21,6 +21,7 @@ Py-ART configuration.
 import os
 import traceback
 import warnings
+from importlib.util import module_from_spec, spec_from_file_location
 
 
 # the path to the default configuration file
@@ -74,12 +75,11 @@ def load_config(filename=None):
     global _DEFAULT_FIELD_COLORMAP
     global _DEFAULT_FIELD_LIMITS
 
-    try:
-        from importlib.machinery import SourceFileLoader
-        cfile = SourceFileLoader('metadata_config', filename).load_module()
-    except ImportError:
-        import imp
-        cfile = imp.load_source('metadata_config', filename)
+    spec = spec_from_file_location("metadata_config", filename)
+    if spec is None or spec.loader is None:
+        raise ImportError("Unable to load Py-ART configuration from %s" % filename)
+    cfile = module_from_spec(spec)
+    spec.loader.exec_module(cfile)
 
     _DEFAULT_METADATA = cfile.DEFAULT_METADATA
     _FILE_SPECIFIC_METADATA = cfile.FILE_SPECIFIC_METADATA

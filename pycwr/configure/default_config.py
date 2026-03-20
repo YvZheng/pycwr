@@ -6,6 +6,33 @@ Configuration file for the PRD Object , modified from Py-art
 
 FILL_VALUE = -9999.0
 _LIGHT_SPEED = 2.99792458e8
+HYDROMETEOR_CLASS_NAMES_ZH = (
+    "毛毛雨",
+    "雨",
+    "冰晶",
+    "干雪聚合体",
+    "湿雪",
+    "竖直冰晶",
+    "低密度霰",
+    "高密度霰",
+    "冰雹",
+    "大水滴",
+)
+HYDROMETEOR_CLASS_SHORT_LABELS_ZH = tuple(
+    "%d %s" % (index + 1, name) for index, name in enumerate(HYDROMETEOR_CLASS_NAMES_ZH)
+)
+HYDROMETEOR_CLASS_COLORS = (
+    "#9EC5FE",
+    "#1F78B4",
+    "#D9F0FF",
+    "#8FD175",
+    "#FFC857",
+    "#B39DDB",
+    "#F7A35C",
+    "#E67E22",
+    "#D62828",
+    "#FF4FB3",
+)
 
 DEFAULT_METADATA = {
     # Metadata for radar attributes. These closely follow the CF/Radial
@@ -221,11 +248,68 @@ DEFAULT_METADATA = {
         'valid_max': 5,
         'valid_min': -2,
         'coordinates': 'elevation azimuth range'},
+    'corrected_specific_differential_phase': {
+        'units': 'degrees/km',
+        'standard_name': 'corrected_specific_differential_phase_hv',
+        'long_name': 'Quality-controlled specific differential phase (KDP)',
+        'valid_max': 5,
+        'valid_min': -2,
+        'coordinates': 'elevation azimuth range'},
+    'smoothed_differential_phase': {
+        'units': 'degrees',
+        'standard_name': 'smoothed_differential_phase_hv',
+        'long_name': 'Smoothed differential phase (PhiDP)',
+        'valid_max': 360.0,
+        'valid_min': 0.0,
+        'coordinates': 'elevation azimuth range'},
+    'differential_phase_texture': {
+        'units': 'degrees',
+        'standard_name': 'differential_phase_texture',
+        'long_name': 'Differential phase texture',
+        'valid_max': 180.0,
+        'valid_min': 0.0,
+        'coordinates': 'elevation azimuth range'},
+    'path_integrated_attenuation': {
+        'units': 'dB',
+        'standard_name': 'path_integrated_attenuation',
+        'long_name': 'Path integrated attenuation',
+        'coordinates': 'elevation azimuth range'},
+    'path_integrated_differential_attenuation': {
+        'units': 'dB',
+        'standard_name': 'path_integrated_differential_attenuation',
+        'long_name': 'Path integrated differential attenuation',
+        'coordinates': 'elevation azimuth range'},
+    'meteorological_echo_mask': {
+        'units': 'unitless',
+        'standard_name': 'meteorological_echo_mask',
+        'long_name': 'Meteorological echo mask',
+        'flag_values': [0, 1],
+        'flag_meanings': 'non_meteorological meteorological',
+        'coordinates': 'elevation azimuth range'},
+    'quality_control_mask': {
+        'units': 'unitless',
+        'standard_name': 'quality_control_mask',
+        'long_name': 'Quality control mask after despeckling',
+        'flag_values': [0, 1],
+        'flag_meanings': 'rejected accepted',
+        'coordinates': 'elevation azimuth range'},
+    'clear_air_echo_mask': {
+        'units': 'unitless',
+        'standard_name': 'clear_air_echo_mask',
+        'long_name': 'Likely clear-air echo mask',
+        'flag_values': [0, 1],
+        'flag_meanings': 'other_echo likely_clear_air_echo',
+        'coordinates': 'elevation azimuth range'},
     'clutter_flag':{
         'standard_name': 'clutter_flag',
     },
     'hydro_class':{
         'standard_name': 'hydro_class',
+        'long_name': 'Hydrometeor classification',
+        'units': 'class_id',
+        'flag_values': list(range(1, len(HYDROMETEOR_CLASS_NAMES_ZH) + 1)),
+        'flag_meanings': 'drizzle rain ice_crystals dry_aggregates_snow wet_snow vertical_ice low_density_graupel high_density_graupel hail big_drops',
+        'hydrometeor_class_names_zh': ", ".join(HYDROMETEOR_CLASS_NAMES_ZH),
     },
     "horizontal_signal_noise_ratio":{
         'standard_name': 'horizontal signal noise ratio',
@@ -274,10 +358,18 @@ CINRAD_field_mapping = {
     'CC': "cross_correlation_ratio",
     'PhiDP': "differential_phase",
     'KDP': "specific_differential_phase",
+    'KDPc': "corrected_specific_differential_phase",
     'CP': "clutter_probability",
     'Flag': "flag_of_rpv_data",
     'HCL': "hydro_class",
     'CF': "clutter_flag",
+    'PhiDP_smooth': "smoothed_differential_phase",
+    'PhiDP_texture': "differential_phase_texture",
+    'PIA': "path_integrated_attenuation",
+    'PIA_ZDR': "path_integrated_differential_attenuation",
+    'METEO_MASK': "meteorological_echo_mask",
+    'CLEAR_AIR_MASK': "clear_air_echo_mask",
+    'QC_MASK': "quality_control_mask",
     'Zc': "corrected_reflectivity",
     'Vc': "corrected_velocity",
     'Wc': "spectrum_width_corrected",
@@ -388,4 +480,3 @@ CINRAD_field_normvar = {
     "height": -1,
     "interpolated_profile": -1,
 }
-

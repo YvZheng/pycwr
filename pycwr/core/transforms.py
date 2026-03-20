@@ -45,9 +45,57 @@ except ImportError:
     _PYPROJ_AVAILABLE = False
 
 PI = np.pi
+DEFAULT_EFFECTIVE_EARTH_RADIUS = 6371.0 * 1000.0 * 4.0 / 3.0
 
 
-def antenna_to_cartesian(ranges, azimuths, elevations):
+def resolve_effective_earth_radius(effective_earth_radius=None):
+    """Return a validated effective earth radius in meters."""
+    if effective_earth_radius is None:
+        return DEFAULT_EFFECTIVE_EARTH_RADIUS
+    radius = float(effective_earth_radius)
+    if radius <= 0:
+        raise ValueError("effective_earth_radius must be positive")
+    return radius
+
+
+def _deg2rad_sin_cos(values):
+    """Return sine and cosine of degree-valued angles."""
+    radians = np.deg2rad(np.asarray(values))
+    return np.sin(radians), np.cos(radians)
+
+
+def _antenna_vectors_to_cartesian_impl(
+    ranges,
+    azimuths,
+    elevations,
+    h=0.0,
+    effective_earth_radius=None,
+):
+    """Vectorized high-precision antenna-to-Cartesian transform."""
+    ranges = np.asarray(ranges)
+    azimuths = np.asarray(azimuths)
+    elevations = np.asarray(elevations)
+
+    r = ranges[np.newaxis, :]
+    sin_a, cos_a = _deg2rad_sin_cos(azimuths)
+    sin_e, cos_e = _deg2rad_sin_cos(elevations)
+    sin_a = sin_a[:, np.newaxis]
+    cos_a = cos_a[:, np.newaxis]
+    sin_e = sin_e[:, np.newaxis]
+    cos_e = cos_e[:, np.newaxis]
+
+    R = resolve_effective_earth_radius(effective_earth_radius)
+    radial = r * cos_e
+    gate_radius = np.sqrt(radial * radial + (R + h + r * sin_e) ** 2)
+    z = gate_radius - R
+    arc_arg = np.clip(radial / gate_radius, -1.0, 1.0)
+    s = R * np.arcsin(arc_arg)
+    x = s * sin_a
+    y = s * cos_a
+    return x, y, z
+
+
+def antenna_to_cartesian(ranges, azimuths, elevations, effective_earth_radius=None):
     """
     Return Cartesian coordinates from antenna coordinates.
 
@@ -92,18 +140,15 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
         Edition, 1993, p. 21.
 
     """
-    theta_e = elevations * np.pi / 180.0    # elevation angle in radians.
-    theta_a = azimuths * np.pi / 180.0      # azimuth angle in radians.
-    R = 6371.0 * 1000.0 * 4.0 / 3.0     # effective radius of earth in meters.
-    r = ranges * 1.0                 # distances to gates in meters.
+    return antenna_to_cartesian_cwr(
+        ranges,
+        azimuths,
+        elevations,
+        0.0,
+        effective_earth_radius=effective_earth_radius,
+    )
 
-    z = (r ** 2 + R ** 2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
-    s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
-    x = s * np.sin(theta_a)
-    y = s * np.cos(theta_a)
-    return x, y, z
-
-def antenna_to_cartesian_cwr(ranges, azimuths, elevations, h):
+def antenna_to_cartesian_cwr(ranges, azimuths, elevations, h, effective_earth_radius=None):
     """
         Return Cartesian coordinates from antenna coordinates.
         Parameters
@@ -139,60 +184,73 @@ def antenna_to_cartesian_cwr(ranges, azimuths, elevations, h):
         .. [1] Doviak and Zrnic, Doppler Radar and Weather Observations, Second
             Edition, 1993, p. 21.
     """
-    theta_e = np.deg2rad(elevations)  # elevation angle in radians.
-    theta_a = np.deg2rad(azimuths)  # azimuth angle in radians.
-    R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
-    r = ranges * 1.0  # distances to gates in meters.
+    sin_e, cos_e = _deg2rad_sin_cos(elevations)
+    sin_a, cos_a = _deg2rad_sin_cos(azimuths)
+    R = resolve_effective_earth_radius(effective_earth_radius)
+    r = np.asarray(ranges) * 1.0  # distances to gates in meters.
 
-    # z = (r ** 2 + R ** 2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
-    z = ((r * np.cos(theta_e)) ** 2 + \
-         (R + h + r * np.sin(theta_e)) ** 2) ** 0.5 - R
-    s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
-    x = s * np.sin(theta_a)
-    y = s * np.cos(theta_a)
+    radial = r * cos_e
+    gate_radius = np.sqrt(radial ** 2 + (R + h + r * sin_e) ** 2)
+    z = gate_radius - R
+    s = R * np.arcsin(np.clip(radial / gate_radius, -1.0, 1.0))  # arc length in m.
+    x = s * sin_a
+    y = s * cos_a
 
     return x, y, z
 
-def cartesian_xyz_to_antenna(x, y, z, h):
+def cartesian_xyz_to_antenna(x, y, z, h, effective_earth_radius=None):
     """
-    根据采样点距离雷达的x,y的水平距离,以及高度z, 以及雷达高度h
-    x, units:meters
-    y, units:meters
-    z, units:meters
-    h, units:meters
-    return ranges, azimuth, elevation
+    Invert Cartesian coordinates back to antenna coordinates.
+    x, units: meters
+    y, units: meters
+    z, units: meters
+    h, units: meters
+    return azimuth, ranges, elevation
     """
-    R = 8494666.6666666661 #等效地球半径
-    ranges = ((R + h) ** 2 + (R + z) ** 2 - 2 * (R + h) * (R + z) * np.cos((x ** 2 + y ** 2) ** 0.5 / R)) ** 0.5
-    #elevation = np.arccos((R + z) * np.sin((x ** 2 + y ** 2) ** 0.5 / R) / ranges) * 180. / np.pi
-    elevation = (np.arccos(((R + h) ** 2 + ranges ** 2 - (R + z) ** 2) / (2 * (R + h) * ranges)) - np.pi / 2) * 180. / np.pi
+    R = resolve_effective_earth_radius(effective_earth_radius)
+    s = np.hypot(x, y)
+    radar_radius = R + h
+    gate_radius = R + z
+    ranges_sq = radar_radius ** 2 + gate_radius ** 2 - 2 * radar_radius * gate_radius * np.cos(s / R)
+    ranges = np.sqrt(np.maximum(ranges_sq, 0.0))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        cos_arg = (radar_radius ** 2 + ranges ** 2 - gate_radius ** 2) / (2 * radar_radius * ranges)
+    cos_arg = np.clip(cos_arg, -1.0, 1.0)
+    elevation = (np.arccos(cos_arg) - np.pi / 2) * 180. / np.pi
 
     azimuth = _azimuth(x, y)
     return azimuth, ranges, elevation
 
-def cartesian_to_antenna_cwr(x, y, elevation , h):
-    """根据采样点距离雷达的x,y的水平距离,以及雷达仰角
-    return x, y, z
-    和高度,计算该点雷达的斜距
-    ..math::
-        s = sqrt(x^2 + y^2)
-        r = tan(s/R)*(R+h)/cos(elevation)
-        R为地球半径m,h为雷达高度m,elevation为仰角degree
+def cartesian_xy_elevation_to_range_z(x, y, elevation, h, effective_earth_radius=None):
+    """Invert planar coordinates and elevation back to slant range and height.
+
+    Given planar distance ``s = sqrt(x^2 + y^2)`` and elevation ``el``, this
+    uses the same 4/3-earth-radius model as :func:`antenna_to_cartesian_cwr`.
     """
-    R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
-    s = np.sqrt(x**2+y**2)
-    El = np.deg2rad(elevation)
-    ranges = np.tan(s/R)*(R+h)/np.cos(El)
-    z = (R+h)/np.cos(El + s/R)*np.cos(El) - R ##计算高度
-    az = _azimuth(x, y) ##计算方位角
+    R = resolve_effective_earth_radius(effective_earth_radius)
+    s = np.hypot(x, y)
+    phi = s / R
+    el = np.deg2rad(elevation)
+    denom = np.cos(phi) - np.sin(phi) * np.tan(el)
+    radar_radius = R + h
+    with np.errstate(invalid="ignore", divide="ignore"):
+        Rp = np.divide(radar_radius, denom)
+    z = Rp - R
+    ranges_sq = radar_radius ** 2 + (R + z) ** 2 - 2 * radar_radius * (R + z) * np.cos(phi)
+    ranges = np.sqrt(np.maximum(ranges_sq, 0.0))
+    az = _azimuth(x, y)
     return az, ranges, z
 
-def _azimuth(x, y):
-    '''根据某一点距离雷达x方向，y方向的距离，计算方位角，单位：弧度'''
-    az = np.pi / 2 - np.angle(x + y * 1j)
-    return np.where(az >= 0, az, 2 * np.pi + az) * 180 / np.pi
 
-def antenna_vectors_to_cartesian_cwr(ranges, azimuths, elevations, h=0, edges=False):
+cartesian_to_antenna_cwr = cartesian_xy_elevation_to_range_z
+
+def _azimuth(x, y):
+    """Compute azimuth from Cartesian x/y offsets relative to the radar."""
+    az = np.mod(np.pi / 2 - np.arctan2(y, x), 2 * np.pi)
+    return np.rad2deg(az)
+
+def antenna_vectors_to_cartesian_cwr(ranges, azimuths, elevations, h=0, edges=False,
+                                     effective_earth_radius=None):
     """
     Calculate Cartesian coordinate for gates from antenna coordinate vectors.
     Calculates the Cartesian coordinates for the gate centers or edges for
@@ -224,12 +282,17 @@ def antenna_vectors_to_cartesian_cwr(ranges, azimuths, elevations, h=0, edges=Fa
             elevations = _interpolate_elevation_edges(elevations)
         if len(azimuths) != 1:
             azimuths = _interpolate_azimuth_edges(azimuths)
-    rg, azg = np.meshgrid(ranges, azimuths)
-    rg, eleg = np.meshgrid(ranges, elevations)
-    return antenna_to_cartesian_cwr(rg, azg, eleg, h)
+    return _antenna_vectors_to_cartesian_impl(
+        ranges,
+        azimuths,
+        elevations,
+        h,
+        effective_earth_radius=effective_earth_radius,
+    )
 
 
-def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
+def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False,
+                                 effective_earth_radius=None):
     """
     Calculate Cartesian coordinate for gates from antenna coordinate vectors.
 
@@ -258,9 +321,9 @@ def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
         gate centers or edges.
 
     """
-    assert isinstance(ranges, np.ndarray) | isinstance(ranges, xr.DataArray), "check input dtype!"
-    assert isinstance(azimuths, np.ndarray) | isinstance(azimuths, xr.DataArray), "check input dtype!"
-    assert isinstance(elevations, np.ndarray) | isinstance(elevations, xr.DataArray), "check input dtype!"
+    assert isinstance(ranges, (np.ndarray, xr.DataArray)), "check input dtype!"
+    assert isinstance(azimuths, (np.ndarray, xr.DataArray)), "check input dtype!"
+    assert isinstance(elevations, (np.ndarray, xr.DataArray)), "check input dtype!"
     if edges:
         if len(ranges) != 1:
             ranges = _interpolate_range_edges(ranges)
@@ -268,36 +331,50 @@ def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False):
             elevations = _interpolate_elevation_edges(elevations)
         if len(azimuths) != 1:
             azimuths = _interpolate_azimuth_edges(azimuths)
-    rg, azg = np.meshgrid(ranges, azimuths)
-    rg, eleg = np.meshgrid(ranges, elevations)
-    return antenna_to_cartesian(rg, azg, eleg)
+    return antenna_vectors_to_cartesian_cwr(
+        ranges,
+        azimuths,
+        elevations,
+        h=0.0,
+        edges=edges,
+        effective_earth_radius=effective_earth_radius,
+    )
 
-def antenna_vectors_to_cartesian_rhi(ranges, azimuths, elevations, h, BeamWidth=1):
+def antenna_vectors_to_cartesian_rhi(ranges, azimuths, elevations, h, BeamWidth=1,
+                                     effective_earth_radius=None):
     """
-    考虑波束宽度,来构建RHI扫描的坐标系
-    :param ranges: 距离
-    :param azimuths: 方位角
-    :param elevations: 获取该仰角的信息
-    :param BeamWidth: 波束宽度
-    :param h: 雷达的高度
-    :return:
+    Build an RHI Cartesian coordinate system while accounting for beam width.
+    :param ranges: gate-center ranges.
+    :param azimuths: sweep azimuth.
+    :param elevations: sweep elevation samples.
+    :param BeamWidth: beam width in degrees.
+    :param h: radar altitude.
     """
     assert elevations.size == 1, "not rhi, check!"
     assert azimuths.size == 1, "not rhi, check!"
-    elevs = np.array([elevations-BeamWidth/2., elevations+BeamWidth/2.])
-    rg, azg = np.meshgrid(ranges, azimuths)
-    rg, eleg = np.meshgrid(ranges, elevs)
-    return antenna_to_cartesian_cwr(rg, azg, eleg, h)
+    ranges = np.asarray(ranges)
+    azimuths = np.asarray(azimuths)
+    elevs = np.asarray([elevations - BeamWidth / 2.0, elevations + BeamWidth / 2.0]).reshape(-1)
+    rg = np.broadcast_to(ranges, (elevs.size, ranges.size))
+    azg = np.broadcast_to(azimuths.reshape(1, -1)[0:1], (elevs.size, ranges.size))
+    eleg = np.broadcast_to(elevs[:, None], rg.shape)
+    return antenna_to_cartesian_cwr(
+        rg,
+        azg,
+        eleg,
+        h,
+        effective_earth_radius=effective_earth_radius,
+    )
 
-def antenna_vectors_to_cartesian_vcs(ranges, azimuths, elevations, h, BeamWidth=1):
+def antenna_vectors_to_cartesian_vcs(ranges, azimuths, elevations, h, BeamWidth=1,
+                                     effective_earth_radius=None):
     """
-    考虑波束宽度,来构建任意剖面的坐标系
-    :param ranges: 距离
-    :param azimuths: 方位角
-    :param elevations: 获取该仰角的信息
-    :param BeamWidth: 波束宽度
-    :param h: 雷达的高度
-    :return:
+    Build a vertical cross-section coordinate system while accounting for beam width.
+    :param ranges: gate-center ranges.
+    :param azimuths: azimuth samples.
+    :param elevations: elevation samples.
+    :param BeamWidth: beam width in degrees.
+    :param h: radar altitude.
     """
     assert elevations.ndim == 1, "check ,may input data is not right!"
     assert azimuths.ndim == 1, "check ,may input data is not right!"
@@ -306,7 +383,13 @@ def antenna_vectors_to_cartesian_vcs(ranges, azimuths, elevations, h, BeamWidth=
     eleg = np.stack([elevations-BeamWidth/2., elevations+BeamWidth/2.], axis=0)
     rg = np.stack([ranges, ranges], axis=0)
     azg = np.stack([azimuths, azimuths], axis=0)
-    return antenna_to_cartesian_cwr(rg, azg, eleg, h)
+    return antenna_to_cartesian_cwr(
+        rg,
+        azg,
+        eleg,
+        h,
+        effective_earth_radius=effective_earth_radius,
+    )
 
 
 def _interpolate_range_edges(ranges):
@@ -314,7 +397,7 @@ def _interpolate_range_edges(ranges):
     edges = np.empty((ranges.shape[0] + 1, ), dtype=ranges.dtype)
     edges[1:-1] = (ranges[:-1] + ranges[1:]) / 2.
     edges[0] = ranges[0] - (ranges[1] - ranges[0]) / 2.
-    edges[-1] = ranges[-1] - (ranges[-2] - ranges[-1]) / 2.
+    edges[-1] = ranges[-1] + (ranges[-1] - ranges[-2]) / 2.
     edges[edges < 0] = 0    # do not allow range to become negative
     return edges
 
@@ -324,7 +407,7 @@ def _interpolate_elevation_edges(elevations):
     edges = np.empty((elevations.shape[0]+1, ), dtype=elevations.dtype)
     edges[1:-1] = (elevations[:-1] + elevations[1:]) / 2.
     edges[0] = elevations[0] - (elevations[1] - elevations[0]) / 2.
-    edges[-1] = elevations[-1] - (elevations[-2] - elevations[-1]) / 2.
+    edges[-1] = elevations[-1] + (elevations[-1] - elevations[-2]) / 2.
     edges[edges > 180] = 180.   # prevent angles from going below horizon
     edges[edges < 0] = 0.
     return edges
@@ -430,8 +513,8 @@ def antenna_to_cartesian_track_relative(ranges, rot, roll, drift, tilt, pitch):
     y = r * (-1. * np.cos(rot + roll) * np.cos(drift) * np.cos(tilt) *
              np.sin(pitch) + np.sin(drift) * np.sin(rot + roll) *
              np.cos(tilt) + np.cos(drift) * np.cos(pitch) * np.sin(tilt))
-    z = (r * np.cos(pitch) * np.cos(tilt) * np.cos(rot + roll) +
-         np.sin(pitch) * np.sin(tilt))
+    z = r * (np.cos(pitch) * np.cos(tilt) * np.cos(rot + roll) +
+             np.sin(pitch) * np.sin(tilt))
     return x, y, z
 
 
@@ -483,8 +566,8 @@ def antenna_to_cartesian_earth_relative(
     y = r * (-1. * np.cos(rot + roll) * np.cos(heading) * np.cos(tilt) *
              np.sin(pitch) - np.sin(heading) * np.sin(rot + roll) *
              np.cos(tilt) + np.cos(heading) * np.cos(pitch) * np.sin(tilt))
-    z = (r * np.cos(pitch) * np.cos(tilt) * np.cos(rot + roll) +
-         np.sin(pitch) * np.sin(tilt))
+    z = r * (np.cos(pitch) * np.cos(tilt) * np.cos(rot + roll) +
+             np.sin(pitch) * np.sin(tilt))
     return x, y, z
 
 
@@ -620,34 +703,32 @@ def geographic_to_cartesian_aeqd(lon, lat, lon_0, lat_0, R=6370997.):
         Survey Professional Paper 1395, 1987, pp. 191-202.
 
     """
-    lon = np.atleast_1d(np.asarray(lon))
-    lat = np.atleast_1d(np.asarray(lat))
+    lon = np.asarray(lon)
+    lat = np.asarray(lat)
 
     lon_rad = np.deg2rad(lon)
     lat_rad = np.deg2rad(lat)
 
     lat_0_rad = np.deg2rad(lat_0)
     lon_0_rad = np.deg2rad(lon_0)
+    sin_lat_0 = np.sin(lat_0_rad)
+    cos_lat_0 = np.cos(lat_0_rad)
+    sin_lat = np.sin(lat_rad)
+    cos_lat = np.cos(lat_rad)
 
     lon_diff_rad = lon_rad - lon_0_rad
 
-    # calculate the arccos after ensuring all values in valid domain, [-1, 1]
-    arg_arccos = (np.sin(lat_0_rad) * np.sin(lat_rad) +
-                  np.cos(lat_0_rad) * np.cos(lat_rad) * np.cos(lon_diff_rad))
-    arg_arccos[arg_arccos > 1] = 1
-    arg_arccos[arg_arccos < -1] = -1
+    arg_arccos = np.clip(
+        sin_lat_0 * sin_lat + cos_lat_0 * cos_lat * np.cos(lon_diff_rad),
+        -1.0,
+        1.0,
+    )
     c = np.arccos(arg_arccos)
-    with warnings.catch_warnings():
-        # division by zero may occur here but is properly addressed below so
-        # the warnings can be ignored
-        warnings.simplefilter("ignore", RuntimeWarning)
-        k = c / np.sin(c)
-    # fix cases where k is undefined (c is zero), k should be 1
-    k[c == 0] = 1
+    sin_c = np.sin(c)
+    k = np.divide(c, sin_c, out=np.ones_like(c, dtype=np.result_type(c, float)), where=sin_c != 0)
 
-    x = R * k * np.cos(lat_rad) * np.sin(lon_diff_rad)
-    y = R * k * (np.cos(lat_0_rad) * np.sin(lat_rad) -
-                 np.sin(lat_0_rad) * np.cos(lat_rad) * np.cos(lon_diff_rad))
+    x = R * k * cos_lat * np.sin(lon_diff_rad)
+    y = R * k * (cos_lat_0 * sin_lat - sin_lat_0 * cos_lat * np.cos(lon_diff_rad))
     return x, y
 
 
@@ -789,31 +870,28 @@ def cartesian_to_geographic_aeqd(x, y, lon_0, lat_0, R=6370997.):
         Survey Professional Paper 1395, 1987, pp. 191-202.
 
     """
-    x = np.atleast_1d(np.asarray(x))
-    y = np.atleast_1d(np.asarray(y))
+    x = np.asarray(x)
+    y = np.asarray(y)
 
     lat_0_rad = np.deg2rad(lat_0)
     lon_0_rad = np.deg2rad(lon_0)
+    sin_lat_0 = np.sin(lat_0_rad)
+    cos_lat_0 = np.cos(lat_0_rad)
 
-    rho = np.sqrt(x*x + y*y)
+    rho = np.hypot(x, y)
     c = rho / R
-
-    with warnings.catch_warnings():
-        # division by zero may occur here but is properly addressed below so
-        # the warnings can be ignored
-        warnings.simplefilter("ignore", RuntimeWarning)
-        lat_rad = np.arcsin(np.cos(c) * np.sin(lat_0_rad) +
-                            y * np.sin(c) * np.cos(lat_0_rad) / rho)
+    sin_c = np.sin(c)
+    cos_c = np.cos(c)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        arcsin_arg = cos_c * sin_lat_0 + np.divide(y * sin_c * cos_lat_0, rho)
+    lat_rad = np.arcsin(np.clip(arcsin_arg, -1.0, 1.0))
+    lat_rad = np.where(rho == 0, lat_0_rad, lat_rad)
     lat_deg = np.rad2deg(lat_rad)
-    # fix cases where the distance from the center of the projection is zero
-    lat_deg[rho == 0] = lat_0
 
-    x1 = x * np.sin(c)
-    x2 = rho*np.cos(lat_0_rad)*np.cos(c) - y*np.sin(lat_0_rad)*np.sin(c)
+    x1 = x * sin_c
+    x2 = rho * cos_lat_0 * cos_c - y * sin_lat_0 * sin_c
     lon_rad = lon_0_rad + np.arctan2(x1, x2)
     lon_deg = np.rad2deg(lon_rad)
-    # Longitudes should be from -180 to 180 degrees
-    lon_deg[lon_deg > 180] -= 360.
-    lon_deg[lon_deg < -180] += 360.
+    lon_deg = ((lon_deg + 180.0) % 360.0) - 180.0
 
     return lon_deg, lat_deg

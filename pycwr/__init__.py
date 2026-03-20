@@ -1,23 +1,20 @@
 """Top-level package for pycwr.
 
-This module avoids importing optional subpackages that require heavy
-third-party dependencies (e.g., cartopy) so that ``import pycwr`` works
-in minimal environments. Optional modules are imported lazily when
-available.
+This module avoids importing optional or heavy subpackages at import time
+so that ``import pycwr`` remains lightweight and warning-free.
 """
 
-from . import core, io, interp, retrieve, qc
+from importlib import import_module
 
-__all__ = ["core", "io", "interp", "qc", "retrieve"]
+__version__ = "1.0.0"
 
-try:  # pragma: no cover - optional dependency may be missing
-    from . import configure  # noqa: F401
-    __all__.append("configure")
-except Exception:  # ImportError or other runtime error
-    configure = None  # type: ignore
+_LAZY_MODULES = {"core", "io", "interp", "qc", "retrieve", "configure", "draw"}
 
-try:  # pragma: no cover - optional dependency may be missing
-    from . import draw  # noqa: F401
-    __all__.append("draw")
-except Exception:
-    draw = None  # type: ignore
+__all__ = ["__version__", *sorted(_LAZY_MODULES)]
+
+def __getattr__(name):
+    if name in _LAZY_MODULES:
+        module = import_module(f".{name}", __name__)
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

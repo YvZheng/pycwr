@@ -1,12 +1,22 @@
 # -*- coding: utf-8 -*-
-###after install pycwr lib
+"""Launch the lightweight local web viewer."""
+
+import os
+import sys
 import warnings
-warnings.filterwarnings('ignore')
-import os, sys
+
+warnings.filterwarnings("ignore")
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from pycwr.GraphicalInterface.RadarInterface import MainWindow
-from PyQt5 import QtWidgets
-app = QtWidgets.QApplication(sys.argv)
-ui = MainWindow()
-ui.show()
-sys.exit(app.exec_())
+
+try:
+    from pycwr.GraphicalInterface.web_app import launch
+except ImportError as exc:
+    raise ImportError(
+        "Flask is required to launch the web viewer. "
+        "Install it with `pip install \"pycwr[full]\"` or `pip install Flask`."
+    ) from exc
+
+
+if __name__ == "__main__":
+    launch()

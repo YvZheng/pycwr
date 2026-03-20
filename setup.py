@@ -28,9 +28,8 @@ EXTRAS_REQUIRE = {
         "matplotlib",
         "cartopy",
         "Flask>=3.0",
-        "arm_pyart>=2.1,<3",
-        "xradar>=0.7",
-        "xarray-datatree>=0.0.14",
+        "arm_pyart>=2.1,<3; python_version >= '3.10'",
+        "xradar>=0.7; python_version >= '3.10'",
     ],
 }
 DESCRIPTION = "pycwr 1.0.0: high-compatibility Chinese weather radar IO, geometry, QC, plotting, and compositing"
@@ -56,20 +55,40 @@ CLASSIFIERS = [
 def _build_extensions():
     import numpy
 
+    include_dirs = [numpy.get_include()]
     c_source = RADAR_GRID_BASE.with_suffix(".c")
     c_module_source = RADAR_GRID_MODULE_BASE.with_suffix(".c")
-    if not c_source.exists():
+    if c_source.exists():
+        extension = Extension(
+            "pycwr.core.RadarGridC",
+            [str(c_module_source)],
+            include_dirs=include_dirs,
+        )
+        return [extension], include_dirs
+
+    pyx_source = RADAR_GRID_BASE.with_suffix(".pyx")
+    pyx_module_source = RADAR_GRID_MODULE_BASE.with_suffix(".pyx")
+    if not pyx_source.exists():
+        raise RuntimeError(
+            "Missing extension sources: expected pycwr/core/RadarGridC.c or "
+            "pycwr/core/RadarGridC.pyx."
+        )
+
+    try:
+        from Cython.Build import cythonize
+    except ImportError as exc:
         raise RuntimeError(
             "Missing generated extension source: pycwr/core/RadarGridC.c. "
-            "Regenerate it from pycwr/core/RadarGridC.pyx before building a distribution."
-        )
+            "Install Cython or regenerate the C source from pycwr/core/RadarGridC.pyx "
+            "before building a distribution."
+        ) from exc
 
     extension = Extension(
         "pycwr.core.RadarGridC",
-        [str(c_module_source)],
-        include_dirs=[numpy.get_include()],
+        [str(pyx_module_source)],
+        include_dirs=include_dirs,
     )
-    return [extension], [numpy.get_include()]
+    return cythonize([extension], compiler_directives={"language_level": "3"}), include_dirs
 
 
 EXT_MODULES, INCLUDE_DIRS = _build_extensions()

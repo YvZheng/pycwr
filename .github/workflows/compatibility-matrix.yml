@@ -55,7 +55,7 @@ jobs:
       - name: Reinstall from source distribution
         run: |
           python -m pip uninstall -y pycwr
-          python -m pip install --force-reinstall --no-deps --no-build-isolation dist/*.tar.gz
+          python -m pip install --force-reinstall --no-deps dist/*.tar.gz
 
       - name: Smoke-test installed sdist
         run: |

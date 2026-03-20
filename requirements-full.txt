@@ -2,6 +2,5 @@
 matplotlib
 cartopy
 Flask>=3.0
-arm_pyart>=2.1,<3
-xradar>=0.7
-xarray-datatree>=0.0.14
+arm_pyart>=2.1,<3; python_version >= "3.10"
+xradar>=0.7; python_version >= "3.10"

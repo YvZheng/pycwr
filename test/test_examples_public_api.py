@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 import os
+import importlib
 from pathlib import Path
 from unittest import mock
 
@@ -153,13 +154,18 @@ class PublicApiSampleTests(unittest.TestCase):
 
         prd = read_auto(str(sample))
         legacy_radar = prd.to_pyart_radar(use_external=False, field_names=["dBZ"], force_rebuild=True)
-        sweeps = prd.to_xradar_sweeps(field_names=["dBZ"], force_rebuild=True)
 
         self.assertIn("reflectivity", legacy_radar.fields)
         self.assertGreater(
             legacy_radar.range["data"].size,
             prd.fields[0].sizes["range"],
         )
+        try:
+            importlib.import_module("xradar")
+        except ImportError:
+            return
+
+        sweeps = prd.to_xradar_sweeps(field_names=["dBZ"], force_rebuild=True)
         self.assertIn("sweep_0", sweeps)
         self.assertIn("DBZ", sweeps["sweep_0"].data_vars)
         self.assertEqual(sweeps["sweep_0"].attrs["range_mode"], "native")

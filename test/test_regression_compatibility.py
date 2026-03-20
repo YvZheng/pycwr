@@ -19,6 +19,18 @@ class CompatibilitySmokeTests(unittest.TestCase):
             / "Z_RADR_I_Z9046_20260317065928_O_DOR_SAD_CAP_FMT.bin.bz2"
         )
 
+    def _require_pyart(self):
+        try:
+            return importlib.import_module("pyart")
+        except ImportError as exc:
+            self.skipTest(f"Py-ART is unavailable: {exc}")
+
+    def _require_xradar(self):
+        try:
+            return importlib.import_module("xradar")
+        except ImportError as exc:
+            self.skipTest(f"xradar is unavailable: {exc}")
+
     def test_import_top_level_package(self):
         import pycwr
 
@@ -185,7 +197,7 @@ class CompatibilitySmokeTests(unittest.TestCase):
     def test_prd_pyart_export_remains_backward_compatible(self):
         from pycwr.core.PyartRadar import Radar as InternalRadar
         from pycwr.io import read_auto
-        import pyart
+        pyart = self._require_pyart()
 
         sample = self._sample_path()
         if not sample.exists():
@@ -210,6 +222,7 @@ class CompatibilitySmokeTests(unittest.TestCase):
 
     def test_prd_xradar_exports_are_explicit(self):
         from pycwr.io import read_auto
+        self._require_xradar()
 
         sample = self._sample_path()
         if not sample.exists():
@@ -235,7 +248,7 @@ class CompatibilitySmokeTests(unittest.TestCase):
         self.assertIn("instrument_type", tree.dataset)
 
     def test_real_pyart_interop(self):
-        pyart = importlib.import_module("pyart")
+        pyart = self._require_pyart()
         from pycwr.io import read_auto
 
         sample = self._sample_path()
@@ -268,7 +281,7 @@ class CompatibilitySmokeTests(unittest.TestCase):
         self.assertEqual(grid.fields["reflectivity"]["data"].shape, (1, 21, 21))
 
     def test_reader_level_pyart_export_delegates_to_prd(self):
-        pyart = importlib.import_module("pyart")
+        pyart = self._require_pyart()
         from pycwr.io import WSR98DFile
 
         sample = self._sample_path()

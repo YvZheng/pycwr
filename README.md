@@ -52,6 +52,9 @@ Notes:
   NetCDF-style export
 - full install is recommended for plotting, map plotting, QC, Py-ART/xradar
   interop, and the web viewer
+- upstream `arm_pyart` and `xradar` currently require Python `>=3.10`, so on
+  Python `3.8/3.9` the full install still covers plotting, QC, and the web
+  viewer, but not those two optional interop stacks
 - `pandas` is pinned to `<3` in `1.0.0` for release stability
 
 Rebuild the extension after editing `pycwr/core/RadarGridC.pyx`:

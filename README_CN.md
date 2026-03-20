@@ -45,6 +45,9 @@ python -m pip install ".[full]"
 
 - 基础安装足够支持 reader、`PRD`、几何、插值和 NetCDF 风格导出
 - 全功能安装建议用于绘图、地图绘图、QC、Py-ART/xradar 互操作和 web viewer
+- 上游 `arm_pyart` 和 `xradar` 当前要求 Python `>=3.10`，因此在 Python
+  `3.8/3.9` 上，全功能安装仍可覆盖绘图、QC 和 web viewer，但不包含这两类
+  可选互操作依赖
 - `1.0.0` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
 
 修改 `pycwr/core/RadarGridC.pyx` 后重编译：

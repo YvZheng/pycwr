@@ -56,7 +56,7 @@ python setup.py build_ext --inplace
 构建发布产物：
 
 ```bash
-python scripts/build_dist.py
+python -m build
 ```
 
 ## 5 分钟上手

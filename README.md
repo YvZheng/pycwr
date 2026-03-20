@@ -63,7 +63,7 @@ python setup.py build_ext --inplace
 Build release artifacts:
 
 ```bash
-python scripts/build_dist.py
+python -m build
 ```
 
 ## 5-minute quickstart

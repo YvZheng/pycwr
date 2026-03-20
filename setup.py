@@ -89,7 +89,6 @@ setup(
     extras_require=EXTRAS_REQUIRE,
     url=URL,
     platforms=PLATFORMS,
-    license_files=("LICENSE.txt",),
     classifiers=CLASSIFIERS,
     include_package_data=True,
     package_data={

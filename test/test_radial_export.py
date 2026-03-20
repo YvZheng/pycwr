@@ -73,6 +73,30 @@ class RadialExportTests(unittest.TestCase):
                         equal_nan=True,
                     )
 
+    def test_module_level_write_wsr98d_matches_prd_export(self):
+        from pycwr.io import read_WSR98D, read_auto, write_wsr98d
+
+        sample = self._sample_path()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "module_export_wsr98d.bin"
+            returned = write_wsr98d(prd, str(out), overwrite=True)
+
+            self.assertEqual(Path(returned), out)
+            roundtrip = read_WSR98D(str(out))
+            self.assertEqual(int(roundtrip.nsweeps), int(prd.nsweeps))
+            self.assertEqual(int(roundtrip.nrays), int(prd.nrays))
+            np.testing.assert_allclose(
+                np.asarray(roundtrip.get_sweep_field(0, "dBZ", range_mode=None).values, dtype=np.float64),
+                np.asarray(prd.get_sweep_field(0, "dBZ", range_mode=None).values, dtype=np.float64),
+                atol=self._wsr98d_tolerance("dBZ"),
+                rtol=0.0,
+                equal_nan=True,
+            )
+
     def test_nexrad_msg31_can_be_read_by_pyart_and_matches_prd(self):
         pyart = self._require_pyart()
         from pycwr.io import read_auto
@@ -142,6 +166,33 @@ class RadialExportTests(unittest.TestCase):
                         rtol=0.0,
                         equal_nan=True,
                     )
+
+    def test_module_level_nexrad_writers_match_public_examples(self):
+        pyart = self._require_pyart()
+        from pycwr.io import read_auto, write_nexrad_level2_msg1, write_nexrad_level2_msg31
+
+        sample = self._sample_path()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            msg31 = Path(tmpdir) / "module_export_msg31.ar2v"
+            msg1 = Path(tmpdir) / "module_export_msg1.ar2v"
+
+            returned_msg31 = write_nexrad_level2_msg31(prd, str(msg31), overwrite=True)
+            returned_msg1 = write_nexrad_level2_msg1(prd, str(msg1), overwrite=True)
+
+            self.assertEqual(Path(returned_msg31), msg31)
+            self.assertEqual(Path(returned_msg1), msg1)
+
+            radar31 = pyart.io.read_nexrad_archive(str(msg31))
+            radar1 = pyart.io.read_nexrad_archive(str(msg1))
+
+            self.assertEqual(radar31.nsweeps, int(prd.nsweeps))
+            self.assertEqual(radar1.nsweeps, int(prd.nsweeps))
+            self.assertIn("reflectivity", radar31.fields)
+            self.assertIn("reflectivity", radar1.fields)
 
     def test_msg1_rejects_unsupported_requested_fields(self):
         from pycwr.io import read_auto

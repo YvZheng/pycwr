@@ -1,6 +1,9 @@
 # pycwr
 
-A Python toolkit for operational Chinese weather radar data, covering reading, analysis, plotting, quality control, multi-radar compositing, and export.
+`pycwr` is a Python toolkit for operational Chinese weather radar workflows.
+It covers radar base-data reading, geometry, plotting, quality control,
+hydrometeor classification, single-radar wind retrieval, multi-radar
+compositing, and export.
 
 - Current release: `1.0.0`
 - [中文说明](README_CN.md)
@@ -10,94 +13,80 @@ A Python toolkit for operational Chinese weather radar data, covering reading, a
 - [Web viewer quickstart](docs/web_viewer_quickstart.md)
 - [Contributors](CONTRIBUTORS.txt)
 
-## What's New In 1.0.0
+## Why 1.0.0 matters
 
-This is a major cleanup-and-hardening release focused on compatibility, geometry correctness, and lower operational complexity.
+`1.0.0` is the first release intended to be stable enough for production-style
+usage and GitHub distribution.
 
-Module highlights:
+Highlights:
 
-- `pycwr.io`: lighter default install while keeping the core radar readers available
-- `pycwr.core`: stricter geometry path with round-trip validation for radar/cartesian/geographic transforms
-- `pycwr.draw` and `GraphicalInterface`: optional dependencies isolated from the base import path
-- `pycwr.qc`: clearer example-oriented test coverage for dual-pol and X-band workflows
-- `pycwr.retrieve`: packaged hydrometeor classification with profile-aware and profile-free workflows
-- `pycwr.interp`: better-documented network compositing entry points and sample-driven tests
-
-Performance highlights:
-
-- redundant geometry implementations were removed so the main path now stays on one high-precision formula chain
-- vectorized Cartesian conversion hot paths were tightened to reduce intermediate arrays and repeated angle-grid construction
-- packaging now prefers a smaller default dependency set, which improves cross-platform installation success and lowers environment friction
-
-## What pycwr does
-
-`pycwr` follows one simple main workflow:
-
-1. Read a radar file with `pycwr.io.read_auto`
-2. Get back a `PRD` volume object
-3. Use that volume for plotting, product generation, QC, network interpolation, or export
-
-Core capabilities:
-
-- Read `WSR98D`, `SAB`, `CC`, `SC`, and `PA`
-- Preserve the historical aligned workflow while exposing native long-range reflectivity when available
-- Plot PPI, map PPI, RHI, and vertical sections
-- Compute `CR`, `CAPPI`, and 3D network products
-- Run dual-polarization QC
-- Run hydrometeor classification (`HCL`) with or without a temperature profile
-- Export to Py-ART, xradar, and NetCDF
-- Launch a local web viewer
+- compatibility-focused readers for common Chinese weather radar formats
+- clearer `PRD` data model for sweep inspection and downstream processing
+- aligned and native reflectivity access kept side by side when low-level
+  reflectivity range is longer than Doppler range
+- lighter default dependencies with plotting, QC, web viewer, and interop
+  isolated into the optional full stack
+- stronger geometry and regression coverage
+- built-in single-radar wind retrieval workflows: `VAD`, `VVP`, and `VWP`
+- improved multi-radar compositing and reference-style CR plotting
 
 ## Installation
 
-Install the default dependencies and the base package:
+Base install:
 
 ```bash
 python -m pip install -r requirements-core.txt
 python -m pip install .
 ```
 
-Install the full-featured environment:
+Full install:
 
 ```bash
 python -m pip install -r requirements-full.txt
 python -m pip install ".[full]"
 ```
 
-Rebuild the Cython extension after editing `pycwr/core/RadarGridC.pyx`:
+Notes:
+
+- base install is enough for readers, `PRD`, geometry, interpolation, and
+  NetCDF-style export
+- full install is recommended for plotting, map plotting, QC, Py-ART/xradar
+  interop, and the web viewer
+- `pandas` is pinned to `<3` in `1.0.0` for release stability
+
+Rebuild the extension after editing `pycwr/core/RadarGridC.pyx`:
 
 ```bash
 python setup.py build_ext --inplace
 ```
 
-Build source and wheel distributions:
+Build release artifacts:
 
 ```bash
 python scripts/build_dist.py
 ```
 
-The helper prefers `python -m build` when available and falls back to setuptools otherwise.
+## 5-minute quickstart
 
-## 5-Minute Quickstart
-
-Read one radar file:
+Read one radar file and inspect the returned volume:
 
 ```python
 from pycwr.io import read_auto
 
 radar = read_auto("Z_RADR_I_Z9046_20260317065928_O_DOR_SAD_CAP_FMT.bin.bz2")
 print(radar.summary())
-```
-
-Inspect the returned volume:
-
-```python
 print(radar.available_fields())
 print(radar.sweep_summary()[0])
-print(radar.fields[0]["dBZ"])
 ```
 
-Make a minimal plot:
+Get one field from one sweep:
+
+```python
+dBZ0 = radar.get_sweep_field(0, "dBZ")
+velocity0 = radar.get_sweep_field(0, "V")
+```
+
+Plot a PPI:
 
 ```python
 from pycwr.draw import plot_ppi
@@ -113,72 +102,73 @@ from pycwr.draw import plot_section
 plot_section(radar, start=(-50, 0), end=(50, 0), field="dBZ", show=True)
 ```
 
-## Core Concepts
+Generate a simple product:
 
-### `PRD`
+```python
+import numpy as np
+
+x = np.arange(-150_000.0, 150_001.0, 1_000.0)
+y = np.arange(-150_000.0, 150_001.0, 1_000.0)
+radar.add_product_CR_xy(x, y)
+print(radar.product)
+```
+
+## API map
+
+| Module | What it is for | Recommended starting points |
+| --- | --- | --- |
+| `pycwr.io` | Read and write radar base data | `read_auto`, `read_WSR98D`, `read_SAB`, `read_CC`, `read_SC`, `read_PA` |
+| `pycwr.core` | Central volume object, geometry, export helpers | `PRD`, `radar.summary()`, `radar.get_sweep_field()` |
+| `pycwr.draw` | Plotting and quick-look figures | `plot_ppi`, `plot_ppi_map`, `plot_rhi`, `plot_section`, `plot_vvp`, `plot_wind_profile` |
+| `pycwr.qc` | Dual-pol QC | `apply_dualpol_qc`, `run_dualpol_qc` |
+| `pycwr.retrieve` | Hydrometeor and wind retrieval | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp` |
+| `pycwr.interp` | Multi-radar compositing | `run_radar_network_3d` |
+| `pycwr.GraphicalInterface` | Local web viewer | `create_app`, `launch` |
+
+## Core object model
 
 All readers return `pycwr.core.NRadar.PRD`.
 
-The most important members are:
+The most important parts of `PRD` are:
 
 - `fields`: one `xarray.Dataset` per sweep
 - `scan_info`: site and scan metadata
-- `extended_fields`: sidecar storage for native long-range fields
-- `product`: computed products such as `CR`, `CAPPI`, and 3D grids
+- `extended_fields`: native sidecar fields when aligned and native ranges differ
+- `product`: computed product dataset
 
-The most useful methods for new users:
+Useful inspection helpers:
 
-- `summary()`: compact summary of the full volume
-- `available_fields(sweep=None)`: list available fields for the whole volume or one sweep
-- `sweep_summary()`: one summary record per sweep
-- `get_sweep_field(sweep, field_name, range_mode="aligned" | "native")`
+- `summary()`: compact full-volume summary
+- `available_fields(sweep=None, range_mode="aligned")`
+- `sweep_summary()`
+- `get_sweep_field(sweep, field_name, range_mode="aligned", sort_by_azimuth=False)`
+- `get_native_sweep_field(sweep, field_name)`
 - `ordered_az(inplace=False)`
 
-### Aligned Reflectivity vs Native Reflectivity
+### Aligned vs native reflectivity
 
-For some low sweeps, `pycwr` intentionally keeps two reflectivity views:
+For some low sweeps, reflectivity may exist in two forms:
 
-- `radar.fields[sweep]["dBZ"]`: the aligned result used by historical workflows
-- `radar.get_native_sweep_field(sweep, "dBZ")`: the native long-range reflectivity
+- aligned: historical shared grid used by old processing chains
+- native: original reflectivity range before Doppler-driven truncation
 
-Which one should you use?
+Use:
 
-- Use the aligned field when you need strict compatibility with older processing chains
-- Use the native field when you need the full low-level reflectivity coverage
+- `range_mode="aligned"` for historical compatibility
+- `range_mode="native"` when full low-level reflectivity coverage matters
 
-## Public Interfaces
-
-### 1. Reading radar data
+Example:
 
 ```python
-from pycwr.io import (
-    read_auto,
-    read_WSR98D,
-    read_SAB,
-    read_CC,
-    read_SC,
-    read_PA,
-    write_wsr98d,
-    write_nexrad_level2_msg31,
-    write_nexrad_level2_msg1,
-)
+aligned = radar.get_sweep_field(0, "dBZ", range_mode="aligned")
+native = radar.get_sweep_field(0, "dBZ", range_mode="native")
 ```
 
-All readers share the same public signature:
+## Common workflows
 
-```python
-read_xxx(
-    filename,
-    station_lon=None,
-    station_lat=None,
-    station_alt=None,
-    effective_earth_radius=None,
-)
-```
+### Plotting
 
-### 2. Plotting
-
-Recommended entry points:
+Recommended public plotting APIs:
 
 ```python
 from pycwr.draw import (
@@ -193,11 +183,11 @@ from pycwr.draw import (
 )
 ```
 
-These functions return an `EasyPlotResult` containing `fig`, `ax`, and `artist`.
+These functions return an `EasyPlotResult` with `fig`, `ax`, and `artist`.
 
-### 3. Product generation
+### Products
 
-Common `PRD` methods:
+Common `PRD` product methods:
 
 - `add_product_CR_xy`
 - `add_product_CAPPI_xy`
@@ -209,275 +199,115 @@ Common `PRD` methods:
 - `add_product_VIL_lonlat`
 - `add_product_ET_lonlat`
 - `add_product_VWP`
-- `get_RHI_data`
-- `get_vcs_data`
 
-### 4. Quality control
+Example:
 
 ```python
-from pycwr.qc import apply_dualpol_qc, run_dualpol_qc
-```
-
-You can also call QC directly on a `PRD` object:
-
-```python
-processed = radar.apply_dualpol_qc(inplace=False)
-```
-
-### 5. Multi-radar 3D workflow
-
-```python
-from pycwr.interp import run_radar_network_3d
-```
-
-This workflow builds 3D radar network products on a regular lon/lat grid and can write NetCDF directly.
-
-### 6. Hydrometeor classification
-
-```python
-from pycwr.retrieve import classify_hydrometeors, interpolate_temperature_profile
-```
-
-You can classify one sweep from arrays, or write `HCL` directly back into a `PRD`.
-
-### 7. Wind retrieval
-
-```python
-from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp
-```
-
-You can retrieve:
-
-- ring-wise VAD winds from one or more sweeps
-- local VVP winds from one sweep
-- a VWP profile either directly or via `PRD.add_product_VWP(...)`
-
-### 8. Web viewer
-
-Launch the local viewer from Python:
-
-```python
-from pycwr.GraphicalInterface import create_app, launch
-```
-
-Or use the helper script:
-
-```bash
-python scripts/LaunchGUI.py
-```
-
-Current viewer boundaries:
-
-- It only listens on loopback addresses
-- All API requests require a token
-- File access is restricted to configured allowed roots
-
-## Common Workflows
-
-### Plot one PPI sweep
-
-```python
-from pycwr.io import read_auto
-from pycwr.draw import plot_ppi
-
-radar = read_auto("your_radar_file")
-plot_ppi(radar, field="dBZ", sweep=0, show=True)
-```
-
-### Compute CR, CAPPI, VIL, and ET
-
-```python
-import numpy as np
-
-x = np.arange(-150_000.0, 150_001.0, 1_000.0)
-y = np.arange(-150_000.0, 150_001.0, 1_000.0)
-radar.add_product_CR_xy(x, y)
 radar.add_product_CAPPI_xy(x, y, 3000.0)
-radar.add_product_VIL_xy(x, y, np.array([1000.0, 2000.0, 3000.0]))
-radar.add_product_ET_xy(x, y, np.array([1000.0, 2000.0, 3000.0]))
-
-print(radar.product)
+radar.add_product_VIL_xy(x, y, [1000.0, 2000.0, 3000.0])
 ```
 
-### Run QC and use corrected fields
+### Quality control
 
 ```python
-qc_radar = radar.apply_dualpol_qc(inplace=False, clear_air_mode="mask")
-plot_ppi(qc_radar, field="Zc", sweep=0, show=True)
+from pycwr.qc import apply_dualpol_qc
+
+qc_radar = apply_dualpol_qc(radar, inplace=False, clear_air_mode="mask")
 ```
 
-Notes:
+Common corrected fields include `Zc`, `ZDRc`, `PhiDPc`, `KDPc`, and mask fields
+such as `QC_MASK` and `CLEAR_AIR_MASK` when enabled.
 
-- `CLEAR_AIR_MASK` is written as a dedicated weak-echo diagnostic for likely clear-air / biological echoes.
-- `clear_air_mode="label"` keeps legacy QC acceptance and only labels likely clear-air echoes.
-- `clear_air_mode="mask"` removes likely clear-air echoes from `QC_MASK`, `Zc`, `KDPc`, and downstream QC products.
-- This clear-air branch is intentionally conservative and is not a full hydrometeor classification algorithm.
-
-### Run hydrometeor classification
-
-With an environmental temperature profile:
+### Hydrometeor classification
 
 ```python
 hcl_radar = radar.classify_hydrometeors(
     inplace=False,
     band="C",
-    profile_height=[0.0, 2000.0, 4000.0, 8000.0, 12000.0],
-    profile_temperature=[24.0, 12.0, 2.0, -16.0, -40.0],
-    confidence_field="HCL_CONF",
-    temperature_field="HCL_T",
-)
-plot_ppi(hcl_radar, field="HCL", sweep=0, show=True)
-```
-
-Without a temperature profile:
-
-```python
-radar.add_hydrometeor_classification(
-    band="C",
+    profile_height=[0.0, 2000.0, 4000.0, 8000.0],
+    profile_temperature=[24.0, 12.0, 2.0, -16.0],
     confidence_field="HCL_CONF",
 )
 ```
 
-Notes:
+You can also classify directly from arrays with
+`pycwr.retrieve.classify_hydrometeors(...)`.
 
-- `HCL` is added as a gate-level sweep field, not a Cartesian product.
-- The classifier uses the aligned dual-pol range shared by `dBZ/ZDR/KDP/CC/LDR`.
-- If `profile_height/profile_temperature` are omitted, `pycwr` falls back to a reduced-variable no-profile mode.
-- Class ids follow the packaged 10-class warm-season fuzzy HID table: drizzle, rain, ice crystals, dry aggregates snow, wet snow, vertical ice, low-density graupel, high-density graupel, hail, big drops.
+### Wind retrieval
 
-### Retrieve single-radar winds
+`pycwr` ships three single-radar wind workflows:
+
+- `retrieve_vad`: ring-wise harmonic fit on one or more sweeps
+- `retrieve_vvp`: local least-squares horizontal wind retrieval on one sweep
+- `retrieve_vwp`: vertical wind profile built from multiple VAD layers
+
+Example:
 
 ```python
-from pycwr.retrieve import retrieve_vad, retrieve_vvp
-from pycwr.draw import plot_vvp, plot_wind_profile
-
-vad = retrieve_vad(radar, sweeps=0, max_range_km=40.0, gate_step=4)
-vvp = retrieve_vvp(radar, sweep=0, max_range_km=20.0, az_num=91, bin_num=9)
-vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4, height_step=500.0)
-radar.add_product_VWP(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4, height_step=500.0)
-
-plot_vvp(vvp, show=True)
-plot_wind_profile(vwp, show=True)
+vad = radar.retrieve_vad(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4)
+vvp = radar.retrieve_vvp(0, max_range_km=20.0, az_num=91, bin_num=5)
+vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 ```
 
-Notes:
+The stored profile product path is:
 
-- `retrieve_vad(...)` returns a sweep-by-gate VAD dataset.
-- `retrieve_vvp(...)` returns a single-sweep local VVP analysis.
-- `retrieve_vwp(...)` aggregates VAD output into a vertical wind profile.
-- `add_product_VWP(...)` stores the profile into `radar.product` as `VWP_*` variables.
+```python
+radar.add_product_VWP(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
+```
 
-### Build a 3D network mosaic
+### Export and interop
+
+Common export helpers:
+
+- `radar.to_wsr98d(...)`
+- `radar.to_nexrad_level2_msg31(...)`
+- `radar.to_nexrad_level2_msg1(...)`
+- `radar.to_pyart_radar(...)`
+- `radar.to_xradar(...)`
+- `radar.to_cfgridded_netcdf(...)`
+
+Use these when you need to move `pycwr` data into Py-ART, xradar, or other
+NetCDF-style workflows.
+
+### Multi-radar compositing
 
 ```python
 from pycwr.interp import run_radar_network_3d
-
-dataset = run_radar_network_3d(
-    target_time="2026-03-17T07:00:00",
-    radar_dirs=["./Z9046", "./Z9047"],
-    lon_min=118.5,
-    lon_max=119.5,
-    lat_min=31.8,
-    lat_max=32.8,
-    lon_res_deg=0.01,
-    lat_res_deg=0.01,
-    level_heights=[1000.0, 3000.0, 5000.0],
-    field_names=["dBZ"],
-    output_path="./network.nc",
-)
 ```
 
-Notes:
+This entry point builds 3D network products on a regular lon/lat grid and can
+write NetCDF directly. It is the recommended high-level interface for network
+CR and CAPPI workflows.
 
-- `dBZ`-class scalar fields are supported for 3D mosaics.
-- Velocity fields are intentionally not supported yet in `run_radar_network_3d(...)`.
-- `VIL` / `ET` can use a denser `product_level_heights` grid than the display `level_heights`.
-- When `ET` is requested, the output dataset also includes `ET_TOPPED`, which flags columns whose highest sampled level still exceeds the echo-top threshold.
-- `VIL` uses the Greene and Clark (1972) liquid-water relation with a 56 dBZ cap; the low-reflectivity cutoff remains configurable and should be treated as a workflow assumption.
-
-Algorithm references used by `pycwr.interp.RadarInterp`:
-
-- VIL: Greene, D. R., and R. A. Clark, 1972, Monthly Weather Review, doi:10.1175/1520-0493(1972)100<0548:VILWNA>2.3.CO;2
-- VIL operational guidance: NOAA WDTD, https://vlab.noaa.gov/web/wdtd/-/vertically-integrated-liquid-vil-
-- Echo tops: Lakshmanan et al., 2013, Weather and Forecasting, doi:10.1175/WAF-D-12-00084.1
-- Echo tops operational guidance: NOAA WDTD, https://vlab.noaa.gov/web/wdtd/-/xx-dbz-echo-top-et-
-- Enhanced Echo Tops metadata semantics: WSR-88D ROC ICD 2620003Y, https://www.roc.noaa.gov/public-documents/icds/2620003Y.pdf
-- Radar mosaic overlap handling: 吴翀;双偏振雷达的资料质量分析,相态识別及组网应用[D];南京信息工程大学;2018年, Chapter 4; and Lakshmanan et al., 2006, Weather and Forecasting, doi:10.1175/WAF942.1
-
-QC references used by `pycwr.qc`:
-
-- Dual-Pol QC operational guidance: NOAA WDTD, https://vlab.noaa.gov/web/wdtd/-/dual-pol-quality-control
-- MRMS QC updates: Tang et al., 2020, Journal of Atmospheric and Oceanic Technology, doi:10.1175/JTECH-D-19-0165.1
-- Clear-air and non-meteorological echo treatment in the local radar workflow context: 吴翀;双偏振雷达的资料质量分析,相态识別及组网应用[D];南京信息工程大学;2018年
-
-### Export to Py-ART / xradar
+### Web viewer
 
 ```python
-pyart_radar = radar.to_pyart_radar()
-sweeps = radar.to_xradar_sweeps()
-tree = radar.to_xradar(strict=True)
+from pycwr.GraphicalInterface import create_app, launch
 ```
 
-### Export to WSR98D / NEXRAD Level II
-
-```python
-radar.to_wsr98d("./roundtrip_wsr98d.bin", overwrite=True)
-radar.to_nexrad_level2_msg31("./export_msg31.ar2v", overwrite=True)
-radar.to_nexrad_level2_msg1("./export_msg1.ar2v", overwrite=True)
-```
-
-Notes:
-
-- `to_wsr98d(...)` writes a pycwr-readable WSR-98D base-data file
-- `to_nexrad_level2_msg31(...)` writes a Py-ART-readable NEXRAD Level II MSG31 archive
-- `to_nexrad_level2_msg1(...)` writes a Py-ART-readable NEXRAD Level II MSG1 archive
-- export currently supports `ppi` volumes only
-- MSG31 supports `dBZ/V/W/ZDR/CC/PhiDP`
-- MSG1 is intentionally limited to `dBZ/V/W`
-
-## Units
-
-Internal core conventions:
-
-- Distance and height: meters
-- Internal trigonometric calculations: radians
-- Lon/lat input and output: degrees
-
-Historical public compatibility is still preserved:
-
-- Public `azimuth`, `elevation`, and `fixed_angle` remain in degrees
-- Some legacy plotting interfaces still use kilometers
-
-## Tests and Sample Data
-
-Run the automated test suite:
+Or use the script:
 
 ```bash
-python3 -m unittest discover -s test -p 'test_*.py'
+python scripts/LaunchGUI.py
 ```
 
-Recommended test groups:
+The viewer is local-only by design and requires a token for API access.
 
-- [test/README.md](test/README.md): full index of example and regression scripts
-- `test_examples_public_api.py`: quickstart-style integration tests on real sample files
-- `test_examples_qc.py`: QC primitives and pipeline tests
-- `test_examples_hid.py`: hydrometeor classification examples with and without profiles
-- `test_examples_interp.py`: multi-radar interpolation and compositing examples
-- `test_regression_geometry.py`: geometry round-trip validation
-- `test_regression_security.py`: path-boundary and malformed-input regression tests
+## What to read next
 
-If the expected sample files are not available in the current workspace, some sample-based tests are skipped automatically.
-Slow real-sample 3D network tests are opt-in via `PYCWR_RUN_SLOW_SAMPLE_TESTS=1`.
+- [API reference](docs/api_reference.md): detailed public interface notes
+- [Test guide](test/README.md): runnable examples by feature
+- [Draw quickstart](docs/draw_quickstart.md): plotting-focused entry points
+- [Web viewer quickstart](docs/web_viewer_quickstart.md): local viewer setup
 
-## Documentation Map
+## Release notes for users
 
-- [docs/api_reference.md](docs/api_reference.md): public modules, functions, and common signatures
-- [docs/draw_quickstart.md](docs/draw_quickstart.md): plotting quickstart
-- [docs/web_viewer_quickstart.md](docs/web_viewer_quickstart.md): local viewer usage
+For `1.0.0`, the most important user-visible behavior rules are:
 
-## License
-
-This repository is distributed under **PolyForm Noncommercial 1.0.0**.
-Commercial use, paid redistribution, and profit-making deployment are not permitted by default.
-Contact the project separately if a commercial license is required.
-See [LICENSE.txt](LICENSE.txt).
+- radar reading returns one stable `PRD` object across supported formats
+- low-level reflectivity can now be queried explicitly in aligned or native mode
+- QC and hydrometeor classification can write corrected fields back into `PRD`
+- single-radar wind retrieval is now part of the public API
+- multi-radar compositing has a documented high-level workflow
+- packaging is split into base and full dependency sets for lower installation
+  friction

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import os
 from pathlib import Path
+from unittest import mock
 
 import matplotlib
 import numpy as np
@@ -112,6 +113,36 @@ class PublicApiSampleTests(unittest.TestCase):
         self.assertIn("VIL_native", prd.product)
         self.assertIn("ET_native", prd.product)
         self.assertIn("ET_TOPPED_native", prd.product)
+
+    def test_lonlat_product_generation_example(self):
+        from pycwr.io import read_auto
+
+        sample = self._sample_z9046()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        lon0 = float(prd.scan_info["longitude"].values)
+        lat0 = float(prd.scan_info["latitude"].values)
+        lon = np.array([lon0 - 0.05, lon0, lon0 + 0.05], dtype=np.float64)
+        lat = np.array([lat0 - 0.05, lat0, lat0 + 0.05], dtype=np.float64)
+        product_levels = np.array([1000.0, 2000.0, 3000.0], dtype=np.float64)
+
+        prd.add_product_CR_lonlat(lon, lat)
+        prd.add_product_CAPPI_lonlat(lon, lat, 3000.0)
+        prd.add_product_VIL_lonlat(lon, lat, product_levels)
+        prd.add_product_ET_lonlat(lon, lat, product_levels)
+
+        self.assertIn("CR_geo_native", prd.product)
+        self.assertIn("CAPPI_geo_3000_native", prd.product)
+        self.assertIn("VIL_geo_native", prd.product)
+        self.assertIn("ET_geo_native", prd.product)
+        self.assertIn("ET_TOPPED_geo_native", prd.product)
+        self.assertEqual(prd.product["CR_geo_native"].dims, ("lon_cr", "lat_cr"))
+        self.assertEqual(prd.product["CAPPI_geo_3000_native"].dims, ("lon_cappi_3000", "lat_cappi_3000"))
+        self.assertEqual(prd.product["VIL_geo_native"].dims, ("lon_vil", "lat_vil"))
+        self.assertEqual(prd.product["ET_geo_native"].dims, ("lon_et", "lat_et"))
+        self.assertEqual(prd.product["ET_TOPPED_geo_native"].dims, ("lon_et", "lat_et"))
 
     def test_export_examples_without_external_pyart_dependency(self):
         from pycwr.io import read_auto
@@ -291,6 +322,23 @@ class PublicApiSampleTests(unittest.TestCase):
         self.assertEqual(payload["name"], sample.name)
         self.assertIn("dBZ", payload["fields"])
         self.assertEqual(payload["scan_type"], "ppi")
+
+    def test_web_viewer_launch_smoke(self):
+        try:
+            from pycwr.GraphicalInterface import launch
+        except ImportError as exc:  # pragma: no cover
+            self.skipTest(f"Flask viewer dependencies are unavailable: {exc}")
+
+        fake_app = mock.Mock()
+        with mock.patch("pycwr.GraphicalInterface.web_app.create_app", return_value=fake_app):
+            launch(host="127.0.0.1", port=8765, open_browser=False)
+
+        fake_app.run.assert_called_once_with(
+            host="127.0.0.1",
+            port=8765,
+            debug=False,
+            use_reloader=False,
+        )
 
     def test_real_network_workflow_small_grid(self):
         from pycwr.interp import run_radar_network_3d

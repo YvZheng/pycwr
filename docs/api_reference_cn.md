@@ -1,91 +1,72 @@
 # pycwr 接口参考
 
-这份文档面向“第一次真正上手 `pycwr` 的人”。
+这份文档面向 `pycwr 1.0.0` 的公开接口。
 它不是源码逐行索引，而是告诉你：
 
-- 该从哪个模块进入
-- 关键函数的参数是什么
-- 返回值长什么样
-- 什么场景该用哪个接口
+- 应该从哪个模块进入
+- 每个接口大致接收什么参数
+- 返回的对象是什么
+- aligned 和 native 反射率工作流该怎么区分
 
-## 如何阅读这份文档
+如果你想看按功能整理的可运行示例，请继续看
+[../test/README.md](../test/README.md)。
 
-建议按下面顺序学习：
+## 模块布局
 
-1. 先用 `pycwr.io` 读取数据
-2. 看 `PRD` 对象
-3. 先画图、看剖面
-4. 再做产品计算和 QC
-5. 需要相态标签时再做水凝物分类
-6. 最后再做导出和组网
-
-如果你第一次碰这个项目，最推荐的起点是：
-
-- `read_auto`
-- `PRD.summary()`
-- `PRD.fields`
-- `pycwr.draw.plot_ppi`
-
-如果你想直接看“按功能整理的可运行示例”，请继续看 [../test/README.md](../test/README.md)。
-
-## 模块总览
-
-| 模块 | 作用 | 常用入口 |
+| 模块 | 主要用途 | 推荐入口 |
 | --- | --- | --- |
-| `pycwr.io` | 读取和写出雷达基数据 | `read_auto`, `read_WSR98D`, `read_SAB`, `read_CC`, `read_SC`, `read_PA`, `write_wsr98d`, `write_nexrad_level2_msg31`, `write_nexrad_level2_msg1` |
-| `pycwr.core` | 核心雷达对象、几何和产品计算 | `PRD`, `grid_3d_network_xy` |
-| `pycwr.draw` | 绘图 | `plot`, `plot_ppi`, `plot_ppi_map`, `plot_rhi`, `plot_section`, `plot_section_lonlat`, `plot_vvp`, `plot_wind_profile` |
-| `pycwr.qc` | 双偏振质控 | `apply_dualpol_qc`, `run_dualpol_qc` |
-| `pycwr.retrieve` | 水凝物分类和风场反演辅助接口 | `apply_hydrometeor_classification`, `classify_hydrometeors`, `interpolate_temperature_profile`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp`, `VAD`, `VVP` |
-| `pycwr.interp` | 多雷达组网插值 | `parse_radar_time_from_filename`, `discover_radar_files`, `select_radar_files`, `build_latlon_grid`, `load_network_config`, `run_radar_network_3d`, `radar_network_3d_to_netcdf` |
-| `pycwr.GraphicalInterface` | 本地轻量 Web viewer | `create_app`, `launch` |
+| `pycwr.io` | 读取和写出雷达基数据 | `read_auto`, `read_WSR98D`, `read_SAB`, `read_CC`, `read_SC`, `read_PA` |
+| `pycwr.core` | 核心体扫对象、几何和导出辅助 | `PRD`, `radar.summary()`, `radar.get_sweep_field()` |
+| `pycwr.draw` | 绘图和快速出图 | `plot_ppi`, `plot_ppi_map`, `plot_rhi`, `plot_section`, `plot_vvp`, `plot_wind_profile` |
+| `pycwr.qc` | 双偏振质量控制 | `apply_dualpol_qc`, `run_dualpol_qc` |
+| `pycwr.retrieve` | 水凝物分类和风场反演 | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp` |
+| `pycwr.interp` | 多雷达组网插值 | `run_radar_network_3d`, `radar_network_3d_to_netcdf` |
+| `pycwr.GraphicalInterface` | 本地 Web viewer | `create_app`, `launch` |
 
 ## 通用约定
 
 ### 单位
 
-核心内部统一约定：
-
 - 距离和高度：米
 - 内部三角函数计算：弧度
+- 对外 `azimuth`、`elevation`、`fixed_angle`：度
 - 经纬度输入输出：度
 
-历史兼容仍然保留：
-
-- 对外 `azimuth`、`elevation`、`fixed_angle` 仍然是度
-- 一些旧绘图接口仍然沿用千米
+部分历史绘图接口仍然接受千米，这是为了兼容旧行为。
 
 ### `range_mode`
 
 很多接口都接受：
 
 - `range_mode="aligned"`：历史兼容的对齐工作流
-- `range_mode="native"`：原生长距离反射率工作流
+- `range_mode="native"`：有原生长距离反射率时走原生距离库
 
 建议：
 
-- 要与旧流程保持一致，用 `aligned`
-- 要保留低层完整反射率范围，用 `native`
+- 做历史兼容产品和对比时，用 `aligned`
+- 需要低层真实反射率覆盖范围时，用 `native`
+
+速度场通常仍保持 aligned，因为速度有效距离往往短于反射率。
 
 ### 可选依赖
 
-默认安装提供：
+基础安装包含：
 
-- 读数
-- 核心几何
+- reader
 - `PRD`
+- 几何
 - 插值
-- NetCDF 导出
+- NetCDF 风格导出
 
-全功能可选依赖提供：
+full 安装额外包含：
 
 - 绘图
 - 地图绘图
-- Web viewer
 - QC
-- Py-ART / xradar 互操作
+- Web viewer
+- Py-ART 和 xradar 互操作
 
-安装全功能版本：
+安装 full 版本：
 
 ```bash
 pip install "pycwr[full]"
@@ -93,9 +74,7 @@ pip install "pycwr[full]"
 
 ## `pycwr.io`
 
-这是绝大多数用户的第一个入口。
-
-### `read_auto`
+### 推荐入口：`read_auto`
 
 ```python
 read_auto(
@@ -107,13 +86,17 @@ read_auto(
 )
 ```
 
-最推荐的入口。自动识别雷达格式并返回 `PRD`。
+作用：
+
+- 自动识别雷达文件家族
+- 解析成 `PRD`
+- 保持项目当前兼容的 sweep 布局和几何主链
 
 参数：
 
 - `filename`：雷达文件路径
-- `station_lon`、`station_lat`、`station_alt`：站点信息覆盖值
-- `effective_earth_radius`：波束几何使用的有效地球半径，单位米
+- `station_lon`、`station_lat`、`station_alt`：可选站点覆盖值
+- `effective_earth_radius`：可选有效地球半径，单位米
 
 返回：
 
@@ -138,11 +121,12 @@ read_SC(...)
 read_PA(...)
 ```
 
-只有你已经明确知道文件格式时，才建议直接调用这些 reader。
-
-它们和 `read_auto` 共用同一组主要参数，也同样返回 `PRD`。
+只有在你已经明确知道文件格式时，才建议直接调用这些 reader。
+它们返回的仍然是同一个 `PRD` 对象类型。
 
 ### 写出接口
+
+函数式 writer：
 
 ```python
 write_wsr98d(prd, filename, **kwargs)
@@ -150,7 +134,7 @@ write_nexrad_level2_msg31(prd, filename, **kwargs)
 write_nexrad_level2_msg1(prd, filename, **kwargs)
 ```
 
-对大多数用户代码，更推荐使用 `PRD` 自己的方法：
+更推荐的对象式导出：
 
 - `radar.to_wsr98d(...)`
 - `radar.to_nexrad_level2_msg31(...)`
@@ -158,42 +142,57 @@ write_nexrad_level2_msg1(prd, filename, **kwargs)
 
 ### 当前支持的雷达家族
 
-对外支持：
+公开 reader 主要面向：
 
 - `WSR98D`
 - `SAB`
 - `CC`
 - `SC`
 - `PA`
+- 启用时的部分 NEXRAD Level II 工作流
 
-如果格式无法识别，`read_auto` 会明确报错，而不是静默猜测。
+如果格式无法识别，`read_auto` 会直接报格式错误，不会静默猜测。
 
 ## `pycwr.core.NRadar.PRD`
 
-`PRD` 是整个项目的中心数据对象。
-通常你不会手工实例化它，而是从 `pycwr.io` 的 reader 拿到它。
+`PRD` 是整个项目的中心对象。几乎所有用户工作流都会先得到一个 `PRD`。
 
 ### 核心属性
 
-- `fields`：每层一个 sweep 级 `xarray.Dataset`
+- `fields`：每层一个 `xarray.Dataset`
 - `scan_info`：体扫元数据 `xarray.Dataset`
-- `extended_fields`：原生长距离 sidecar
+- `extended_fields`：原生距离 sidecar
 - `product`：产品结果集
 - `sitename`：站点名
 - `nsweeps`：层数
-- `nrays`：射线数
-- `effective_earth_radius`：当前体扫使用的有效地球半径
+- `nrays`：总射线数
+- `effective_earth_radius`：几何计算使用的有效地球半径
 
 ### sweep 数据模型
 
-`fields[sweep]` 往往是最常用的入口。
+`fields[sweep]` 往往是查看单层数据最直接的入口。
 
-常见坐标和变量：
+常见坐标：
 
-- 坐标：`time`、`range`、`azimuth`、`elevation`、`x`、`y`、`z`、`lon`、`lat`
-- 场：`dBZ`、`V`、`W`、`ZDR`、`CC`、`PhiDP`、`KDP`，以及后处理生成的场
+- `time`
+- `range`
+- `azimuth`
+- `elevation`
+- `x`、`y`、`z`
+- `lon`、`lat`
 
-### 查看体扫信息
+常见变量：
+
+- `dBZ`
+- `V`
+- `W`
+- `ZDR`
+- `CC`
+- `PhiDP`
+- `KDP`
+- 运行 QC 后生成的 `Zc`、`ZDRc`、`PhiDPc`、`KDPc`
+
+### 体扫查看接口
 
 ```python
 radar.summary()
@@ -205,14 +204,6 @@ radar.has_extended_field(sweep, field_name)
 radar.ordered_az(inplace=False)
 ```
 
-推荐理解方式：
-
-- `summary()`：第一次看一个体扫，先用它
-- `available_fields()`：快速列出场
-- `sweep_summary()`：按层看摘要
-- `get_sweep_field()`：稳定地取一个场
-- `ordered_az()`：拿到按方位排序后的视图
-
 #### `summary()`
 
 返回一个轻量 `dict`，通常包含：
@@ -220,21 +211,23 @@ radar.ordered_az(inplace=False)
 - 站点信息
 - 扫描类型
 - 层数和射线数
-- 可用场
+- 场列表
 - 每层摘要
+
+第一次打开陌生数据时，建议先看这个。
 
 #### `available_fields(sweep=None, range_mode="aligned")`
 
 返回：
 
-- `sweep is None` 时，返回整个体扫所有可见场名
-- 指定 `sweep` 时，返回该层可见场名
+- `sweep is None` 时，返回整个体扫可见场名
+- 指定 `sweep` 时，返回某一层可见场名
 
-如果 `range_mode="native"`，会把原生 sidecar 中的场也纳入结果。
+如果 `range_mode="native"`，会把 sidecar 中可见的原生场也纳入结果。
 
 #### `sweep_summary()`
 
-返回一个列表，每一项是一个 `dict`，通常包含：
+按层返回摘要列表。常见字段包括：
 
 - `sweep`
 - `fixed_angle`
@@ -258,44 +251,49 @@ radar.get_sweep_field(
 
 适合：
 
-- 只想取一个场
-- 想显式指定 `aligned` 或 `native`
-- 想顺手按方位角排序
+- 只取一个场
+- 显式控制 `aligned` / `native`
+- 顺手做按方位排序
 
 #### `get_native_sweep_field(sweep, field_name)`
 
-如果存在原生长距离 sidecar，就返回原生距离库上的场；
-如果没有，则自动回退到对齐场。
+如果某层存在原生 sidecar，就返回原生距离库上的场；
+如果没有，则自动回退到 aligned。
 
 #### `has_extended_field(sweep, field_name)`
 
 返回 `True` / `False`。
-适合在代码里显式区分 aligned/native 路径。
+适合显式区分 aligned 与 native 路径。
 
 #### `ordered_az(inplace=False)`
 
 返回或应用“按 azimuth 排序后的视图”。
 
-行为：
-
-- `inplace=False`：返回一个排序视图
+- `inplace=False`：返回排序视图
 - `inplace=True`：直接修改当前对象
 
 ### 反射率访问：aligned 与 native
 
-这是整个项目里最重要的读取规则。
+对部分低层：
 
-对于部分低层：
-
-- `radar.fields[sweep]["dBZ"]` 是历史兼容的对齐版
+- `radar.fields[sweep]["dBZ"]` 是对齐版
 - `radar.get_native_sweep_field(sweep, "dBZ")` 是原生长距离反射率
 
-建议：
+建议规则：
 
-- 做历史兼容绘图、产品和旧流程时，用 aligned
+- 做历史兼容产品、图和对比时，用 aligned
 - 做低层完整反射率分析时，用 native
 
+示例：
+
+```python
+aligned = radar.get_sweep_field(0, "dBZ", range_mode="aligned")
+native = radar.get_sweep_field(0, "dBZ", range_mode="native")
+```
+
 ### 产品计算
+
+`PRD` 上的公开产品接口包括：
 
 ```python
 radar.add_product_CR_xy(XRange, YRange, range_mode="aligned")
@@ -316,32 +314,9 @@ radar.add_product_VWP(sweeps=None, field_name=None, range_mode="aligned", **kwar
 - 经纬度网格：度
 - 高度：米
 
-结果写入 `radar.product`。
+结果会写回 `radar.product`。
 
-命名规则：
-
-- aligned 产品保持原有名字
-- native 产品通常带 `_native` 后缀
-
-### 在 `PRD` 上做风场反演
-
-```python
-radar.retrieve_vad(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
-radar.retrieve_vvp(sweep, field_name=None, range_mode="aligned", **kwargs)
-radar.retrieve_vwp(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
-radar.add_product_VWP(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
-```
-
-适合不离开 `PRD` 工作流，直接做单雷达风诊断的场景。
-
-行为：
-
-- `retrieve_vad(...)` 返回按 sweep 和 gate 组织的环状风场反演
-- `retrieve_vvp(...)` 返回单层 sweep 上的局地水平风分析
-- `retrieve_vwp(...)` 把多层 VAD 结果聚合成垂直风廓线
-- `add_product_VWP(...)` 把廓线写入 `radar.product`，变量名为 `VWP_*`
-
-### 剖面与 RHI 提取
+### 剖面提取
 
 ```python
 radar.extract_section(
@@ -361,132 +336,44 @@ radar.extract_section_lonlat(
     range_mode="aligned",
     sample_spacing=None,
 )
-radar.extract_rhi(azimuth=None, field_name="dBZ", range_mode="aligned")
-radar.get_RHI_data(az, field_name="dBZ", range_mode="aligned")
-radar.get_vcs_data(start_point, end_point, field_name, range_mode="aligned")
+radar.get_RHI_data(...)
+radar.get_vcs_data(...)
 ```
 
-使用建议：
+适合做垂直剖面、经纬度剖面和 RHI 风格提取。
 
-- `extract_section`：笛卡尔起点终点
-- `extract_section_lonlat`：经纬度起点终点
-- `extract_rhi`：标准化 RHI dataset
-- `get_RHI_data`：旧式低层数组接口
-- `get_vcs_data`：旧式低层垂直剖面接口
-
-新代码更推荐：
-
-- `extract_section`
-- `extract_section_lonlat`
-- `extract_rhi`
-
-### QC、水凝物分类与导出
+### 在 `PRD` 上做风场反演
 
 ```python
-radar.apply_dualpol_qc(
-    inplace=False,
-    band="C",
-    use_existing_kdp=True,
-    clear_air_mode="label",
-)
-radar.classify_hydrometeors(
-    inplace=False,
-    band="C",
-    profile_height=None,
-    profile_temperature=None,
-    confidence_field=None,
-)
-radar.add_hydrometeor_classification(band="C", confidence_field=None)
-radar.to_pyart_radar(range_mode="aligned", field_names=None, use_external=None, strict=False)
-radar.to_xradar_sweeps(range_mode="aligned", field_names=None)
-radar.to_xradar(range_mode="aligned", field_names=None, strict=True)
-radar.to_wsr98d(filename, field_names=None, strict=True, overwrite=False)
-radar.to_nexrad_level2_msg31(filename, field_names=None, strict=True, overwrite=False)
-radar.to_nexrad_level2_msg1(filename, field_names=None, strict=True, overwrite=False)
+radar.retrieve_vad(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.retrieve_vvp(sweep, field_name=None, range_mode="aligned", **kwargs)
+radar.retrieve_vwp(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.add_product_VWP(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 ```
-
-#### `apply_dualpol_qc(...)`
-
-对选定层应用双偏振 QC，返回：
-
-- `inplace=False` 时返回拷贝
-- `inplace=True` 时返回原对象
-
-常见新增场：
-
-- `Zc`
-- `PIA`
-- `PhiDP_smooth`
-- `PhiDP_texture`
-- `KDPc`
-- `METEO_MASK`
-- `CLEAR_AIR_MASK`
-- `QC_MASK`
-- `ZDRc`
-- `PIA_ZDR`
-
-#### `classify_hydrometeors(...)`
-
-对选定层做 gate 级水凝物分类，返回：
-
-- `inplace=False` 时返回拷贝
-- `inplace=True` 时返回原对象
-
-重要参数：
-
-- `profile_height` / `profile_temperature`：可选的 1-D 环境温度廓线
-- `temperature`：可选的直接 gate 温度场
-- `confidence_field`：可选的最大隶属度置信度输出
-- `temperature_field`：可选的“实际用于分类的温度场”输出
 
 行为：
 
-- 把 `HCL` 写回 sweep 场
-- 如果 sweep 里已经有 `Zc`、`ZDRc`、`KDPc`，会优先使用订正场
-- 不提供温度时，会自动退化到 reduced-variable 无廓线模式
+- `retrieve_vad(...)`：返回环状风反演 `xarray.Dataset`
+- `retrieve_vvp(...)`：返回单层局地水平风反演结果
+- `retrieve_vwp(...)`：返回垂直风廓线 `xarray.Dataset`
+- `add_product_VWP(...)`：把廓线写入 `radar.product`，变量名是 `VWP_*`
 
-#### `add_hydrometeor_classification(...)`
+### 导出与互操作
 
-`classify_hydrometeors(...)` 的原地便捷封装。
+常用对象方法：
 
-#### `to_pyart_radar(...)`
+- `radar.to_pyart_radar(...)`
+- `radar.to_xradar(...)`
+- `radar.to_wsr98d(...)`
+- `radar.to_nexrad_level2_msg31(...)`
+- `radar.to_nexrad_level2_msg1(...)`
+- `radar.to_cfgridded_netcdf(...)`
 
-当你要接 Py-ART 工作流时，用这个接口。
-
-重要参数：
-
-- `range_mode`：`aligned` 或 `native`
-- `field_names`：只导出指定场
-- `use_external`：优先用上游 Py-ART 或强制仓库内兼容对象
-- `strict=True`：可选依赖缺失时明确报错
-
-#### `to_xradar_sweeps(...)`
-
-返回 sweep 级 `xarray.Dataset`，适合 xradar 风格工作流。
-
-#### `to_xradar(...)`
-
-在可选依赖满足时，返回 DataTree 风格对象。
-
-#### `to_wsr98d(...)`
-
-写出 WSR98D 基数据文件，并可被 `pycwr.io.read_WSR98D(...)` 回读。
-
-#### `to_nexrad_level2_msg31(...)`
-
-写出可被 Py-ART 读取的 NEXRAD Level II MSG31 文件。
-当前支持 `dBZ`、`V`、`W`、`ZDR`、`CC`、`PhiDP`。
-
-#### `to_nexrad_level2_msg1(...)`
-
-写出可被 Py-ART 读取的 NEXRAD Level II MSG1 文件。
-这个旧格式当前只支持 `dBZ`、`V`、`W`。
+这些是下游互操作的主要公开出口。
 
 ## `pycwr.draw`
 
-这个模块提供对新手更友好的高层绘图接口。
-
-推荐导入：
+推荐使用的公开绘图接口：
 
 ```python
 from pycwr.draw import (
@@ -498,539 +385,248 @@ from pycwr.draw import (
     plot_section_lonlat,
     plot_vvp,
     plot_wind_profile,
-    EasyRadarPlotter,
 )
 ```
 
 ### 返回值
 
-所有高层绘图接口都返回：
+easy 绘图函数统一返回 `EasyPlotResult`，其中包含：
 
-```python
-EasyPlotResult(fig=..., ax=..., artist=...)
-```
+- `fig`：matplotlib figure
+- `ax`：目标轴或轴数组
+- `artist`：主绘图对象
 
-这样你可以：
+### 常用绘图入口
 
-- 继续操作 `matplotlib` Figure / Axes
-- 追加注释
-- 自己控制保存逻辑
+- `plot_ppi(radar, field="dBZ", sweep=0, ...)`
+- `plot_ppi_map(radar, field="dBZ", sweep=0, ...)`
+- `plot_rhi(radar, field="dBZ", azimuth=..., ...)`
+- `plot_section(radar, start=..., end=..., field="dBZ", ...)`
+- `plot_section_lonlat(radar, start_lonlat=..., end_lonlat=..., field="dBZ", ...)`
+- `plot_vvp(radar, sweep=0, background_field="dBZ", ...)`
+- `plot_wind_profile(profile_or_radar, ...)`
 
-### `plot_ppi`
+建议：
 
-```python
-plot_ppi(
-    radar,
-    field="dBZ",
-    sweep=0,
-    ax=None,
-    figsize=(8, 8),
-    show=False,
-    save=None,
-    title=None,
-    **kwargs,
-)
-```
-
-最推荐的单层 quicklook 接口。
-
-### `plot_ppi_map`
-
-```python
-plot_ppi_map(
-    radar,
-    field="dBZ",
-    sweep=0,
-    ax=None,
-    figsize=(8, 8),
-    projection=None,
-    data_crs=None,
-    show=False,
-    save=None,
-    title=None,
-    **kwargs,
-)
-```
-
-想把同一层画到地图上时，用这个接口。
-
-需要全功能绘图依赖。
-
-### `plot_section`
-
-```python
-plot_section(
-    radar,
-    start=(-50.0, 0.0),
-    end=(50.0, 0.0),
-    field="dBZ",
-    point_units="km",
-    ...
-)
-```
-
-使用笛卡尔坐标定义剖面端点。
-`point_units` 允许 `km` 或 `m`。
-
-### `plot_section_lonlat`
-
-```python
-plot_section_lonlat(
-    radar,
-    start_lonlat,
-    end_lonlat,
-    field="dBZ",
-    ...
-)
-```
-
-使用经纬度定义剖面端点。
-
-### `plot_rhi`
-
-```python
-plot_rhi(
-    radar,
-    azimuth,
-    field="dBZ",
-    ...
-)
-```
-
-按指定方位角提取并绘制 RHI 风格剖面。
-
-### `plot`
-
-```python
-plot(radar, kind="ppi", field="dBZ", sweep=0, show=False, save=None, **kwargs)
-```
-
-支持的 `kind`：
-
-- `ppi`
-- `ppi_map`
-- `section`
-- `section_lonlat`
-- `rhi`
-- `wind_profile`
-- `vvp`
-
-### `EasyRadarPlotter`
-
-适合喜欢这种风格的用户：
-
-```python
-plotter = EasyRadarPlotter(radar)
-plotter.ppi(...)
-plotter.section(...)
-plotter.rhi(...)
-plotter.wind_profile(...)
-plotter.vvp(...)
-```
+- 快速看 PPI，用 `plot_ppi`
+- 需要地理背景，用 `plot_ppi_map`
+- 做垂直分析，用 `plot_section` 或 `plot_section_lonlat`
+- 看 VVP 矢量场，用 `plot_vvp`
+- 看 `VWP` 结果，用 `plot_wind_profile`
 
 ## `pycwr.qc`
 
-这个模块提供双偏振质控能力。
-
-### 高层工作流
+### 主 QC 工作流
 
 ```python
-apply_dualpol_qc(
-    prd,
-    sweeps=None,
-    inplace=False,
-    band="C",
-    use_existing_kdp=True,
-    clear_air_mode="label",
-)
+from pycwr.qc import apply_dualpol_qc, run_dualpol_qc
 ```
 
-适合已经有 `PRD` 对象时直接调用。
-
-要求：
-
-- 必须有 `dBZ`
-- 至少有 `KDP` 或 `PhiDP` 之一
-
-行为：
-
-- 计算订正后的反射率和相关 QC 诊断量
-- 把新场写回所选层
-- 默认返回新对象，除非 `inplace=True`
-
-### 底层数组工作流
+典型用法：
 
 ```python
-run_dualpol_qc(
-    ref,
-    zdr=None,
-    phidp=None,
-    kdp=None,
-    rhohv=None,
-    snr=None,
-    dr=0.075,
-    band="C",
-    use_existing_kdp=True,
-    clear_air_mode="label",
-)
+qc_radar = apply_dualpol_qc(radar, inplace=False, clear_air_mode="mask")
 ```
 
-适合你已经在 `numpy` 数组层工作，不想先封成 `PRD` 的情况。
+作用：
 
-返回一个 `dict`，常见键包括：
+- 去除或抑制非气象目标
+- 生成订正后的极化场
+- 输出后续流程可复用的掩码场
 
-- `ref_corrected`
-- `zdr_corrected`
-- `pia`
-- `pia_zdr`
-- `phidp_smooth`
-- `kdp_used`
-- `phidp_texture`
-- `meteo_mask`
-- `clear_air_mask`
-- `qc_mask`
+常见输出场：
 
-主要参考文献：
+- `Zc`
+- `ZDRc`
+- `PhiDPc`
+- `KDPc`
+- `QC_MASK`
+- `CLEAR_AIR_MASK`
 
-- NOAA WDTD 双偏振 QC： https://vlab.noaa.gov/web/wdtd/-/dual-pol-quality-control
-- Tang et al. 2020 MRMS QC 更新：doi:10.1175/JTECH-D-19-0165.1
-- 吴翀;双偏振雷达的资料质量分析,相态识別及组网应用[D];南京信息工程大学;2018年。在本地业务背景下把晴空回波作为非气象回波类别处理。
-
-### 常用底层 QC 函数
-
-```python
-smooth_phidp(...)
-kdp_from_phidp(...)
-phidp_texture(...)
-build_meteo_mask(...)
-build_clear_air_mask(...)
-despeckle_mask(...)
-correct_attenuation_kdp(...)
-pia_from_kdp(...)
-```
-
-当你想自定义 QC 流程而不是直接用封装工作流时，使用这些函数。
+如果你想保留原始体扫，建议用 `inplace=False`。
 
 ## `pycwr.retrieve`
 
-这个模块提供水凝物分类和单雷达风场反演接口。
+这个模块包含两类公开反演能力：
 
-### 在 `PRD` 上做水凝物分类
+- 水凝物分类
+- 单雷达风场反演
+
+### 水凝物分类
+
+公开入口：
 
 ```python
-apply_hydrometeor_classification(
-    prd,
-    sweeps=None,
+from pycwr.retrieve import (
+    apply_hydrometeor_classification,
+    classify_hydrometeors,
+    interpolate_temperature_profile,
+)
+```
+
+典型对象式工作流：
+
+```python
+hcl_radar = radar.classify_hydrometeors(
     inplace=False,
     band="C",
-    method="hybrid",
-    temperature=None,
-    profile_height=None,
-    profile_temperature=None,
-    confidence_field=None,
-    temperature_field=None,
+    profile_height=[0.0, 2000.0, 4000.0, 8000.0],
+    profile_temperature=[24.0, 12.0, 2.0, -16.0],
+    confidence_field="HCL_CONF",
 )
 ```
 
-适合已经有 `PRD`，想把 `HCL` 直接写回各层 sweep 的场景。
+适用场景：
 
-要求：
+- 直接对数组做分类
+- 把温度廓线插值到 gate 高度
+- 把 `HCL` 和置信度场写回 `PRD`
 
-- 必须有 `dBZ`
-- 至少有 `ZDR`、`KDP`、`CC`、`LDR` 之一
+### 风场反演
 
-行为：
-
-- 把 `HCL` 写成 gate 级 sweep 字段
-- 可选写出 confidence 和插值后的温度场
-- 使用内置的 10 类 fuzzy HID 参数表
-- 不提供温度时，会自动退化到 reduced-variable 无廓线模式
-
-### 数组级水凝物分类
+公开入口：
 
 ```python
-classify_hydrometeors(
-    dBZ,
-    ZDR=None,
-    KDP=None,
-    CC=None,
-    LDR=None,
-    T=None,
-    method="hybrid",
-    band="C",
-    weights=None,
-    return_scores=False,
-    return_confidence=False,
-)
+from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp
 ```
 
-适合你已经在 `numpy` 数组层工作，不想先封成 `PRD` 的情况。
+三条主算法：
 
-返回：
+- `VAD`：一个或多个 sweep 的谐波拟合
+- `VVP`：单层 sweep 的局地最小二乘水平风反演
+- `VWP`：由多层 VAD 聚合的稳健垂直风廓线
 
-- `[1, 10]` 范围内的类别编号
-- `return_scores=True` 时额外返回模糊得分立方体
-- `return_confidence=True` 时额外返回胜出类别的置信度
-
-### 把环境廓线插值到 gate 温度场
+典型用法：
 
 ```python
-interpolate_temperature_profile(
-    gate_altitude,
-    profile_height,
-    profile_temperature,
-    radar_altitude=0.0,
-    height_reference="asl",
-)
+vad = radar.retrieve_vad(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4)
+vvp = radar.retrieve_vvp(0, max_range_km=20.0, az_num=91, bin_num=5)
+vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 ```
 
-典型用法是把 `PRD` sweep 里的 `dataset["z"]` 作为 `gate_altitude`。
+返回值都是 `xarray.Dataset`，常见变量包括：
 
-### 水凝物类别编号
+- `u`
+- `v`
+- `wind_speed`
+- `wind_direction`
+- `fit_rmse`
+- 不同算法对应的覆盖率或样本数指标
 
-`pycwr.retrieve.available_hydrometeor_classes()` 返回：
+重要行为：
 
-1. `Drizzle`
-2. `Rain`
-3. `Ice Crystals`
-4. `Dry Aggregates Snow`
-5. `Wet Snow`
-6. `Vertical Ice`
-7. `Low-Density Graupel`
-8. `High-Density Graupel`
-9. `Hail`
-10. `Big Drops`
+- 速度场选择优先 `Vc`，没有时回退到 `V`
+- 反演会尽量容忍缺测和不完整方位覆盖
+- `attrs` 中会记录方法、实际使用的速度场和参考文献
 
-内置分类器参考：
+模块中写入的主要参考文献：
 
-- Dolan et al. (2013), *Journal of Applied Meteorology and Climatology*
-- Marzano et al. (2006), *Advances in Geosciences*
-
-### 风场反演 helper
-
-```python
-retrieve_vad(
-    prd,
-    sweeps=None,
-    field_name=None,
-    range_mode="aligned",
-    gate_step=1,
-    max_range_km=None,
-    **kwargs,
-)
-retrieve_vwp(
-    prd,
-    sweeps=None,
-    field_name=None,
-    range_mode="aligned",
-    height_bins=None,
-    height_step=250.0,
-    max_height_m=None,
-    gate_step=1,
-    max_range_km=None,
-    **kwargs,
-)
-retrieve_vvp(
-    prd,
-    sweep,
-    field_name=None,
-    range_mode="aligned",
-    az_num=91,
-    bin_num=9,
-    azimuth_step=1,
-    range_step=1,
-    max_range_km=None,
-    **kwargs,
-)
-```
-
-适合想直接拿结果 dataset，而不是先写回 `radar.product` 的场景。
-
-返回：
-
-- `retrieve_vad(...)`：按 sweep 和 gate 组织的 VAD 数据集
-- `retrieve_vwp(...)`：1-D 垂直风廓线数据集
-- `retrieve_vvp(...)`：单层 sweep 上的局地 VVP 数据集
-
-历史兼容 helper 仍然保留：
-
-- `vad` / `VAD`
-- `vvp` / `VVP`
+- Browning and Wexler (1968), VAD
+- Waldteufel and Corbin (1979), VVP
 
 ## `pycwr.interp`
 
-这个模块提供多雷达组网插值和 NetCDF 输出。
-
-### 文件发现与时间选择
+推荐的高层组网入口：
 
 ```python
-parse_radar_time_from_filename(path)
-discover_radar_files(radar_dirs, pattern="*.bin*")
-select_radar_files(radar_dirs, target_time, tolerance_minutes=10, pattern="*.bin*")
-```
-
-#### `parse_radar_time_from_filename(path)`
-
-从文件名里解析扫描时间。
-文件名里没有可识别时间时会抛 `ValueError`。
-
-#### `discover_radar_files(...)`
-
-返回一个字典，键是雷达目录名，值是匹配到的文件列表。
-
-#### `select_radar_files(...)`
-
-返回一个列表，每个元素通常包含：
-
-- `radar_id`
-- `path`
-- `scan_time`
-- `delta_seconds`
-
-### 目标网格构建
-
-```python
-build_latlon_grid(lon_min, lon_max, lat_min, lat_max, lon_res_deg, lat_res_deg)
-```
-
-返回：
-
-- `lon`
-- `lat`
-- `grid_lon`
-- `grid_lat`
-
-### 端到端 3D 组网工作流
-
-```python
-run_radar_network_3d(
-    target_time,
-    config_path=None,
-    radar_dirs=None,
-    lon_min=None,
-    lon_max=None,
-    lat_min=None,
-    lat_max=None,
-    lon_res_deg=None,
-    lat_res_deg=None,
-    level_heights=None,
-    field_names=None,
-    output_products=None,
-    output_path=None,
-    time_tolerance_minutes=None,
-    composite_method=None,
-    influence_radius_m=None,
-    fillvalue=None,
-    effective_earth_radius=None,
-    field_range_mode=None,
-    max_range_km=None,
-    parallel=None,
-    max_workers=None,
-    blind_method=None,
-    use_qc=None,
-    qc_method=None,
-    qc_band=None,
-    qc_use_existing_kdp=None,
-    qc_fallback=None,
-    ...
+from pycwr.interp import (
+    parse_radar_time_from_filename,
+    discover_radar_files,
+    select_radar_files,
+    build_latlon_grid,
+    load_network_config,
+    run_radar_network_3d,
+    radar_network_3d_to_netcdf,
 )
 ```
 
-当你要生成完整多雷达组网产品时，用这个接口。
+典型流程：
 
-最少必须定义：
+1. 发现或筛选输入雷达文件
+2. 构建经纬度网格
+3. 执行 `run_radar_network_3d(...)`
+4. 按需写 NetCDF
 
-- `target_time`
-- `radar_dirs`
-- 经纬度范围和分辨率
-- `level_heights`
+常见输出包括：
 
-返回：
-
-- 一个 `xarray.Dataset`
-
-参数可以粗分为几类：
-
-- 数据选择：`target_time`、`radar_dirs`、`time_tolerance_minutes`、`pattern`
-- 网格定义：`lon_min`、`lon_max`、`lat_min`、`lat_max`、`lon_res_deg`、`lat_res_deg`、`level_heights`
-- 合成控制：`field_names`、`field_range_mode`、`composite_method`、`influence_radius_m`、`max_range_km`
-- QC：`use_qc`、`qc_method`、`qc_band`、`qc_use_existing_kdp`、`qc_fallback`
-- 输出：`output_products`、`output_path`
-- 执行控制：`parallel`、`max_workers`
-
-衍生产品和算法口径：
-
-- `CR`：对单站组合反射率先求值，再在组网侧做 `max` 合成。
-- `VIL`：使用 Greene and Clark (1972) 的液态水经验关系 `3.44e-6 * Z^(4/7)`，并按业务常见做法对反射率做 `56 dBZ` 封顶；低反射率截止值是 `pycwr` 的可配置工作流参数。
-- `ET`：使用阈值回波顶高思路，寻找最高超过阈值的层，并在阈值穿越处做线性插值。
-- `ET_TOPPED`：当最高可用层仍超过 `ET` 阈值时，对应格点记为 `1`，用于区分“真实顶高已解析”和“仅到最高采样层”的情况。
-- `product_level_heights`：可用于 `VIL` / `ET`，通常建议比显示层 `level_heights` 更密。
-
-当前 3D 组网参考文献与说明：
-
-- 吴翀;双偏振雷达的资料质量分析,相态识別及组网应用[D];南京信息工程大学;2018年，第 4 章给出了单站格点化、共同覆盖区指数权重法和质量权重法的业务背景。
-- `pycwr` 的 `quality_weighted` 是在论文所述“质量权重法”基础上做的工程扩展，额外叠加了距离衰减、波束展宽、仰角代表性、QC 掩膜和可选遮挡权重。
-- 如果需要与某一业务系统逐式对齐，请不要把 `pycwr` 当前实现直接当成某一篇论文或某一套国家级组网系统的逐项复现。
-
-建议参考：
-
-- Greene, D. R., and R. A. Clark, 1972, *Monthly Weather Review*, doi:10.1175/1520-0493(1972)100<0548:VILWNA>2.3.CO;2
-- Lakshmanan et al., 2013, *Weather and Forecasting*, doi:10.1175/WAF-D-12-00084.1
-- Lakshmanan et al., 2006, *Weather and Forecasting*, doi:10.1175/WAF942.1
-- NOAA WDTD `VIL` / `ET` 产品页
-- WSR-88D ROC ICD 2620003Y
-
-### NetCDF 输出
-
-```python
-radar_network_3d_to_netcdf(dataset, output_path)
-```
-
-写出数据并返回输出路径字符串。
+- 组网 `CR`
+- 组网 `CAPPI`
+- 3D 反射率体
+- 每部雷达的元数据和距离摘要
 
 ## `pycwr.GraphicalInterface`
 
-这是轻量本地 Web viewer 的 API。
-
-### `create_app`
+公开入口：
 
 ```python
-create_app(allowed_roots=None, auth_token=None)
+from pycwr.GraphicalInterface import create_app, launch
 ```
 
-参数：
-
-- `allowed_roots`：viewer 可浏览、可打开的目录
-- `auth_token`：固定 token，适合自动化或测试；不传则自动生成随机 token
-
-返回：
-
-- 配置好的 Flask app
-
-### `launch`
+典型使用：
 
 ```python
-launch(host="127.0.0.1", port=8787, open_browser=True)
+app = create_app()
+launch()
 ```
 
-说明：
+或者直接运行：
 
-- 只允许回环地址
-- 非首页 API 请求都要求 token
-- 文件访问严格限制在允许目录内
+```bash
+python scripts/LaunchGUI.py
+```
 
-## 推荐学习顺序
+viewer 的设计边界：
 
-1. `pycwr.io.read_auto`
-2. `PRD.summary()` 和 `PRD.fields`
-3. `PRD.get_sweep_field(...)`
-4. `pycwr.draw.plot_ppi`
-5. `PRD.add_product_CR_xy` / `PRD.add_product_CAPPI_xy` / `PRD.add_product_VIL_xy` / `PRD.add_product_ET_xy`
-6. `PRD.apply_dualpol_qc`
-7. `pycwr.interp.run_radar_network_3d`
+- 只监听本机回环地址
+- API 受 token 保护
+- 文件访问受目录限制
 
-## 相关文档
+## 常见工作流配方
 
-- [docs/draw_quickstart.md](draw_quickstart.md)
-- [docs/web_viewer_quickstart.md](web_viewer_quickstart.md)
-- [README_CN.md](../README_CN.md)
+### 读数、查看、出一张图
+
+```python
+from pycwr.io import read_auto
+from pycwr.draw import plot_ppi
+
+radar = read_auto("your_radar_file")
+print(radar.summary())
+plot_ppi(radar, field="dBZ", sweep=0, show=True)
+```
+
+### 使用低层原生反射率
+
+```python
+native_dBZ = radar.get_sweep_field(0, "dBZ", range_mode="native")
+```
+
+### 做 QC 后画订正反射率
+
+```python
+qc_radar = radar.apply_dualpol_qc(inplace=False)
+plot_ppi(qc_radar, field="Zc", sweep=0, show=True)
+```
+
+### 生成风廓线并绘图
+
+```python
+from pycwr.draw import plot_wind_profile
+
+profile = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
+plot_wind_profile(profile, show=True)
+```
+
+### 跑多雷达组网
+
+```python
+from pycwr.interp import run_radar_network_3d
+
+network = run_radar_network_3d(...)
+```
+
+## 接下来读什么
+
+- [../README_CN.md](../README_CN.md)：项目总览
+- [../test/README.md](../test/README.md)：可运行示例
+- [draw_quickstart.md](draw_quickstart.md)：绘图入口
+- [web_viewer_quickstart.md](web_viewer_quickstart.md)：本地 viewer 使用说明

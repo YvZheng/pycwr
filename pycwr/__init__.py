@@ -6,7 +6,7 @@ so that ``import pycwr`` remains lightweight and warning-free.
 
 from importlib import import_module
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 _LAZY_MODULES = {"core", "io", "interp", "qc", "retrieve", "configure", "draw"}
 

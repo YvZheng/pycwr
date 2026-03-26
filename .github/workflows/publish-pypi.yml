@@ -35,10 +35,10 @@ jobs:
       - name: Upgrade packaging tools
         run: python -m pip install --upgrade pip build twine
 
-      - name: Build source and wheel distributions
-        run: python -m build
+      - name: Build source distribution
+        run: python -m build --sdist
 
-      - name: Check built distributions
+      - name: Check built distribution
         run: python -m twine check dist/*
 
       - name: Upload distribution artifacts

@@ -201,6 +201,14 @@ DEFAULT_METADATA = {
         'valid_min': 0.0,
         'coordinates': 'elevation azimuth range'},
 
+    'spectrum_width_corrected': {
+        'units': 'meters_per_second',
+        'standard_name': 'corrected_doppler_spectrum_width',
+        'long_name': 'Corrected Doppler spectrum width',
+        'valid_max': 30.0,
+        'valid_min': 0.0,
+        'coordinates': 'elevation azimuth range'},
+
     # Dual-polarization fields
     'differential_reflectivity': {
         'units': 'dB',
@@ -390,6 +398,7 @@ CINRAD_COLORMAP = {
     "northward_wind_component": 'pyart_BuDRd18',
     "vertical_wind_component": 'pyart_BuDRd18',
     "spectrum_width": 'pyart_NWS_SPW',
+    "spectrum_width_corrected": 'pyart_NWS_SPW',
     "normalized_coherent_power": 'pyart_Carbone17',
     "differential_reflectivity": 'pyart_RefDiff',
     "corrected_differential_reflectivity": 'pyart_RefDiff',
@@ -417,6 +426,7 @@ CINRAD_field_bins = {
     "reflectivity":16,
     "velocity":17,
     "spectrum_width":16,
+    "spectrum_width_corrected":16,
     'normalized_coherent_power':16,
     "differential_reflectivity":16,
     "linear_depolarization_ratio":16,
@@ -452,6 +462,7 @@ CINRAD_field_normvar = {
     "reflectivity":(-5,75),
     "velocity":(-28,28),
     "spectrum_width":(0,16),
+    "spectrum_width_corrected":(0,16),
     'normalized_coherent_power':-1,
     "differential_reflectivity":(-2,8),
     "linear_depolarization_ratio":-1,

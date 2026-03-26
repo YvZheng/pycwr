@@ -3,7 +3,7 @@
 `pycwr` 是一个面向中国天气雷达业务流程的 Python 工具库，覆盖雷达基数据读取、
 几何计算、绘图、质量控制、水凝物分类、单雷达风场反演、多雷达组网插值和导出。
 
-- 当前版本：`1.0.3`
+- 当前版本：`1.0.4`
 - [English](README.md)
 - [接口参考](docs/api_reference_cn.md)
 - [测试索引](test/README.md)
@@ -11,9 +11,10 @@
 - [Web viewer 快速上手](docs/web_viewer_quickstart.md)
 - [开发人员](CONTRIBUTORS_CN.txt)
 
-## 为什么是 1.0.3
+## 为什么是 1.0.4
 
-`1.0.3` 延续了第一条稳定发布线，目标仍然是“可发布、可集成、可维护”。
+`1.0.4` 延续了第一条稳定发布线，目标仍然是“可发布、可集成、可维护”。
+这次版本也包含了 `Wc` 变量更新。
 
 重点变化：
 
@@ -43,13 +44,13 @@ python -m pip install ".[full]"
 
 说明：
 
-- `pycwr 1.0.3` 要求 Python `>=3.9`
+- `pycwr 1.0.4` 要求 Python `>=3.9`
 - 基础安装足够支持 reader、`PRD`、几何、插值和 NetCDF 风格导出
 - 全功能安装建议用于绘图、地图绘图、QC、Py-ART/xradar 互操作和 web viewer
 - 上游 `arm_pyart` 和 `xradar` 当前要求 Python `>=3.10`，因此在 Python
   `3.9` 上，全功能安装仍可覆盖绘图、QC 和 web viewer，但不包含这两类
   可选互操作依赖
-- `1.0.3` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
+- `1.0.4` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
 
 修改 `pycwr/core/RadarGridC.pyx` 后重编译：
 
@@ -296,7 +297,7 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 
 ## 给发布用户的说明
 
-`1.0.3` 最需要明确的行为规则有这几条：
+`1.0.4` 最需要明确的行为规则有这几条：
 
 - 所有 reader 统一返回稳定的 `PRD` 对象
 - 低层反射率可以显式选择 aligned 或 native 距离库

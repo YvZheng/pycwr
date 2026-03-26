@@ -168,7 +168,12 @@ class PRD(object):
             isweep_data.lat.attrs = DEFAULT_METADATA['lat']
             for ikey in keys:
                 isweep_data[ikey] = (['time','range'], fields[ikey][istart:iend+1, :bins_per_sweep[idx]])
-                isweep_data[ikey].attrs = DEFAULT_METADATA[CINRAD_field_mapping[ikey]]
+                mapped_name = CINRAD_field_mapping.get(ikey, ikey)
+                isweep_data[ikey].attrs = DEFAULT_METADATA.get(mapped_name, {
+                    'units': 'unknown',
+                    'standard_name': mapped_name,
+                    'long_name': mapped_name,
+                    'coordinates': 'elevation azimuth range'})
             self.fields.append(isweep_data)
         self.scan_info = xr.Dataset(data_vars={"latitude":latitude,"longitude":longitude,
                         "altitude":altitude,"scan_type":scan_type,  "frequency":frequency,

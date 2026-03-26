@@ -5,7 +5,7 @@ It covers radar base-data reading, geometry, plotting, quality control,
 hydrometeor classification, single-radar wind retrieval, multi-radar
 compositing, and export.
 
-- Current release: `1.0.3`
+- Current release: `1.0.4`
 - [中文说明](README_CN.md)
 - [API reference](docs/api_reference.md)
 - [Test guide](test/README.md)
@@ -13,10 +13,11 @@ compositing, and export.
 - [Web viewer quickstart](docs/web_viewer_quickstart.md)
 - [Contributors](CONTRIBUTORS.txt)
 
-## Why 1.0.3 matters
+## Why 1.0.4 matters
 
-`1.0.3` continues the first stable release line intended to be usable for production-style
+`1.0.4` continues the first stable release line intended to be usable for production-style
 usage and GitHub distribution.
+This refresh also includes the `Wc` variable update in the public release line.
 
 Highlights:
 
@@ -48,7 +49,7 @@ python -m pip install ".[full]"
 
 Notes:
 
-- `pycwr 1.0.3` requires Python `>=3.9`
+- `pycwr 1.0.4` requires Python `>=3.9`
 - base install is enough for readers, `PRD`, geometry, interpolation, and
   NetCDF-style export
 - full install is recommended for plotting, map plotting, QC, Py-ART/xradar
@@ -56,7 +57,7 @@ Notes:
 - upstream `arm_pyart` and `xradar` currently require Python `>=3.10`, so on
   Python `3.9` the full install still covers plotting, QC, and the web
   viewer, but not those two optional interop stacks
-- `pandas` is pinned to `<3` in `1.0.3` for release stability
+- `pandas` is pinned to `<3` in `1.0.4` for release stability
 
 Rebuild the extension after editing `pycwr/core/RadarGridC.pyx`:
 
@@ -306,7 +307,7 @@ The viewer is local-only by design and requires a token for API access.
 
 ## Release notes for users
 
-For `1.0.3`, the most important user-visible behavior rules are:
+For `1.0.4`, the most important user-visible behavior rules are:
 
 - radar reading returns one stable `PRD` object across supported formats
 - low-level reflectivity can now be queried explicitly in aligned or native mode

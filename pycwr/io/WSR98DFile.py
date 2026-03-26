@@ -151,8 +151,11 @@ def _range_geometry(range_values):
 
 def _select_resolution_range(prd, sweep, candidates):
     for field_name in candidates:
-        if field_name in prd.available_fields(sweep=sweep, range_mode=None):
-            field = prd.get_sweep_field(sweep, field_name, range_mode=None)
+        source_name = field_name
+        if hasattr(prd, "resolve_field_name"):
+            source_name = prd.resolve_field_name(field_name, sweep=sweep, range_mode=None, required=False)
+        if source_name is not None and source_name in prd.available_fields(sweep=sweep, range_mode=None):
+            field = prd.get_sweep_field(sweep, source_name, range_mode=None)
             return np.asarray(field["range"].values, dtype=np.float64)
     return np.asarray(prd.fields[sweep]["range"].values, dtype=np.float64)
 
@@ -386,24 +389,22 @@ class WSR98DBaseData(object):
 class WSR98D2NRadar(object):
     """Bridge from raw WSR98D data to an NRadar object."""
 
+    _REFLECTIVITY_LIKE_FIELDS = ("dBZ", "Zc", "dBT")
+    _VELOCITY_LIKE_FIELDS = ("V", "Vc", "W", "Wc")
+    _RANGE_REFERENCE_FIELDS = ("V", "Vc", "W", "Wc", "dBZ", "Zc", "dBT")
+
     def __init__(self, WSR98D):
         self.WSR98D = WSR98D
         self.flag_match = np.all(self.WSR98D.header['CutConfig']['LogResolution'] == \
                        self.WSR98D.header['CutConfig']['DopplerResolution'])
         self._dbz_index_cache = {}
-        self.v_index_alone = self.get_v_idx()
-        self.dBZ_index_alone = self.get_dbz_idx()
+        self._sweep_descriptors = self._describe_raw_sweeps()
+        self._paired_sweeps = self._pair_split_sweeps()
+        self.dBZ_index_alone = np.array([source for source, _ in self._paired_sweeps], dtype=np.int32)
+        self.v_index_alone = np.array([target for _, target in self._paired_sweeps], dtype=np.int32)
 
-        if self.WSR98D.header["TaskConfig"]["TaskName"][:6] in [b'VCP26D', b'VCP27D']:
-            self.interp_VCP26(self.dBZ_index_alone, self.v_index_alone)
-            self.dBZ_index_alone = self.dBZ_index_alone[:min(len(self.dBZ_index_alone), len(self.v_index_alone))]
-        else:
-            assert np.all(self.v_index_alone == (self.dBZ_index_alone + 1)), """v and dBZ not equal!"""
-            for index_with_dbz, index_with_v in zip(self.dBZ_index_alone, self.v_index_alone):
-                assert (self.WSR98D.header["CutConfig"]["Elevation"][index_with_v] - \
-                        self.WSR98D.header["CutConfig"]["Elevation"][index_with_dbz]) < 0.5, \
-                    "warning! maybe it is a problem."
-                self.interp_dBZ(index_with_dbz, index_with_v)
+        for index_with_dbz, index_with_v in self._paired_sweeps:
+            self.interp_dBZ(index_with_dbz, index_with_v)
 
         keep_mask = np.ones(self.WSR98D.nrays, dtype=bool)
         keep_mask[self.get_remove_radial_indices()] = False
@@ -435,6 +436,49 @@ class WSR98D2NRadar(object):
         self.fields = self._get_fields()
         self.sitename = self.WSR98D.get_sitename()
 
+    def _describe_raw_sweeps(self):
+        """Classify raw sweeps as reflectivity-only, Doppler-only, or combined."""
+        descriptors = []
+        for sweep_index, start_idx in enumerate(self.WSR98D.sweep_start_ray_index):
+            fields = tuple(self.WSR98D.radial[start_idx]["fields"].keys())
+            field_names = set(fields)
+            has_reflectivity = any(name in field_names for name in self._REFLECTIVITY_LIKE_FIELDS)
+            has_doppler = any(name in field_names for name in self._VELOCITY_LIKE_FIELDS)
+            descriptors.append(
+                {
+                    "index": sweep_index,
+                    "fields": fields,
+                    "elevation": float(self.WSR98D.header["CutConfig"]["Elevation"][sweep_index]),
+                    "reflectivity_only": has_reflectivity and not has_doppler,
+                    "doppler_only": has_doppler and not has_reflectivity,
+                    "combined": has_reflectivity and has_doppler,
+                }
+            )
+        return descriptors
+
+    def _pair_split_sweeps(self, elevation_tolerance=0.5):
+        """Pair reflectivity-only sweeps with the closest compatible Doppler-only sweeps."""
+        pending_reflectivity = []
+        paired = []
+        for descriptor in self._sweep_descriptors:
+            sweep_index = descriptor["index"]
+            if descriptor["reflectivity_only"]:
+                pending_reflectivity.append(sweep_index)
+                continue
+            if not descriptor["doppler_only"]:
+                continue
+            match = None
+            for candidate in reversed(pending_reflectivity):
+                candidate_descriptor = self._sweep_descriptors[candidate]
+                if abs(candidate_descriptor["elevation"] - descriptor["elevation"]) <= float(elevation_tolerance):
+                    match = candidate
+                    break
+            if match is None:
+                continue
+            pending_reflectivity.remove(match)
+            paired.append((match, sweep_index))
+        return paired
+
     def get_remove_radial_indices(self):
         """Return the radial indices removed after sweep alignment."""
         dBZ_alone = self.dBZ_index_alone
@@ -450,17 +494,17 @@ class WSR98D2NRadar(object):
 
     def get_v_idx(self):
         """Return sweep indices that contain Doppler moments without reflectivity."""
-        flag = np.array([(("V" in self.WSR98D.radial[idx]['fields'].keys()) and (
-                    "dBZ" not in self.WSR98D.radial[idx]['fields'].keys())) \
-                         for idx in self.WSR98D.sweep_start_ray_index])
-        return np.where(flag == 1)[0]
+        return np.array(
+            [descriptor["index"] for descriptor in self._sweep_descriptors if descriptor["doppler_only"]],
+            dtype=np.int32,
+        )
 
     def get_dbz_idx(self):
         """Return sweep indices that contain reflectivity without Doppler moments."""
-        flag = np.array([(("dBZ" in self.WSR98D.radial[idx]['fields'].keys()) and (
-                    "V" not in self.WSR98D.radial[idx]['fields'].keys())) \
-                         for idx in self.WSR98D.sweep_start_ray_index])
-        return np.where(flag == 1)[0]
+        return np.array(
+            [descriptor["index"] for descriptor in self._sweep_descriptors if descriptor["reflectivity_only"]],
+            dtype=np.int32,
+        )
 
     def interp_VCP26(self, dBZ_sweep_index, V_sweep_index):
         """
@@ -468,15 +512,9 @@ class WSR98D2NRadar(object):
         :param dBZ_sweep_index: reflectivity-only sweep indices.
         :param V_sweep_index: Doppler-only sweep indices.
         """
-        add_keys = ["V", "W"]
         same_sweeps = min(len(dBZ_sweep_index), len(V_sweep_index))
         for isweep in range(same_sweeps):
             self.interp_dBZ(dBZ_sweep_index[isweep], V_sweep_index[isweep])
-        for dbz_dense in dBZ_sweep_index[same_sweeps:]:
-            for index in range(self.WSR98D.sweep_start_ray_index[dbz_dense], self.WSR98D.sweep_end_ray_index[dbz_dense]+1):
-                for ikey in add_keys:
-                    self.WSR98D.radial[index]["fields"][ikey] = np.full_like(self.WSR98D.radial[index]["fields"]["dBZ"],\
-                                                                             np.nan, dtype=np.float32)
 
     def interp_dBZ(self, field_with_dBZ_num, field_without_dBZ_num):
         """
@@ -485,7 +523,6 @@ class WSR98D2NRadar(object):
         :param field_without_dBZ_num: target sweep index, 0-based.
         """
         azimuth = self.WSR98D.get_azimuth()
-        assert (field_with_dBZ_num + 1) == field_without_dBZ_num, "check interp sweep!"
         dbz_az = azimuth[self.WSR98D.sweep_start_ray_index[field_with_dBZ_num]: \
                          self.WSR98D.sweep_end_ray_index[field_with_dBZ_num] + 1]
         v_az = azimuth[self.WSR98D.sweep_start_ray_index[field_without_dBZ_num]: \
@@ -542,7 +579,19 @@ class WSR98D2NRadar(object):
 
     def get_nbins_per_sweep(self):
         """Return the Doppler gate count for each retained sweep."""
-        return np.array([self.radial[idx]['fields']['V'].size for idx in self.sweep_start_ray_index])
+        bins = []
+        for idx in self.sweep_start_ray_index:
+            radial_fields = self.radial[idx]["fields"]
+            selected = None
+            for field_name in self._RANGE_REFERENCE_FIELDS:
+                selected = radial_fields.get(field_name)
+                if selected is not None and selected.size:
+                    bins.append(int(selected.size))
+                    break
+            else:
+                sizes = [int(values.size) for values in radial_fields.values() if getattr(values, "size", 0)]
+                bins.append(max(sizes) if sizes else 0)
+        return np.asarray(bins, dtype=np.int32)
 
     def get_range_per_radial(self, length, sweep=0):
         """Return Doppler gate-center ranges for a radial of ``length`` bins."""
@@ -556,7 +605,14 @@ class WSR98D2NRadar(object):
 
     def _get_fields(self):
         """Assemble the retained fields into dense 2-D arrays."""
-        field_keys = tuple(self.radial[0]['fields'].keys())
+        field_keys = []
+        seen = set()
+        for radial in self.radial:
+            for key in radial["fields"].keys():
+                if key not in seen:
+                    seen.add(key)
+                    field_keys.append(key)
+        field_keys = tuple(field_keys)
         fields = {ikey: np.full((self.nrays, self.max_bins), np.nan, dtype=np.float64) for ikey in field_keys}
         for sweep_idx, (start, end) in enumerate(zip(self.sweep_start_ray_index, self.sweep_end_ray_index)):
             for iray in range(start, end + 1):

@@ -107,9 +107,13 @@ def _normalize_station_bytes(text, length, fallback):
 
 def _available_supported_fields(prd, supported_specs, field_names=None, strict=True, required_fields=None):
     available = set(prd.available_fields(range_mode=None))
+    def _is_resolvable(field_name):
+        if hasattr(prd, "resolve_field_name"):
+            return prd.resolve_field_name(field_name, range_mode=None, required=False) is not None
+        return field_name in available
     required = tuple(required_fields or ())
     if field_names is None:
-        selected = [name for name in supported_specs if name in available]
+        selected = [name for name in supported_specs if _is_resolvable(name)]
     else:
         selected = []
         for name in field_names:
@@ -117,7 +121,7 @@ def _available_supported_fields(prd, supported_specs, field_names=None, strict=T
                 if strict:
                     raise ValueError("Field %s is not supported by this export format." % name)
                 continue
-            if name not in available:
+            if not _is_resolvable(name):
                 if strict:
                     raise KeyError(name)
                 continue
@@ -145,7 +149,12 @@ def _sweep_state(isweep, iray, rays_per_sweep, nsweeps):
 
 
 def _get_prd_ray(prd, sweep, field_name, iray):
-    field = prd.get_sweep_field(sweep, field_name, range_mode=None)
+    source_name = field_name
+    if hasattr(prd, "resolve_field_name"):
+        source_name = prd.resolve_field_name(field_name, sweep=sweep, range_mode=None, required=False)
+    if source_name is None:
+        raise KeyError(field_name)
+    field = prd.get_sweep_field(sweep, source_name, range_mode=None)
     values = np.asarray(field.values[iray], dtype=np.float32)
     ranges = np.asarray(field["range"].values, dtype=np.float64)
     return values, ranges

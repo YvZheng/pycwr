@@ -82,6 +82,19 @@ class PRD(object):
 
     """
 
+    FIELD_ALIASES = {
+        "dBZ": ("dBZ", "Zc"),
+        "Zc": ("Zc", "dBZ"),
+        "V": ("V", "Vc"),
+        "Vc": ("Vc", "V"),
+        "W": ("W", "Wc"),
+        "Wc": ("Wc", "W"),
+        "ZDR": ("ZDR", "ZDRc"),
+        "ZDRc": ("ZDRc", "ZDR"),
+        "KDP": ("KDP", "KDPc"),
+        "KDPc": ("KDPc", "KDP"),
+    }
+
     def __init__(self, fields,  scan_type, time, range, azimuth, elevation,latitude,
                  longitude, altitude, sweep_start_ray_index, sweep_end_ray_index,
                  fixed_angle, bins_per_sweep, nyquist_velocity, frequency, unambiguous_range,
@@ -215,6 +228,25 @@ class PRD(object):
     def _field_prefers_native_range(field_name):
         """Return whether a field should default to the native reflectivity range."""
         return str(field_name) in {"dBZ", "Zc"}
+
+    @classmethod
+    def field_alias_candidates(cls, field_name):
+        """Return the preferred aliases for one logical radar field name."""
+        name = str(field_name)
+        return cls.FIELD_ALIASES.get(name, (name,))
+
+    def resolve_field_name(self, field_name, sweep=None, range_mode=None, required=True):
+        """Resolve a logical field name to an available field on one sweep or volume."""
+        if sweep is None:
+            available = set(self.available_fields(range_mode=range_mode))
+        else:
+            available = set(self.available_fields(sweep=int(sweep), range_mode=range_mode))
+        for candidate in self.field_alias_candidates(field_name):
+            if candidate in available:
+                return candidate
+        if required:
+            raise KeyError(field_name)
+        return None
 
     def _resolve_field_range_mode(self, field_name, range_mode=None):
         """Resolve the effective range mode for a single field request."""

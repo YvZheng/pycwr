@@ -1,7 +1,7 @@
 # pycwr API Reference
 
 This document is a practical reference for the public APIs most users need in
-`pycwr 1.0.0`. It does not try to mirror every internal helper. The focus is:
+`pycwr 1.0.1`. It does not try to mirror every internal helper. The focus is:
 
 - where to enter the package
 - which object each API returns

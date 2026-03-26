@@ -33,6 +33,23 @@ XRADAR_FIELD_MAPPING = {
     "PhiDP": "PHIDP",
     "KDP": "KDP",
 }
+_PREFERRED_EXPORT_FIELDS = (
+    "dBZ",
+    "dBT",
+    "V",
+    "W",
+    "ZDR",
+    "CC",
+    "PhiDP",
+    "KDP",
+    "SQI",
+    "CPA",
+    "LDR",
+    "HCL",
+    "CF",
+    "SNRH",
+    "SNRV",
+)
 
 
 def _import_external_pyart_radar_class():
@@ -165,25 +182,55 @@ def _normalize_prd_field_names(prd, field_names=None):
         available = set(prd.available_fields(range_mode=None))
     else:
         available = {name for sweep in prd.fields for name in sweep.data_vars}
+    def _resolve(name):
+        requested = str(name)
+        if hasattr(prd, "resolve_field_name"):
+            resolved = prd.resolve_field_name(requested, range_mode=None, required=False)
+            if resolved is not None:
+                return requested, resolved
+        if requested in available:
+            return requested, requested
+        mapped = _INVERSE_FIELD_MAPPING.get(requested)
+        if mapped is None:
+            return None, None
+        if hasattr(prd, "resolve_field_name"):
+            resolved = prd.resolve_field_name(mapped, range_mode=None, required=False)
+            if resolved is not None:
+                return mapped, resolved
+        if mapped in available:
+            return mapped, mapped
+        return None, None
     if field_names is None:
-        preferred = [name for name in ("dBZ", "Zc", "ZDR", "ZDRc", "V", "W", "CC", "PhiDP", "KDP") if name in available]
-        ordered = list(preferred)
+        ordered = []
+        consumed = set()
+        for logical_name in _PREFERRED_EXPORT_FIELDS:
+            requested, resolved = _resolve(logical_name)
+            if requested is None or requested in ordered:
+                continue
+            ordered.append(requested)
+            consumed.add(resolved)
         for sweep in prd.fields:
             for name in sweep.data_vars:
-                if name in available and name not in ordered:
+                if name in available and name not in ordered and name not in consumed:
                     ordered.append(name)
         return ordered
 
     resolved = []
     for name in field_names:
-        if name in available:
-            resolved.append(name)
+        requested, source = _resolve(name)
+        if requested is not None:
+            resolved.append(requested)
             continue
-        mapped = _INVERSE_FIELD_MAPPING.get(name)
-        if mapped is None or mapped not in available:
-            raise KeyError(name)
-        resolved.append(mapped)
+        raise KeyError(name)
     return resolved
+
+
+def _resolve_export_source_field(prd, sweep, field_name, range_mode=None):
+    """Resolve the actual PRD field used to satisfy one export field."""
+    if hasattr(prd, "resolve_field_name"):
+        return prd.resolve_field_name(field_name, sweep=sweep, range_mode=range_mode, required=False)
+    available = set(prd.available_fields(sweep=sweep, range_mode=range_mode))
+    return str(field_name) if str(field_name) in available else None
 
 
 def _canonical_field_name(field_name):
@@ -283,7 +330,10 @@ def _resolve_common_range(prd, field_names, range_mode):
     best_range = None
     for sweep in prd.scan_info.sweep.values:
         for field_name in field_names:
-            field = prd.get_sweep_field(sweep, field_name, range_mode=range_mode)
+            source_name = _resolve_export_source_field(prd, int(sweep), field_name, range_mode=range_mode)
+            if source_name is None:
+                continue
+            field = prd.get_sweep_field(sweep, source_name, range_mode=range_mode)
             candidate = np.asarray(field.range.values, dtype=np.float32)
             if best_range is None or candidate.size > best_range.size:
                 best_range = candidate
@@ -382,7 +432,10 @@ def build_radar_from_prd(prd, range_mode=None, field_names=None, radar_class=Non
         elevation_chunks.append(np.asarray(sweep_dataset["elevation"].values, dtype=np.float32))
 
         for field_name in field_names:
-            field = prd.get_sweep_field(sweep, field_name, range_mode=range_mode)
+            source_name = _resolve_export_source_field(prd, int(sweep), field_name, range_mode=range_mode)
+            if source_name is None:
+                continue
+            field = prd.get_sweep_field(sweep, source_name, range_mode=range_mode)
             target_name = _canonical_field_name(field_name)
             range_index = _resolve_range_index(common_range, field.range.values)
             field_buffers[target_name][ray_offset : ray_offset + sweep_size, range_index] = np.asarray(
@@ -499,8 +552,19 @@ def build_xradar_sweep_datasets(prd, range_mode=None, field_names=None):
 
     for sweep in prd.scan_info.sweep.values:
         sweep = int(sweep)
-        candidate_fields = [prd.get_sweep_field(sweep, field_name, range_mode=range_mode) for field_name in field_names]
-        reference_field = max(candidate_fields, key=lambda field: field.range.size)
+        candidate_fields = []
+        active_field_names = []
+        for field_name in field_names:
+            source_name = _resolve_export_source_field(prd, sweep, field_name, range_mode=range_mode)
+            if source_name is None:
+                continue
+            candidate_fields.append(prd.get_sweep_field(sweep, source_name, range_mode=range_mode))
+            active_field_names.append(field_name)
+        if candidate_fields:
+            reference_field = max(candidate_fields, key=lambda field: field.range.size)
+        else:
+            fallback_name = next(iter(prd.fields[sweep].data_vars))
+            reference_field = prd.get_sweep_field(sweep, fallback_name, range_mode=range_mode)
         common_range = np.asarray(reference_field.range.values, dtype=np.float32)
         (
             range_attrs,
@@ -544,7 +608,7 @@ def build_xradar_sweep_datasets(prd, range_mode=None, field_names=None):
         dataset["elevation"].attrs = elevation_attrs
         dataset["range"].attrs = range_attrs
         dataset["frequency"].attrs = {"standard_name": "", "units": "s-1"}
-        for field_name, field in zip(field_names, candidate_fields):
+        for field_name, field in zip(active_field_names, candidate_fields):
             field_data = np.full(reference_field.shape, np.nan, dtype=np.float32)
             range_index = _resolve_range_index(common_range, field.range.values)
             field_data[:, range_index] = np.asarray(field.values, dtype=np.float32)

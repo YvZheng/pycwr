@@ -13,7 +13,7 @@ AUTHOR = "pycwr developers"
 AUTHOR_EMAIL = "YuZheng1206@outlook.com"
 URL = "https://github.com/YvZheng/pycwr"
 LICENSE = "PolyForm-Noncommercial-1.0.0"
-PYTHON_REQUIRES = ">=3.8"
+PYTHON_REQUIRES = ">=3.9"
 INSTALL_REQUIRES = [
     "numpy",
     "pandas<3",
@@ -32,7 +32,7 @@ EXTRAS_REQUIRE = {
         "xradar>=0.7; python_version >= '3.10'",
     ],
 }
-DESCRIPTION = "pycwr 1.0.1: high-compatibility Chinese weather radar IO, geometry, QC, plotting, and compositing"
+DESCRIPTION = "pycwr 1.0.2: high-compatibility Chinese weather radar IO, geometry, QC, plotting, and compositing"
 LONG_DESCRIPTION = (ROOT / "README.md").read_text(encoding="utf-8")
 PLATFORMS = ["Linux", "Mac OS-X", "Windows"]
 CLASSIFIERS = [
@@ -41,7 +41,6 @@ CLASSIFIERS = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -96,7 +95,7 @@ EXT_MODULES, INCLUDE_DIRS = _build_extensions()
 
 setup(
     name=DISTNAME,
-    version="1.0.1",
+    version="1.0.2",
     author=AUTHOR,
     license=LICENSE,
     author_email=AUTHOR_EMAIL,

@@ -8,7 +8,6 @@
 - [接口参考](docs/api_reference_cn.md)
 - [测试索引](test/README.md)
 - [绘图快速上手](docs/draw_quickstart.md)
-- [Web viewer 快速上手](docs/web_viewer_quickstart.md)
 
 ## 为什么是 1.0.5
 
@@ -374,7 +373,7 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 - [接口参考](docs/api_reference_cn.md)：更细的公开 API 说明
 - [测试索引](test/README.md)：按功能整理的可运行示例
 - [绘图快速上手](docs/draw_quickstart.md)：绘图入口和示例
-- [Web viewer 快速上手](docs/web_viewer_quickstart.md)：本地 viewer 使用方式
+- Web viewer：直接运行 `python scripts/LaunchGUI.py`
 
 ## 给发布用户的说明
 

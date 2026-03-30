@@ -10,7 +10,6 @@ compositing, and export.
 - [API reference](docs/api_reference.md)
 - [Test guide](test/README.md)
 - [Draw quickstart](docs/draw_quickstart.md)
-- [Web viewer quickstart](docs/web_viewer_quickstart.md)
 
 ## Why 1.0.5 matters
 
@@ -302,7 +301,7 @@ The viewer is local-only by design and requires a token for API access.
 - [API reference](docs/api_reference.md): detailed public interface notes
 - [Test guide](test/README.md): runnable examples by feature
 - [Draw quickstart](docs/draw_quickstart.md): plotting-focused entry points
-- [Web viewer quickstart](docs/web_viewer_quickstart.md): local viewer setup
+- Web viewer: launch it locally with `python scripts/LaunchGUI.py`
 
 ## Release notes for users
 

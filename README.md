@@ -31,6 +31,18 @@ Highlights:
 
 ## Installation
 
+Install from PyPI:
+
+```bash
+python -m pip install pycwr
+```
+
+Install the optional full stack from PyPI:
+
+```bash
+python -m pip install "pycwr[full]"
+```
+
 Base install:
 
 ```bash
@@ -48,6 +60,7 @@ python -m pip install ".[full]"
 Notes:
 
 - `pycwr 1.0.5` requires Python `>=3.9`
+- `python -m pip install pycwr` is the recommended path for normal users
 - base install is enough for readers, `PRD`, geometry, interpolation, and
   NetCDF-style export
 - full install is recommended for plotting, map plotting, QC, Py-ART/xradar
@@ -56,6 +69,8 @@ Notes:
   Python `3.9` the full install still covers plotting, QC, and the web
   viewer, but not those two optional interop stacks
 - `pandas` is pinned to `<3` in `1.0.5` for release stability
+- source install is still useful when you are developing locally or rebuilding
+  the Cython extension
 
 Rebuild the extension after editing `pycwr/core/RadarGridC.pyx`:
 

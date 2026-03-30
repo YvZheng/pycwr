@@ -26,6 +26,18 @@
 
 ## 安装
 
+从 PyPI 直接安装：
+
+```bash
+python -m pip install pycwr
+```
+
+如果需要完整功能依赖：
+
+```bash
+python -m pip install "pycwr[full]"
+```
+
 基础安装：
 
 ```bash
@@ -43,12 +55,14 @@ python -m pip install ".[full]"
 说明：
 
 - `pycwr 1.0.5` 要求 Python `>=3.9`
+- 对普通用户来说，优先推荐直接使用 `python -m pip install pycwr`
 - 基础安装足够支持 reader、`PRD`、几何、插值和 NetCDF 风格导出
 - 全功能安装建议用于绘图、地图绘图、QC、Py-ART/xradar 互操作和 web viewer
 - 上游 `arm_pyart` 和 `xradar` 当前要求 Python `>=3.10`，因此在 Python
   `3.9` 上，全功能安装仍可覆盖绘图、QC 和 web viewer，但不包含这两类
   可选互操作依赖
 - `1.0.5` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
+- 如果你在本地开发、调试或需要重编译 Cython 扩展，再使用源码安装方式
 
 修改 `pycwr/core/RadarGridC.pyx` 后重编译：
 

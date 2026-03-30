@@ -36,6 +36,8 @@ def read_auto(filename, station_lon=None, station_lat=None, station_alt=None, ef
         return WSR98DFile.WSR98D2NRadar(
             WSR98DFile.WSR98DBaseData(filename, station_lon, station_lat, station_alt)
         ).ToPRD(effective_earth_radius=effective_earth_radius)
+    elif radar_type == "NEXRAD_LEVEL2":
+        raise TypeError("unsupported radar type: NEXRAD Level II archive import is not implemented.")
     elif radar_type == "SAB":
         SABFile = __getattr__("SABFile")
         return SABFile.SAB2NRadar(

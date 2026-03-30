@@ -1,11 +1,29 @@
 """Grid-product consistency checks that also serve as low-level examples."""
 
 import unittest
+import warnings
 
 import numpy as np
 
 
 class RadarGridConsistencyTests(unittest.TestCase):
+    def test_load_radargrid_backend_falls_back_on_numpy_abi_warning(self):
+        from pycwr import core
+
+        def fake_import(_name, _package=None):
+            warnings.warn(
+                "numpy.ndarray size changed, may indicate binary incompatibility. Expected 16 from C header, got 96 from PyObject",
+                RuntimeWarning,
+            )
+            return object()
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            backend = core._load_radargrid_backend(import_module=fake_import)
+
+        self.assertIs(backend, core.RadarGrid)
+        self.assertTrue(any("Falling back to pycwr.core.RadarGrid" in str(item.message) for item in caught))
+
     @staticmethod
     def _synthetic_volume(sweep_values):
         azimuth = np.array([0.0, 90.0, 180.0, 270.0], dtype=np.float64)

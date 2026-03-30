@@ -442,6 +442,24 @@ def geographic_extent_from_lonlat(lon, lat, extent=None):
     )
 
 
+def normalize_geographic_extent(extent, min_span_degrees=0.1):
+    lon_min, lon_max, lat_min, lat_max = [float(value) for value in extent]
+    min_span = float(min_span_degrees)
+    lon_span = lon_max - lon_min
+    lat_span = lat_max - lat_min
+    if lon_span < min_span:
+        center = 0.5 * (lon_min + lon_max)
+        half_span = 0.5 * min_span
+        lon_min = center - half_span
+        lon_max = center + half_span
+    if lat_span < min_span:
+        center = 0.5 * (lat_min + lat_max)
+        half_span = 0.5 * min_span
+        lat_min = center - half_span
+        lat_max = center + half_span
+    return lon_min, lon_max, lat_min, lat_max
+
+
 def nice_step(max_value, target_steps=5):
     if max_value <= 0:
         return 1.0
@@ -583,6 +601,7 @@ def _auto_tick_step(extent):
 def apply_map_axes(ax, extent, map_options, title=None):
     map_options = _default_map_options(map_options)
     data_crs = map_options.data_crs
+    extent = normalize_geographic_extent(extent)
     ax.set_extent([extent[0], extent[1], extent[2], extent[3]], crs=data_crs)
     if map_options.add_ocean:
         ax.add_feature(cfeature.OCEAN.with_scale(map_options.feature_scale), zorder=0)

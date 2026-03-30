@@ -1,3 +1,4 @@
+import bz2
 import io
 import tempfile
 import unittest
@@ -68,6 +69,18 @@ class ReaderSecurityTests(unittest.TestCase):
             payload[14:16] = b"\x01\x00"
             bogus.write_bytes(bytes(payload))
             self.assertIsNone(radar_format(str(bogus)))
+
+    def test_radar_format_identifies_ar2v_archive_without_station_fallback(self):
+        from pycwr.io import read_auto
+        from pycwr.io.util import radar_format
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample = Path(tmpdir) / "Z_RADR_I_Z9210_20190809065521_O_DOR_SA_CAP.bin.bz2"
+            sample.write_bytes(bz2.compress(b"AR2V0006.589" + b"\x00" * 256))
+
+            self.assertEqual(radar_format(str(sample)), "NEXRAD_LEVEL2")
+            with self.assertRaisesRegex(TypeError, "NEXRAD Level II archive import is not implemented"):
+                read_auto(str(sample))
 
 
 class WebViewerSecurityTests(unittest.TestCase):

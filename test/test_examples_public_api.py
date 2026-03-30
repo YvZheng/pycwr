@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import os
 import importlib
+import warnings
 from pathlib import Path
 from unittest import mock
 
@@ -280,6 +281,31 @@ class PublicApiSampleTests(unittest.TestCase):
             self.assertTrue(ppi_path.exists())
             self.assertTrue(section_path.exists())
             self.assertTrue(rhi_path.exists())
+
+    def test_apply_map_axes_expands_degenerate_extent_without_cartopy_warning(self):
+        try:
+            import matplotlib.pyplot as plt
+            from cartopy import crs as ccrs
+        except ImportError as exc:  # pragma: no cover
+            self.skipTest(f"map plotting dependencies are unavailable: {exc}")
+
+        from pycwr.draw._plot_core import MapOptions, apply_map_axes
+
+        fig = plt.figure()
+        try:
+            ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                apply_map_axes(
+                    ax,
+                    (120.0, 120.0, 30.0, 30.0),
+                    MapOptions(data_crs=ccrs.PlateCarree()),
+                )
+            messages = "\n".join(str(item.message) for item in caught)
+            self.assertNotIn("Attempting to set identical low and high xlims", messages)
+            self.assertNotIn("Attempting to set identical low and high ylims", messages)
+        finally:
+            plt.close(fig)
 
     def test_single_radar_wind_retrieval_example(self):
         from pycwr.io import read_auto

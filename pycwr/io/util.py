@@ -199,6 +199,8 @@ def radar_format(filename):
     fh = _prepare_for_read(filename)
     try:
         flag = fh.read(28)
+        if flag[:4] == b'AR2V':
+            return "NEXRAD_LEVEL2"
         if flag[:4] == b'RSTM':
             return "WSR98D"
         if flag[14:16] == b'\x01\x00':

@@ -11,7 +11,6 @@ compositing, and export.
 - [Test guide](test/README.md)
 - [Draw quickstart](docs/draw_quickstart.md)
 - [Web viewer quickstart](docs/web_viewer_quickstart.md)
-- [Contributors](CONTRIBUTORS.txt)
 
 ## Why 1.0.5 matters
 

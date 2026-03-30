@@ -9,7 +9,6 @@
 - [测试索引](test/README.md)
 - [绘图快速上手](docs/draw_quickstart.md)
 - [Web viewer 快速上手](docs/web_viewer_quickstart.md)
-- [开发人员](CONTRIBUTORS_CN.txt)
 
 ## 为什么是 1.0.5
 
@@ -123,6 +122,20 @@ print(radar.product)
 | `pycwr.interp` | 多雷达组网插值 | `run_radar_network_3d` |
 | `pycwr.GraphicalInterface` | 本地 Web viewer | `create_app`, `launch` |
 
+## 推荐上手顺序
+
+如果你是第一次接触 `pycwr`，建议按下面顺序理解：
+
+1. 先用 `read_auto()` 读一个真实雷达文件，确认 `PRD` 长什么样。
+2. 再用 `summary()`、`available_fields()`、`sweep_summary()` 看清楚每层有哪些参量、多少径向、多少 gate。
+3. 然后决定你要的是：
+   - 看图：走 `pycwr.draw`
+   - 做产品：走 `PRD.add_product_*`
+   - 做订正和分类：走 `pycwr.qc` 与 `pycwr.retrieve`
+   - 做风场：走 `retrieve_vad / retrieve_vvp / retrieve_vwp`
+   - 做组网：走 `run_radar_network_3d`
+4. 真正落到业务前，再确认 `aligned/native` 距离库、坐标单位、网格分辨率和输出格式。
+
 ## 核心对象模型
 
 所有 reader 最终都返回 `pycwr.core.NRadar.PRD`。
@@ -133,6 +146,13 @@ print(radar.product)
 - `scan_info`：站点和扫描元数据
 - `extended_fields`：aligned/native 距离不一致时的原生 sidecar
 - `product`：产品结果集
+
+可以把它简单理解成：
+
+- `scan_info` 负责“这一整部体扫是什么”，比如站点经纬高、扫到几层、各层仰角、Nyquist 速度、无模糊距离等
+- `fields[i]` 负责“第 `i` 层真正有哪些矩阵场”，比如 `dBZ`、`V`、`W`、`ZDR`、`CC` 等
+- `extended_fields` 负责“当某些字段原生距离更长，但历史共享距离库更短时，原生版本放在哪里”
+- `product` 负责“基于这部体扫进一步算出来的网格产品”
 
 最常用的查看接口：
 
@@ -150,10 +170,18 @@ print(radar.product)
 - aligned：和历史流程一致的共享距离库
 - native：反射率原生距离库，没有被速度距离库截短
 
+这个差异最常见在低仰角层：
+
+- 速度和谱宽等多普勒变量因为业务体制、PRT 或编码方式，距离可能比较短
+- 反射率实际还能探测得更远
+- 老流程为了让不同变量共享一套 gate，常常把反射率一起裁短
+- `pycwr` 现在保留了两套访问口径，方便你既做历史兼容，也做真实反射率分析
+
 建议：
 
 - 需要和旧业务链严格一致，用 `range_mode="aligned"`
 - 需要低层完整反射率探测范围，用 `range_mode="native"`
+- 如果你是在核对“最大探测距离”或做组合反射率范围分析，不要只看 aligned，要先确认 native
 
 示例：
 
@@ -183,6 +211,13 @@ from pycwr.draw import (
 
 这些函数统一返回 `EasyPlotResult`，里面包含 `fig`、`ax`、`artist`。
 
+一般建议：
+
+- 先用 `plot_ppi`、`plot_rhi`、`plot_section` 快速看数值和结构
+- 需要地图底图时再用 `plot_ppi_map`
+- 需要风场展示时用 `plot_vvp` 和 `plot_wind_profile`
+- 做正式业务图时，优先先确认数值和网格对不对，再去微调 colormap、extent、annotation
+
 ### 产品计算
 
 常用 `PRD` 产品接口：
@@ -204,6 +239,20 @@ from pycwr.draw import (
 radar.add_product_CAPPI_xy(x, y, 3000.0)
 radar.add_product_VIL_xy(x, y, [1000.0, 2000.0, 3000.0])
 ```
+
+产品接口的理解方式可以统一成一句话：
+
+- 先准备目标网格
+- 再指定产品类型
+- 必要时指定高度层、体积层或输出字段
+- 最终结果写回 `radar.product`
+
+实际使用时建议统一几件事：
+
+- `x/y/z` 内部都按米处理
+- 经纬度网格和投影网格不要混用
+- 同一个流程里，网格分辨率、范围和缺测值口径尽量固定
+- 做跨时次对比时，不要一张图 1 km、一张图 2 km 地混着算
 
 ### 质量控制
 
@@ -253,6 +302,24 @@ vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 radar.add_product_VWP(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 ```
 
+风场这部分建议这样理解：
+
+- `VAD` 更适合做分层平均风和风廓线基础层
+- `VVP` 更适合看某一层的局地水平风结构
+- `VWP` 是把多个 VAD 层做稳健聚合后得到的业务化风廓线
+
+如果真实数据有大量缺测，也不要直接判算法失效，因为：
+
+- 无降水或弱回波时，本来就会出现大片无有效速度
+- 方位覆盖不完整时，拟合稳定性会下降
+- 这时应优先看返回结果里的样本数、覆盖率、拟合残差，而不是只看一张图
+
+更实用的参数选择建议：
+
+- 做 `VAD/VWP` 时，先限制一个合理的 `max_range_km`，不要把远距离低质量速度全混进去
+- `gate_step` 不宜过小，太密会把噪声带进去，太稀又会损失结构
+- `VVP` 的 `az_num`、`bin_num` 要结合样本稀疏程度选，真实业务上宁可稳一点，也不要把窗口收得太小
+
 ### 导出与互操作
 
 常用导出接口：
@@ -273,6 +340,20 @@ from pycwr.interp import run_radar_network_3d
 ```
 
 这是规则经纬度网格 3D 组网产品的推荐高层入口，也支持直接写 NetCDF。
+
+如果你要做单层组合反射率或单层 CAPPI，建议先固定四个要素：
+
+- 经度范围
+- 纬度范围
+- 网格分辨率
+- 高度层
+
+这样后面跨时次、跨雷达对比才有意义。组网结果是否“看起来一致”，不要只看图，要同时核对：
+
+- 参与站点列表
+- 每站该时次哪些 sweep 和字段参与了计算
+- 反射率用的是 aligned 还是 native 距离库
+- 网格边界和分辨率是否完全一致
 
 ### Web viewer
 
@@ -305,3 +386,9 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 - 单雷达风场反演已经属于公开接口的一部分
 - 多雷达组网已经有明确的高层工作流入口
 - 依赖拆分成 base 和 full 两组，安装摩擦更低
+
+如果你是准备把 `pycwr` 接进自己的业务脚本，最实用的建议只有三条：
+
+1. 先锁定你要用的输入格式和样本基线，不要一边接入一边猜格式。
+2. 先锁定数值口径，再做绘图和界面，不要只凭图像判断算法对不对。
+3. 对外发布前，把你实际会用到的 reader、产品、绘图和导出路径各跑一遍真实样本回归。

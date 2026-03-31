@@ -8,6 +8,8 @@ compositing, and export.
 - Current release: `1.0.5`
 - [中文说明](README_CN.md)
 - [API reference](docs/api_reference.md)
+- [Radar network quickstart](docs/radar_network_quickstart_en.md)
+- [Read the Docs](https://pycwr.readthedocs.io/en/latest/)
 - [Test guide](test/README.md)
 - [Draw quickstart](docs/draw_quickstart.md)
 
@@ -314,8 +316,10 @@ The viewer is local-only by design and requires a token for API access.
 ## What to read next
 
 - [API reference](docs/api_reference.md): detailed public interface notes
+- [Radar network quickstart](docs/radar_network_quickstart_en.md): beginner-friendly multi-radar workflow
 - [Test guide](test/README.md): runnable examples by feature
 - [Draw quickstart](docs/draw_quickstart.md): plotting-focused entry points
+- [Read the Docs](https://pycwr.readthedocs.io/en/latest/): hosted documentation site
 - Web viewer: launch it locally with `python scripts/LaunchGUI.py`
 
 ## Release notes for users

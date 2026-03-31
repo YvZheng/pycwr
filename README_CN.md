@@ -6,6 +6,8 @@
 - 当前版本：`1.0.5`
 - [English](README.md)
 - [接口参考](docs/api_reference_cn.md)
+- [雷达组网快速上手](docs/radar_network_quickstart.md)
+- [Read the Docs 在线文档](https://pycwr.readthedocs.io/en/latest/)
 - [测试索引](test/README.md)
 - [绘图快速上手](docs/draw_quickstart.md)
 
@@ -385,8 +387,10 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 ## 下一步读什么
 
 - [接口参考](docs/api_reference_cn.md)：更细的公开 API 说明
+- [雷达组网快速上手](docs/radar_network_quickstart.md)：面向小白的组网步骤和示例
 - [测试索引](test/README.md)：按功能整理的可运行示例
 - [绘图快速上手](docs/draw_quickstart.md)：绘图入口和示例
+- [Read the Docs 在线文档](https://pycwr.readthedocs.io/en/latest/)：持续更新的完整手册
 - Web viewer：直接运行 `python scripts/LaunchGUI.py`
 
 ## 给发布用户的说明

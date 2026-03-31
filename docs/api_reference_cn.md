@@ -628,5 +628,7 @@ network = run_radar_network_3d(...)
 
 - [../README_CN.md](../README_CN.md)：项目总览
 - [../test/README.md](../test/README.md)：可运行示例
+- [radar_network_quickstart.md](radar_network_quickstart.md)：面向小白的组网快速上手
 - [draw_quickstart.md](draw_quickstart.md)：绘图入口
-- [web_viewer_quickstart.md](web_viewer_quickstart.md)：本地 viewer 使用说明
+- [Read the Docs 在线文档](https://pycwr.readthedocs.io/en/latest/)：持续更新的完整手册
+- Web viewer：直接运行 `python scripts/LaunchGUI.py`

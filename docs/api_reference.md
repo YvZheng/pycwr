@@ -631,5 +631,7 @@ network = run_radar_network_3d(...)
 
 - [../README.md](../README.md): project overview
 - [../test/README.md](../test/README.md): runnable examples
+- [radar_network_quickstart_en.md](radar_network_quickstart_en.md): beginner-friendly radar-network workflow
 - [draw_quickstart.md](draw_quickstart.md): plotting entry points
-- [web_viewer_quickstart.md](web_viewer_quickstart.md): local viewer setup
+- [Read the Docs](https://pycwr.readthedocs.io/en/latest/): hosted documentation site
+- Web viewer: launch it locally with `python scripts/LaunchGUI.py`

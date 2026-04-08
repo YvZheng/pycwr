@@ -45,12 +45,10 @@ class PABaseData(object):
         self.header = self._parse_BaseDataHeader()
         self.radial = self._parse_radial()
         self.nrays = len(self.radial)
-        # print(self.nrays)
         self.nsweeps = _validate_count("CutNumber", self.header['TaskConfig']['CutNumber'], minimum=1, maximum=MAX_PA_SWEEPS)
         if self.nrays < self.nsweeps:
             raise ValueError("PA radial count is smaller than the declared sweep count.")
-        self.sweep_start_ray_index = np.arange(0, self.nrays, self.nrays // self.nsweeps)
-        self.sweep_end_ray_index = self.sweep_start_ray_index + self.nrays // self.nsweeps - 1
+        self.sweep_start_ray_index, self.sweep_end_ray_index = self._build_sweep_indices()
         self.fid.close()
 
     def _check_standard_basedata(self):
@@ -113,6 +111,60 @@ class PABaseData(object):
             raise ValueError("PA radial header is truncated.")
         return radial
 
+    def _build_sweep_indices(self):
+        """Build sweep start/end indices from explicit PA radial metadata."""
+        if not self.radial:
+            return np.array([], dtype=np.int32), np.array([], dtype=np.int32)
+
+        elevation_starts = [0]
+        state_starts = [0]
+        for idx in range(1, self.nrays):
+            prev = self.radial[idx - 1]
+            curr = self.radial[idx]
+            if int(curr["ElevationNumber"]) != int(prev["ElevationNumber"]):
+                elevation_starts.append(idx)
+            if int(curr["RadialNumber"]) == 1 or int(curr["RadialState"]) in (0, 3):
+                state_starts.append(idx)
+
+        elevation_starts = np.asarray(sorted(set(elevation_starts)), dtype=np.int32)
+        state_starts = np.asarray(sorted(set(state_starts)), dtype=np.int32)
+
+        if state_starts.size == self.nsweeps:
+            starts = state_starts
+        elif elevation_starts.size == self.nsweeps:
+            starts = elevation_starts
+        else:
+            raise ValueError(
+                "PA sweep segmentation does not match the declared CutNumber: "
+                "declared %d, elevation-based %d, state-based %d."
+                % (self.nsweeps, elevation_starts.size, state_starts.size)
+            )
+
+        ends = np.concatenate((starts[1:] - 1, np.array([self.nrays - 1], dtype=np.int32)))
+        self._validate_sweep_layout(starts, ends)
+        return starts, ends
+
+    def _validate_sweep_layout(self, starts, ends):
+        if starts.size != ends.size:
+            raise ValueError("PA sweep start/end index arrays are inconsistent.")
+        if starts.size != self.nsweeps:
+            raise ValueError("PA sweep count does not match CutNumber.")
+        if int(starts[0]) != 0 or int(ends[-1]) != self.nrays - 1:
+            raise ValueError("PA sweep boundaries do not cover the full radial sequence.")
+
+        for start, end in zip(starts, ends):
+            if int(end) < int(start):
+                raise ValueError("PA sweep contains a negative-length radial segment.")
+            segment = self.radial[int(start): int(end) + 1]
+            elevation_numbers = {int(radial["ElevationNumber"]) for radial in segment}
+            if len(elevation_numbers) != 1:
+                raise ValueError("PA sweep contains multiple elevation numbers.")
+            radial_numbers = np.array([int(radial["RadialNumber"]) for radial in segment], dtype=np.int32)
+            if radial_numbers[0] != 1:
+                raise ValueError("PA sweep does not start at radial number 1.")
+            if np.any(np.diff(radial_numbers) <= 0):
+                raise ValueError("PA radial numbers are not strictly increasing within a sweep.")
+
     def _parse_radial_single(self):
         radial_var = {}
         for _ in range(self.MomentNum):
@@ -166,7 +218,9 @@ class PABaseData(object):
         获取每根径向的扫描时间
         :return:(nRays)
         """
-        return np.array([julian2date_SEC(self.header["TaskConfig"]['VolumeStartTime'], 0) for iray in self.radial])
+        return np.array(
+            [julian2date_SEC(int(radial["Seconds"]), int(radial["MicroSeconds"])) for radial in self.radial]
+        )
 
     def get_sweep_end_ray_index(self):
         """
@@ -234,43 +288,58 @@ class PABaseData(object):
 class PA2NRadar(object):
     """到NRadar object 的桥梁"""
 
-    def __init__(self, WSR98D):
+    def __init__(self, pa_reader):
         super(PA2NRadar, self).__init__()
-        self.WSR98D = WSR98D
-        self.nrays = len(self.WSR98D.radial)
-        self.nsweeps = self.WSR98D.header['TaskConfig']['CutNumber']
-        # print(self.nsweeps, self.nrays)
-        self.rays_per_sweep = self.nrays // self.nsweeps
-        self.radial = []
-        if self.WSR98D.get_azimuth()[0] == self.WSR98D.get_azimuth()[1]:
-            for i in range(self.nsweeps):
-                self.radial.extend(self.WSR98D.radial[i::self.nsweeps])
-        else:
-            for i in range(self.nsweeps):
-                self.radial.extend(
-                    self.WSR98D.radial[i * self.rays_per_sweep:i * self.rays_per_sweep + self.rays_per_sweep])
-        self.scan_type = self.WSR98D.get_scan_type()
+        self.pa_reader = pa_reader
+        self.radial = list(self.pa_reader.radial)
+        self.nrays = len(self.radial)
+        self.nsweeps = int(self.pa_reader.header['TaskConfig']['CutNumber'])
+        self.scan_type = self.pa_reader.get_scan_type()
         self.latitude, self.longitude, self.altitude, self.frequency = \
-            self.WSR98D.get_latitude_longitude_altitude_frequency()
-        self.header = self.WSR98D.header
+            self.pa_reader.get_latitude_longitude_altitude_frequency()
+        self.header = self.pa_reader.header
+        self.sweep_start_ray_index = np.asarray(self.pa_reader.sweep_start_ray_index, dtype=np.int32)
+        self.sweep_end_ray_index = np.asarray(self.pa_reader.sweep_end_ray_index, dtype=np.int32)
+        self.rays_per_sweep = self.get_rays_per_sweep()
         self.bins_per_sweep = self.get_nbins_per_sweep()
-        # print(self.bins_per_sweep)
         self.range = self.get_range_per_radial(self.bins_per_sweep.max())
         self.azimuth = self.get_azimuth()
         self.elevation = self.get_elevation()
         self.extended_fields = self._build_extended_fields()
         self.fields = self._get_fields()
-        self.sitename = self.WSR98D.get_sitename()
-        self.sweep_start_ray_index = self.WSR98D.sweep_start_ray_index
-        self.sweep_end_ray_index = self.WSR98D.sweep_end_ray_index
+        self.sitename = self.pa_reader.get_sitename()
 
 
     def get_nbins_per_sweep(self):
         """
-        确定每个sweep V探测的库数
+        确定每个 sweep 的 aligned 距离库长度。
         :return:
         """
-        return np.array([self.WSR98D.radial[idx]['fields']['V'].size for idx in range(self.nsweeps)])
+        return np.array(
+            [
+                self._aligned_bins_for_sweep(int(start), int(end))
+                for start, end in zip(self.sweep_start_ray_index, self.sweep_end_ray_index)
+            ],
+            dtype=np.int32,
+        )
+
+    def _aligned_bins_for_sweep(self, start, end):
+        preferred_lengths = []
+        reflectivity_lengths = []
+        for iray in range(start, end + 1):
+            for field_name, values in self.radial[iray]["fields"].items():
+                if field_name in ("dBT", "dBZ", "Zc"):
+                    reflectivity_lengths.append(values.size)
+                else:
+                    preferred_lengths.append(values.size)
+        if preferred_lengths:
+            return int(max(preferred_lengths))
+        if reflectivity_lengths:
+            return int(max(reflectivity_lengths))
+        return 0
+
+    def get_rays_per_sweep(self):
+        return self.sweep_end_ray_index - self.sweep_start_ray_index + 1
 
     def get_azimuth(self):
         """
@@ -292,21 +361,29 @@ class PA2NRadar(object):
         获取每根径向的扫描时间
         :return:(nRays)
         """
-        return np.array([julian2date_SEC(self.header["TaskConfig"]['VolumeStartTime'], 0) for _ in self.radial])
+        return np.array(
+            [julian2date_SEC(int(radial["Seconds"]), int(radial["MicroSeconds"])) for radial in self.radial]
+        )
 
     def get_nyquist_velocity(self):
         """get nyquist vel per ray
         获取每根径向的不模糊速度
         :return:(nRays)
         """
-        return np.concatenate([[nyquist, ] * self.rays_per_sweep for nyquist in self.header['CutConfig']['NyquistSpeed']], axis=0)
+        return np.concatenate(
+            [[nyquist] * int(ray_count) for nyquist, ray_count in zip(self.header['CutConfig']['NyquistSpeed'], self.rays_per_sweep)],
+            axis=0,
+        )
 
     def get_unambiguous_range(self):
         """
         获取每根径向的不模糊距离
         :return:(nRays)
         """
-        return np.concatenate([[nyquist, ] * self.rays_per_sweep for nyquist in self.header['CutConfig']['MaximumRange']], axis=0)
+        return np.concatenate(
+            [[nyquist] * int(ray_count) for nyquist, ray_count in zip(self.header['CutConfig']['MaximumRange'], self.rays_per_sweep)],
+            axis=0,
+        )
 
     def get_range_per_radial(self, length):
         """
@@ -335,7 +412,7 @@ class PA2NRadar(object):
     def _get_fields(self):
         """将所有的field的数据提取出来"""
         fields = {}
-        field_keys = self.radial[0]['fields'].keys()
+        field_keys = sorted({key for radial in self.radial for key in radial['fields'].keys()})
         for ikey in field_keys:
             fields[ikey] = np.array([self._add_or_del_field(iray['fields'], ikey) for iray in self.radial])
         return fields
@@ -427,7 +504,7 @@ class PA2NRadar(object):
 
     def to_pyart_radar(self, effective_earth_radius=None, **kwargs):
         """Export the decoded PA volume through the PRD Py-ART adapter."""
-        return self.to_prd(effective_earth_radius=effective_earth_radius).to_pyart_radar(**kwargs)
+        return self.ToPRD(effective_earth_radius=effective_earth_radius).to_pyart_radar(**kwargs)
 
     def ToPyartRadar(self, effective_earth_radius=None, **kwargs):
         """Backward-compatible alias for ``to_pyart_radar``."""

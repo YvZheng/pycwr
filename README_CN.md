@@ -3,7 +3,7 @@
 `pycwr` 是一个面向中国天气雷达业务流程的 Python 工具库，覆盖雷达基数据读取、
 几何计算、绘图、质量控制、水凝物分类、单雷达风场反演、多雷达组网插值和导出。
 
-- 当前版本：`1.0.5`
+- 当前版本：`1.0.6`
 - [English](README.md)
 - [接口参考](docs/api_reference_cn.md)
 - [雷达组网快速上手](docs/radar_network_quickstart.md)
@@ -11,10 +11,10 @@
 - [测试索引](test/README.md)
 - [绘图快速上手](docs/draw_quickstart.md)
 
-## 为什么是 1.0.5
+## 为什么是 1.0.6
 
-`1.0.5` 延续了第一条稳定发布线，目标仍然是“可发布、可集成、可维护”。
-这次版本也包含了 `Wc` 变量更新。
+`1.0.6` 延续了第一条稳定发布线，目标仍然是“可发布、可集成、可维护”。
+这次版本主要补了 `PA` reader 对齐修复，以及默认 colormap 兼容性更新。
 
 重点变化：
 
@@ -25,6 +25,9 @@
 - 几何链路和回归检查更完整
 - 单雷达风场反演 `VAD`、`VVP`、`VWP` 已纳入公开接口
 - 组网合成和参考风格组合反射率流程更清楚
+- `read_auto` 和 `read_PA` 现在能正确识别并构建支持范围内的 `PA` 样本
+- `plot_ppi`、`plot_ppi_map` 以及兼容旧代码的 `Graph` / `GraphMap`
+  现在都会自动注册 `CN_ref`、`CN_vel` 这类 `pycwr` colormap 名称
 
 ## 安装
 
@@ -56,14 +59,14 @@ python -m pip install ".[full]"
 
 说明：
 
-- `pycwr 1.0.5` 要求 Python `>=3.9`
+- `pycwr 1.0.6` 要求 Python `>=3.9`
 - 对普通用户来说，优先推荐直接使用 `python -m pip install pycwr`
 - 基础安装足够支持 reader、`PRD`、几何、插值和 NetCDF 风格导出
 - 全功能安装建议用于绘图、地图绘图、QC、Py-ART/xradar 互操作和 web viewer
 - 上游 `arm_pyart` 和 `xradar` 当前要求 Python `>=3.10`，因此在 Python
   `3.9` 上，全功能安装仍可覆盖绘图、QC 和 web viewer，但不包含这两类
   可选互操作依赖
-- `1.0.5` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
+- `1.0.6` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
 - 如果你在本地开发、调试或需要重编译 Cython 扩展，再使用源码安装方式
 
 修改 `pycwr/core/RadarGridC.pyx` 后重编译：
@@ -104,6 +107,14 @@ velocity0 = radar.get_sweep_field(0, "V")
 from pycwr.draw import plot_ppi
 
 plot_ppi(radar, field="dBZ", sweep=0, show=True)
+```
+
+画一张带地图底图的 PPI：
+
+```python
+from pycwr.draw import plot_ppi_map
+
+plot_ppi_map(radar, field="dBZ", sweep=0, show=True)
 ```
 
 提取垂直剖面：
@@ -225,6 +236,50 @@ from pycwr.draw import (
 ```
 
 这些函数统一返回 `EasyPlotResult`，里面包含 `fig`、`ax`、`artist`。
+
+#### 默认 colormap 策略
+
+当你不传 `cmap`，也就是保持 `cmap=None` 时，`pycwr.draw` 会根据字段自动选择默认色标。
+
+- `dBZ` 默认使用反射率色标，例如 `CN_ref`
+- `V` 默认使用速度色标，例如 `CN_vel`
+- `HCL` 默认使用离散的水凝物分类色标
+- 未知字段默认回退到 `viridis`
+
+这套默认策略在 `plot_ppi`、`plot_ppi_map`、`plot_rhi`、`plot_section`，
+以及兼容旧代码的 `Graph` / `GraphMap` 类里都是一致的。
+
+推荐写法：
+
+```python
+from pycwr.draw import plot_ppi, plot_ppi_map
+
+plot_ppi(radar, field="dBZ", sweep=0, show=True)
+plot_ppi_map(radar, field="dBZ", sweep=0, show=True)
+```
+
+如果你想显式指定色标：
+
+```python
+plot_ppi(radar, field="dBZ", sweep=0, cmap="CN_ref", cmap_bins=16, show=True)
+plot_ppi_map(radar, field="V", sweep=0, cmap="CN_vel", min_max=(-27.0, 27.0), show=True)
+```
+
+旧类接口也可以继续这样写：
+
+```python
+from pycwr.draw.RadarPlot import GraphMap
+from cartopy import crs as ccrs
+
+display = GraphMap(radar, ccrs.PlateCarree())
+display.plot_ppi_map(ax, 0, "dBZ", cmap="CN_ref")
+```
+
+说明：
+
+- `CN_ref`、`CN_vel` 这类 `pycwr` colormap 名称现在会在绘图时自动注册，不需要再先“预热”一次封装绘图函数。
+- 如果当前雷达文件没有某个字段，绘图会明确报字段不存在，而不是先报 colormap 错误。比如有些文件只有 `dBZ`，没有 `V`。
+- 如果你要自己做更底层的 matplotlib 定制，也可以显式 `import pycwr.draw.colormap` 来注册这些色标名。
 
 一般建议：
 
@@ -395,7 +450,7 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 
 ## 给发布用户的说明
 
-`1.0.5` 最需要明确的行为规则有这几条：
+`1.0.6` 最需要明确的行为规则有这几条：
 
 - 所有 reader 统一返回稳定的 `PRD` 对象
 - 低层反射率可以显式选择 aligned 或 native 距离库
@@ -403,6 +458,8 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 - 单雷达风场反演已经属于公开接口的一部分
 - 多雷达组网已经有明确的高层工作流入口
 - 依赖拆分成 base 和 full 两组，安装摩擦更低
+- 符合支持标记的 `PA` 样本会走 `read_PA`，不再被误判成 `WSR98D`
+- 默认绘图现在会在 easy API 和旧类接口里统一解析 `pycwr` colormap 名称
 
 如果你是准备把 `pycwr` 接进自己的业务脚本，最实用的建议只有三条：
 

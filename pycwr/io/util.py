@@ -201,6 +201,10 @@ def radar_format(filename):
         flag = fh.read(28)
         if flag[:4] == b'AR2V':
             return "NEXRAD_LEVEL2"
+        # PA files share the RSTM prefix with WSR98D, but carry a distinct
+        # generic type marker at bytes 8:12.
+        if flag[8:12] == b'\x10\x00\x00\x00':
+            return "PA"
         if flag[:4] == b'RSTM':
             return "WSR98D"
         if flag[14:16] == b'\x01\x00':
@@ -209,8 +213,6 @@ def radar_format(filename):
             if size >= 2432 and ((size % 2432 == 0) or (size % 4132 == 0) or (size % 3132 == 0)):
                 return "SAB"
             fh.seek(28, 0)
-        if flag[8:12] == b'\x10\x00\x00\x00':
-            return "PA"
 
         fh.seek(100, 0)
         sc_flag = fh.read(9)

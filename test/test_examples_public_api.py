@@ -4,6 +4,8 @@ import tempfile
 import unittest
 import os
 import importlib
+import subprocess
+import sys
 import warnings
 from pathlib import Path
 from unittest import mock
@@ -34,6 +36,10 @@ class PublicApiSampleTests(unittest.TestCase):
             / "Z9047"
             / "Z_RADR_I_Z9047_20260317065837_O_DOR_SAD_CAP_FMT.bin.bz2"
         )
+
+    @classmethod
+    def _sample_z9280(cls):
+        return cls._repo_root() / "Z_RADR_I_Z9280_20250402034600_O_DOR-CUT_SAD_CAP_5_1_FMT.bin.bz2"
 
     def test_prd_summary_and_available_fields(self):
         from pycwr.io import read_auto
@@ -209,6 +215,26 @@ class PublicApiSampleTests(unittest.TestCase):
             atol=1e-6,
         )
 
+    def test_z9280_cut_sample_is_readable(self):
+        from pycwr.io import read_auto
+
+        sample = self._sample_z9280()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+
+        self.assertEqual(prd.scan_info.scan_type.item(), "ppi")
+        self.assertEqual(int(prd.nsweeps), 1)
+        self.assertEqual(int(prd.nrays), 366)
+        self.assertEqual(
+            sorted(prd.available_fields()),
+            ["CC", "KDP", "PhiDP", "SNRH", "ZDR", "dBT", "dBZ"],
+        )
+        summary = prd.sweep_summary()
+        self.assertEqual(len(summary), 1)
+        self.assertAlmostEqual(float(summary[0]["fixed_angle"]), 0.5, places=6)
+
     def test_extract_rhi_matches_sorted_field_interpolation(self):
         from pycwr.io import read_auto
 
@@ -254,6 +280,102 @@ class PublicApiSampleTests(unittest.TestCase):
             atol=1e-6,
             equal_nan=True,
         )
+
+    def test_direct_graphmap_import_auto_loads_pycwr_colormap(self):
+        try:
+            import cartopy  # noqa: F401
+        except ImportError as exc:  # pragma: no cover
+            self.skipTest(f"map plotting dependencies are unavailable: {exc}")
+
+        sample = self._sample_z9280()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        script = """
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from cartopy import crs as ccrs
+from pycwr.io import read_auto
+from pycwr.draw.RadarPlot import GraphMap
+
+sample = r\"\"\"%s\"\"\"
+prd = read_auto(sample)
+fig = plt.figure()
+try:
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+    GraphMap(prd, ccrs.PlateCarree()).plot_ppi_map(ax, 0, "dBZ")
+finally:
+    plt.close(fig)
+""" % sample
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=str(Path(__file__).resolve().parents[1]),
+            env=os.environ.copy(),
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+
+    def test_missing_velocity_field_reports_field_error_on_z9280(self):
+        try:
+            import matplotlib.pyplot as plt
+            from cartopy import crs as ccrs
+        except ImportError as exc:  # pragma: no cover
+            self.skipTest(f"map plotting dependencies are unavailable: {exc}")
+
+        from pycwr.draw.RadarPlot import GraphMap
+        from pycwr.io import read_auto
+
+        sample = self._sample_z9280()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        fig = plt.figure()
+        try:
+            ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+            with self.assertRaisesRegex(KeyError, "field V not found"):
+                GraphMap(prd, ccrs.PlateCarree()).plot_ppi_map(ax, 0, "V")
+        finally:
+            plt.close(fig)
+
+    def test_plot_ppi_default_cmap_strategy_smoke(self):
+        from pycwr.draw import plot_ppi
+        from pycwr.io import read_auto
+
+        sample = self._sample_z9280()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "z9280_ppi.png"
+            result = plot_ppi(prd, field="dBZ", sweep=0, save=output)
+            self.assertTrue(output.exists())
+
+        self.assertIsNotNone(result.artist)
+
+    def test_plot_ppi_map_default_cmap_strategy_smoke(self):
+        try:
+            import cartopy  # noqa: F401
+        except ImportError as exc:  # pragma: no cover
+            self.skipTest(f"map plotting dependencies are unavailable: {exc}")
+
+        from pycwr.draw import plot_ppi_map
+        from pycwr.io import read_auto
+
+        sample = self._sample_z9280()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "z9280_ppi_map.png"
+            result = plot_ppi_map(prd, field="dBZ", sweep=0, save=output)
+            self.assertTrue(output.exists())
+
+        self.assertIsNotNone(result.artist)
 
     def test_easy_plot_quickstart_smoke(self):
         from pycwr.draw import plot, plot_ppi, plot_rhi, plot_section

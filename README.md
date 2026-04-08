@@ -5,7 +5,7 @@ It covers radar base-data reading, geometry, plotting, quality control,
 hydrometeor classification, single-radar wind retrieval, multi-radar
 compositing, and export.
 
-- Current release: `1.0.5`
+- Current release: `1.0.6`
 - [中文说明](README_CN.md)
 - [API reference](docs/api_reference.md)
 - [Radar network quickstart](docs/radar_network_quickstart_en.md)
@@ -13,11 +13,12 @@ compositing, and export.
 - [Test guide](test/README.md)
 - [Draw quickstart](docs/draw_quickstart.md)
 
-## Why 1.0.5 matters
+## Why 1.0.6 matters
 
-`1.0.5` continues the first stable release line intended to be usable for production-style
+`1.0.6` continues the first stable release line intended to be usable for production-style
 usage and GitHub distribution.
-This refresh also includes the `Wc` variable update in the public release line.
+This refresh also includes the PA reader alignment fix and the plotting colormap
+compatibility update in the public release line.
 
 Highlights:
 
@@ -30,6 +31,9 @@ Highlights:
 - stronger geometry and regression coverage
 - built-in single-radar wind retrieval workflows: `VAD`, `VVP`, and `VWP`
 - improved multi-radar compositing and reference-style CR plotting
+- `read_auto` and `read_PA` now correctly recognize and build supported PA files
+- `plot_ppi`, `plot_ppi_map`, and the legacy `Graph` / `GraphMap` plotting paths
+  now auto-register `pycwr` colormap names such as `CN_ref` and `CN_vel`
 
 ## Installation
 
@@ -61,7 +65,7 @@ python -m pip install ".[full]"
 
 Notes:
 
-- `pycwr 1.0.5` requires Python `>=3.9`
+- `pycwr 1.0.6` requires Python `>=3.9`
 - `python -m pip install pycwr` is the recommended path for normal users
 - base install is enough for readers, `PRD`, geometry, interpolation, and
   NetCDF-style export
@@ -70,7 +74,7 @@ Notes:
 - upstream `arm_pyart` and `xradar` currently require Python `>=3.10`, so on
   Python `3.9` the full install still covers plotting, QC, and the web
   viewer, but not those two optional interop stacks
-- `pandas` is pinned to `<3` in `1.0.5` for release stability
+- `pandas` is pinned to `<3` in `1.0.6` for release stability
 - source install is still useful when you are developing locally or rebuilding
   the Cython extension
 
@@ -112,6 +116,14 @@ Plot a PPI:
 from pycwr.draw import plot_ppi
 
 plot_ppi(radar, field="dBZ", sweep=0, show=True)
+```
+
+Plot a mapped PPI:
+
+```python
+from pycwr.draw import plot_ppi_map
+
+plot_ppi_map(radar, field="dBZ", sweep=0, show=True)
 ```
 
 Extract a vertical section:
@@ -204,6 +216,55 @@ from pycwr.draw import (
 ```
 
 These functions return an `EasyPlotResult` with `fig`, `ax`, and `artist`.
+
+#### Default colormap strategy
+
+`pycwr.draw` chooses a default colormap from the plotted field when you leave
+`cmap=None`.
+
+- `dBZ` uses the reflectivity palette such as `CN_ref`
+- `V` uses the velocity palette such as `CN_vel`
+- `HCL` uses a discrete hydrometeor classification palette
+- unknown fields fall back to `viridis`
+
+This default strategy is shared by `plot_ppi`, `plot_ppi_map`, `plot_rhi`,
+`plot_section`, and the legacy `Graph` / `GraphMap` classes.
+
+Recommended usage:
+
+```python
+from pycwr.draw import plot_ppi, plot_ppi_map
+
+plot_ppi(radar, field="dBZ", sweep=0, show=True)
+plot_ppi_map(radar, field="dBZ", sweep=0, show=True)
+```
+
+Explicit colormap override:
+
+```python
+plot_ppi(radar, field="dBZ", sweep=0, cmap="CN_ref", cmap_bins=16, show=True)
+plot_ppi_map(radar, field="V", sweep=0, cmap="CN_vel", min_max=(-27.0, 27.0), show=True)
+```
+
+Legacy class-style usage is also supported:
+
+```python
+from pycwr.draw.RadarPlot import GraphMap
+from cartopy import crs as ccrs
+
+display = GraphMap(radar, ccrs.PlateCarree())
+display.plot_ppi_map(ax, 0, "dBZ", cmap="CN_ref")
+```
+
+Notes:
+
+- `CN_ref`, `CN_vel`, and the other `pycwr` colormap names are registered
+  automatically when plotting starts. You no longer need to "warm up" the
+  plotting module first.
+- If a field is missing in the radar file, plotting raises a field-not-found
+  error. For example, some files may contain `dBZ` but not `V`.
+- If you need the raw colormap registry for custom matplotlib work, you can
+  explicitly import `pycwr.draw.colormap`.
 
 ### Products
 
@@ -324,7 +385,7 @@ The viewer is local-only by design and requires a token for API access.
 
 ## Release notes for users
 
-For `1.0.5`, the most important user-visible behavior rules are:
+For `1.0.6`, the most important user-visible behavior rules are:
 
 - radar reading returns one stable `PRD` object across supported formats
 - low-level reflectivity can now be queried explicitly in aligned or native mode
@@ -333,3 +394,7 @@ For `1.0.5`, the most important user-visible behavior rules are:
 - multi-radar compositing has a documented high-level workflow
 - packaging is split into base and full dependency sets for lower installation
   friction
+- PA samples matching the supported format markers are routed through `read_PA`
+  instead of being misidentified as `WSR98D`
+- default plotting now resolves `pycwr` colormap names consistently across both
+  the easy plotting API and legacy class-style plotting

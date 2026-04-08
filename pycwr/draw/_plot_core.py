@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from importlib import import_module
 import math
 from typing import Any, Optional, Sequence, Tuple
 
@@ -265,9 +266,21 @@ def _format_ticks(ticks):
     return ["%.2f" % tick for tick in ticks]
 
 
+def _resolve_matplotlib_cmap(cmap_spec):
+    try:
+        return plt.get_cmap(cmap_spec)
+    except ValueError:
+        # Legacy plotting entry points may bypass pycwr.draw.__getattr__,
+        # so ensure pycwr's named colormaps are registered before retrying.
+        if isinstance(cmap_spec, str):
+            import_module(".colormap", __package__)
+            return plt.get_cmap(cmap_spec)
+        raise
+
+
 def build_colormap(style):
     style = normalize_style(style)
-    cmap = plt.get_cmap(style.cmap)
+    cmap = _resolve_matplotlib_cmap(style.cmap)
     if style.levels is not None:
         levels = np.asarray(style.levels, dtype=float)
         norm = BoundaryNorm(levels, ncolors=cmap.N, clip=True)

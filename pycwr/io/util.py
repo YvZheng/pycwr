@@ -1,6 +1,7 @@
 import struct
 import bz2
 import gzip
+import zipfile
 import datetime
 import os
 import numpy as np
@@ -46,11 +47,64 @@ def _unpack_structure(string, structure):
     lst = struct.unpack(fmt, string)
     return dict(zip([i[0] for i in structure], lst))
 
+
+class _ArchiveMemberFile:
+    """Wrap an archive member stream and keep the parent archive open."""
+
+    def __init__(self, archive, stream):
+        self._archive = archive
+        self._stream = stream
+
+    def read(self, *args, **kwargs):
+        return self._stream.read(*args, **kwargs)
+
+    def seek(self, *args, **kwargs):
+        return self._stream.seek(*args, **kwargs)
+
+    def tell(self):
+        return self._stream.tell()
+
+    def close(self):
+        try:
+            self._stream.close()
+        finally:
+            self._archive.close()
+
+    @property
+    def closed(self):
+        return self._stream.closed
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __iter__(self):
+        return iter(self._stream)
+
+    def __getattr__(self, item):
+        return getattr(self._stream, item)
+
+
+def _open_single_member_zip(filename):
+    """Open a single-file zip archive as a readable binary stream."""
+    archive = zipfile.ZipFile(filename, "r")
+    try:
+        members = [member for member in archive.infolist() if not member.is_dir()]
+        if len(members) != 1:
+            raise ValueError("Zip radar archive must contain exactly one file member.")
+        return _ArchiveMemberFile(archive, archive.open(members[0], "r"))
+    except Exception:
+        archive.close()
+        raise
+
 def _prepare_for_read(filename):
     """
     Return a file like object read for reading.
     Open a file for reading in binary mode with transparent decompression of
-    Gzip and BZip2 files.  The resulting file-like object should be closed.
+    Gzip, BZip2, and single-file Zip archives.  The resulting file-like
+    object should be closed.
     Parameters
     ----------
     filename : str or file-like object
@@ -66,12 +120,17 @@ def _prepare_for_read(filename):
         return filename
     # look for compressed data by examining the first few bytes
     fh = open(filename, 'rb')
-    magic = fh.read(3)
+    magic = fh.read(4)
     fh.close()
     if magic.startswith(b'\x1f\x8b'):
         f = gzip.GzipFile(filename, 'rb')
     elif magic.startswith(b'BZh'):
         f = bz2.BZ2File(filename, 'rb')
+    elif magic.startswith(b'PK'):
+        try:
+            f = _open_single_member_zip(filename)
+        except zipfile.BadZipFile:
+            f = open(filename, 'rb')
     else:
         f = open(filename, 'rb')
     return f

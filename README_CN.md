@@ -3,7 +3,7 @@
 `pycwr` 是一个面向中国天气雷达业务流程的 Python 工具库，覆盖雷达基数据读取、
 几何计算、绘图、质量控制、水凝物分类、单雷达风场反演、多雷达组网插值和导出。
 
-- 当前版本：`1.0.6`
+- 当前版本：`1.0.7`
 - [English](README.md)
 - [接口参考](docs/api_reference_cn.md)
 - [雷达组网快速上手](docs/radar_network_quickstart.md)
@@ -11,10 +11,10 @@
 - [测试索引](test/README.md)
 - [绘图快速上手](docs/draw_quickstart.md)
 
-## 为什么是 1.0.6
+## 为什么是 1.0.7
 
-`1.0.6` 延续了第一条稳定发布线，目标仍然是“可发布、可集成、可维护”。
-这次版本主要补了 `PA` reader 对齐修复，以及默认 colormap 兼容性更新。
+`1.0.7` 延续了第一条稳定发布线，目标仍然是“可发布、可集成、可维护”。
+这次版本在保持 `PA` reader 行为不变的前提下，重点整理了相控阵解码代码结构，并保留默认 colormap 兼容性更新。
 
 重点变化：
 
@@ -28,6 +28,7 @@
 - `read_auto` 和 `read_PA` 现在能正确识别并构建支持范围内的 `PA` 样本
 - `plot_ppi`、`plot_ppi_map` 以及兼容旧代码的 `Graph` / `GraphMap`
   现在都会自动注册 `CN_ref`、`CN_vel` 这类 `pycwr` colormap 名称
+- `PA` reader 内部现在把 moment 解码、field padding、距离库构造拆成了更清楚的 helper，后续维护更稳
 
 ## 安装
 
@@ -59,14 +60,14 @@ python -m pip install ".[full]"
 
 说明：
 
-- `pycwr 1.0.6` 要求 Python `>=3.9`
+- `pycwr 1.0.7` 要求 Python `>=3.9`
 - 对普通用户来说，优先推荐直接使用 `python -m pip install pycwr`
 - 基础安装足够支持 reader、`PRD`、几何、插值和 NetCDF 风格导出
 - 全功能安装建议用于绘图、地图绘图、QC、Py-ART/xradar 互操作和 web viewer
 - 上游 `arm_pyart` 和 `xradar` 当前要求 Python `>=3.10`，因此在 Python
   `3.9` 上，全功能安装仍可覆盖绘图、QC 和 web viewer，但不包含这两类
   可选互操作依赖
-- `1.0.6` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
+- `1.0.7` 中 `pandas` 已限制为 `<3`，优先保证发布稳定性
 - 如果你在本地开发、调试或需要重编译 Cython 扩展，再使用源码安装方式
 
 修改 `pycwr/core/RadarGridC.pyx` 后重编译：
@@ -450,7 +451,7 @@ viewer 设计上只允许本机访问，并要求 token 才能调用 API。
 
 ## 给发布用户的说明
 
-`1.0.6` 最需要明确的行为规则有这几条：
+`1.0.7` 最需要明确的行为规则有这几条：
 
 - 所有 reader 统一返回稳定的 `PRD` 对象
 - 低层反射率可以显式选择 aligned 或 native 距离库

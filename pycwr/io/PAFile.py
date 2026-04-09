@@ -21,6 +21,9 @@ MAX_PA_BEAMS = 4096
 MAX_PA_SWEEPS = 512
 MAX_PA_MOMENTS_PER_RADIAL = 64
 MAX_PA_MOMENT_DATA_BYTES = 32 * 1024 * 1024
+PA_VALID_CODE_MIN = 5
+PA_REFLECTIVITY_FIELDS = ("dBT", "dBZ", "Zc")
+PA_MOMENT_BIN_DTYPES = {1: "u1", 2: "u2"}
 
 
 class PABaseData(object):
@@ -90,6 +93,33 @@ class PABaseData(object):
         BaseDataHeader["BeamConfig"] = np.frombuffer(beam_buf, dtype_PA.BaseDataHeader['BeamConfigurationBlock'])
         BaseDataHeader['CutConfig'] = np.frombuffer(cut_buf, dtype_PA.BaseDataHeader['CutConfigurationBlock'])
         return BaseDataHeader
+
+    @staticmethod
+    def _decode_moment_payload(moment_header, data_buf):
+        bin_length = int(moment_header["BinLength"])
+        if bin_length not in PA_MOMENT_BIN_DTYPES:
+            raise ValueError("PA moment bin length must be 1 or 2 bytes.")
+
+        data_len = _validate_count(
+            "PA moment length",
+            moment_header["Length"],
+            minimum=0,
+            maximum=MAX_PA_MOMENT_DATA_BYTES,
+        )
+        if data_len % bin_length != 0:
+            raise ValueError("PA moment payload length does not match the bin length.")
+
+        scale = int(moment_header["Scale"])
+        if scale == 0:
+            raise ValueError("PA moment scale cannot be zero.")
+
+        raw = np.frombuffer(data_buf, dtype=PA_MOMENT_BIN_DTYPES[bin_length]).astype(np.int32, copy=False)
+        decoded = np.where(
+            raw >= PA_VALID_CODE_MIN,
+            (raw - moment_header["Offset"]) / moment_header["Scale"],
+            np.nan,
+        )
+        return decoded.astype(np.float32, copy=False)
 
     def _parse_radial(self):
         radial = []
@@ -170,31 +200,15 @@ class PABaseData(object):
         for _ in range(self.MomentNum):
             Mom_buf = _read_exact(self.fid, dtype_PA.MomentHeaderBlockSize, "PA moment header")
             Momheader, _ = _unpack_from_buf(Mom_buf, 0, dtype_PA.RadialData())
-            data_len = _validate_count(
-                "PA moment length",
-                Momheader['Length'],
-                minimum=0,
-                maximum=MAX_PA_MOMENT_DATA_BYTES,
-            )
+            data_len = _validate_count("PA moment length", Momheader['Length'], minimum=0, maximum=MAX_PA_MOMENT_DATA_BYTES)
             Data_buf = _read_exact(self.fid, data_len, "PA moment payload")
-            if Momheader['BinLength'] not in (1, 2):
-                raise ValueError("PA moment bin length must be 1 or 2 bytes.")
-            if data_len % int(Momheader['BinLength']) != 0:
-                raise ValueError("PA moment payload length does not match the bin length.")
-            if int(Momheader['Scale']) == 0:
-                raise ValueError("PA moment scale cannot be zero.")
-            if Momheader['BinLength'] == 1:
-                dat_tmp = (np.frombuffer(Data_buf, dtype="u1", offset=0)).astype(int)
-            else:
-                dat_tmp = (np.frombuffer(Data_buf, dtype="u2", offset=0)).astype(int)
             field_name = dtype_PA.flag2Product.get(int(Momheader['DataType']))
             if field_name is None:
                 continue
-            radial_var[field_name] = np.where(
-                dat_tmp >= 5,
-                (dat_tmp - Momheader['Offset']) / Momheader['Scale'],
-                np.nan,
-            ).astype(np.float32)
+            # The PA standard marks codes below 5 as special values:
+            # 0 below threshold, 1 range-folded, 2 not scanned, 3 unknown,
+            # 4 reserved. These values must stay missing after decode.
+            radial_var[field_name] = self._decode_moment_payload(Momheader, Data_buf)
         return radial_var
 
     def get_nyquist_velocity(self):
@@ -309,6 +323,22 @@ class PA2NRadar(object):
         self.fields = self._get_fields()
         self.sitename = self.pa_reader.get_sitename()
 
+    @staticmethod
+    def _range_axis(resolution, length):
+        if resolution == 0:
+            return np.linspace(30, 30 * length, length)
+        return np.linspace(resolution, resolution * length, length)
+
+    @staticmethod
+    def _pad_field_array(values, length):
+        if values.ndim != 1:
+            raise ValueError("PA radial field arrays must be one-dimensional.")
+        if values.size >= length:
+            return values[:length]
+        out = np.full((length,), np.nan, dtype=np.float32)
+        out[:values.size] = values
+        return out
+
 
     def get_nbins_per_sweep(self):
         """
@@ -328,7 +358,7 @@ class PA2NRadar(object):
         reflectivity_lengths = []
         for iray in range(start, end + 1):
             for field_name, values in self.radial[iray]["fields"].items():
-                if field_name in ("dBT", "dBZ", "Zc"):
+                if field_name in PA_REFLECTIVITY_FIELDS:
                     reflectivity_lengths.append(values.size)
                 else:
                     preferred_lengths.append(values.size)
@@ -391,11 +421,7 @@ class PA2NRadar(object):
         :param length:
         :return:
         """
-        Resolution = self.header['CutConfig']['DopplerResolution'][0]
-        if Resolution == 0:
-            return np.linspace(30, 30 * length, length)
-        else:
-            return np.linspace(Resolution, Resolution * length, length)
+        return self._range_axis(self.header['CutConfig']['DopplerResolution'][0], length)
 
     def get_dbz_range_per_radial(self, length):
         """
@@ -403,18 +429,18 @@ class PA2NRadar(object):
         :param length:
         :return:
         """
-        Resolution = self.header['CutConfig']['LogResolution'][0]
-        if Resolution == 0:
-            return np.linspace(30, 30 * length, length)
-        else:
-            return np.linspace(Resolution, Resolution * length, length)
+        return self._range_axis(self.header['CutConfig']['LogResolution'][0], length)
 
     def _get_fields(self):
         """将所有的field的数据提取出来"""
+        max_bins = int(self.bins_per_sweep.max())
         fields = {}
         field_keys = sorted({key for radial in self.radial for key in radial['fields'].keys()})
         for ikey in field_keys:
-            fields[ikey] = np.array([self._add_or_del_field(iray['fields'], ikey) for iray in self.radial])
+            fields[ikey] = np.array(
+                [self._field_row(radial["fields"], ikey, max_bins) for radial in self.radial],
+                dtype=np.float32,
+            )
         return fields
 
     def _build_extended_fields(self):
@@ -453,7 +479,7 @@ class PA2NRadar(object):
 
         return {"dBZ": extended_sweeps} if extended_sweeps else {}
 
-    def _add_or_del_field(self, dat_fields, key):
+    def _field_row(self, dat_fields, key, length):
         """
         根据fields的key提取数据
         :param dat_fields: fields的数据
@@ -461,18 +487,10 @@ class PA2NRadar(object):
         :param flag_match: dop和dbz分辨率是否匹配, 匹配则为True，不匹配为False
         :return:
         """
-        length = self.bins_per_sweep.max()
-        if key not in dat_fields.keys():
-            return np.full((length,), np.nan)
-
-        dat_ray = dat_fields[key]
-        assert dat_ray.ndim == 1, "check dat_ray"
-        if dat_ray.size >= length:
-            return dat_ray[:length]
-        else:
-            out = np.full((length,), np.nan)
-            out[:dat_ray.size] = dat_ray
-            return out
+        dat_ray = dat_fields.get(key)
+        if dat_ray is None:
+            return np.full((length,), np.nan, dtype=np.float32)
+        return self._pad_field_array(np.asarray(dat_ray, dtype=np.float32), length)
 
     def get_NRadar_nyquist_speed(self):
         """array shape (nsweeps)"""

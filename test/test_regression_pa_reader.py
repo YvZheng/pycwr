@@ -12,10 +12,24 @@ class PAReaderRegressionTests(unittest.TestCase):
             / "Z_RADR_I_ZA460_20240808142000_O_DOR-XPD-CAP-FMT.BIN"
         )
 
+    @staticmethod
+    def _sample_zip_path():
+        return (
+            Path(__file__).resolve().parents[2]
+            / "ZA460"
+            / "Z_RADR_I_ZA460_20240808142000_O_DOR-XPD-CAP-FMT.BIN.zip"
+        )
+
     def _require_sample(self):
         sample = self._sample_path()
         if not sample.exists():
             self.skipTest("PA sample file is not available in this workspace")
+        return sample
+
+    def _require_zip_sample(self):
+        sample = self._sample_zip_path()
+        if not sample.exists():
+            self.skipTest("PA zip sample file is not available in this workspace")
         return sample
 
     def test_radar_format_identifies_pa_sample(self):
@@ -51,6 +65,21 @@ class PAReaderRegressionTests(unittest.TestCase):
         np.testing.assert_array_equal(auto.scan_info["rays_per_sweep"].values, direct.scan_info["rays_per_sweep"].values)
         np.testing.assert_allclose(auto.fields[0]["dBZ"].values, direct.fields[0]["dBZ"].values, equal_nan=True)
 
+    def test_read_auto_accepts_single_file_pa_zip_sample(self):
+        from pycwr.io import read_PA, read_auto
+
+        sample = self._require_sample()
+        zip_sample = self._require_zip_sample()
+        zipped = read_auto(str(zip_sample))
+        direct = read_PA(str(sample))
+
+        self.assertEqual(int(zipped.nsweeps), int(direct.nsweeps))
+        self.assertEqual(int(zipped.nrays), int(direct.nrays))
+        np.testing.assert_array_equal(zipped.scan_info.fixed_angle.values, direct.scan_info.fixed_angle.values)
+        np.testing.assert_array_equal(zipped.scan_info["rays_per_sweep"].values, direct.scan_info["rays_per_sweep"].values)
+        np.testing.assert_allclose(zipped.fields[0]["dBT"].values, direct.fields[0]["dBT"].values, equal_nan=True)
+        np.testing.assert_allclose(zipped.fields[1]["dBZ"].values, direct.fields[1]["dBZ"].values, equal_nan=True)
+
     def test_pa_sample_internal_pyart_export_smoke(self):
         from pycwr.core.PyartRadar import Radar as InternalRadar
         from pycwr.io import read_PA
@@ -64,3 +93,40 @@ class PAReaderRegressionTests(unittest.TestCase):
         self.assertEqual(radar.ngates, 1472)
         self.assertIn("reflectivity", radar.fields)
         self.assertIn("velocity", radar.fields)
+
+    def test_za460_sparse_pa_moments_are_preserved_through_prd(self):
+        from pycwr.io import read_PA
+        from pycwr.io.PAFile import PABaseData
+
+        sample = self._require_sample()
+        base = PABaseData(str(sample))
+        prd = read_PA(str(sample))
+
+        def finite_count(dataset, field_name):
+            return int(np.isfinite(np.asarray(dataset[field_name].values, dtype=np.float64)).sum())
+
+        # This sample stores total power widely, but most derived moments are
+        # thresholded out by the source file itself. Ensure pycwr does not drop
+        # additional data after raw decode.
+        self.assertGreater(finite_count(prd.fields[0], "dBT"), 10_000)
+        for field_name in ["dBZ", "V", "W", "ZDR", "CC", "PhiDP", "KDP", "SNRH"]:
+            self.assertEqual(finite_count(prd.fields[0], field_name), 0)
+
+        self.assertGreater(finite_count(prd.fields[1], "dBZ"), 0)
+        self.assertGreater(finite_count(prd.fields[38], "dBZ"), 0)
+
+        base_counts = []
+        for sweep in (0, 1, 38):
+            start = int(base.sweep_start_ray_index[sweep])
+            end = int(base.sweep_end_ray_index[sweep])
+            sweep_counts = {}
+            for field_name in ["dBT", "dBZ", "V", "W", "ZDR", "CC", "PhiDP", "KDP", "SNRH"]:
+                total = 0
+                for iray in range(start, end + 1):
+                    total += int(np.isfinite(np.asarray(base.radial[iray]["fields"][field_name], dtype=np.float64)).sum())
+                sweep_counts[field_name] = total
+            base_counts.append(sweep_counts)
+
+        for sweep_index, expected_counts in zip((0, 1, 38), base_counts):
+            for field_name, expected in expected_counts.items():
+                self.assertEqual(finite_count(prd.fields[sweep_index], field_name), expected)

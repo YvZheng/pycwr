@@ -2,6 +2,7 @@ import bz2
 import io
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -81,6 +82,50 @@ class ReaderSecurityTests(unittest.TestCase):
             self.assertEqual(radar_format(str(sample)), "NEXRAD_LEVEL2")
             with self.assertRaisesRegex(TypeError, "NEXRAD Level II archive import is not implemented"):
                 read_auto(str(sample))
+
+    def test_prepare_for_read_wraps_single_member_zip_with_seek_support(self):
+        from pycwr.io.util import _prepare_for_read
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample = Path(tmpdir) / "Z_RADR_I_ZA460_20240808142000_O_DOR-XPD-CAP-FMT.BIN.zip"
+            with zipfile.ZipFile(sample, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr(
+                    "Z_RADR_I_ZA460_20240808142000_O_DOR-XPD-CAP-FMT.BIN",
+                    b"RSTM0000" + b"\x10\x00\x00\x00" + b"\x00" * 64,
+                )
+
+            fh = _prepare_for_read(str(sample))
+            try:
+                self.assertEqual(fh.read(12), b"RSTM0000" + b"\x10\x00\x00\x00")
+                fh.seek(0)
+                self.assertEqual(fh.read(4), b"RSTM")
+            finally:
+                fh.close()
+
+    def test_radar_format_identifies_pa_zip_archive(self):
+        from pycwr.io.util import radar_format
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample = Path(tmpdir) / "Z_RADR_I_ZA460_20240808142000_O_DOR-XPD-CAP-FMT.BIN.zip"
+            with zipfile.ZipFile(sample, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr(
+                    "Z_RADR_I_ZA460_20240808142000_O_DOR-XPD-CAP-FMT.BIN",
+                    b"RSTM0000" + b"\x10\x00\x00\x00" + b"\x00" * 64,
+                )
+
+            self.assertEqual(radar_format(str(sample)), "PA")
+
+    def test_radar_format_rejects_multi_member_zip_archive(self):
+        from pycwr.io.util import radar_format
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample = Path(tmpdir) / "bundle.zip"
+            with zipfile.ZipFile(sample, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("part1.bin", b"RSTM" + b"\x00" * 64)
+                archive.writestr("part2.bin", b"RSTM" + b"\x00" * 64)
+
+            with self.assertRaisesRegex(ValueError, "exactly one file member"):
+                radar_format(str(sample))
 
 
 class WebViewerSecurityTests(unittest.TestCase):

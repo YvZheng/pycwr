@@ -32,7 +32,7 @@ EXTRAS_REQUIRE = {
         "xradar>=0.7; python_version >= '3.10'",
     ],
 }
-DESCRIPTION = "pycwr 1.0.6: high-compatibility Chinese weather radar IO, geometry, QC, plotting, and compositing"
+DESCRIPTION = "pycwr 1.0.7: high-compatibility Chinese weather radar IO, geometry, QC, plotting, and compositing"
 LONG_DESCRIPTION = (ROOT / "README.md").read_text(encoding="utf-8")
 PLATFORMS = ["Linux", "Mac OS-X", "Windows"]
 CLASSIFIERS = [
@@ -95,7 +95,7 @@ EXT_MODULES, INCLUDE_DIRS = _build_extensions()
 
 setup(
     name=DISTNAME,
-    version="1.0.6",
+    version="1.0.7",
     author=AUTHOR,
     license=LICENSE,
     author_email=AUTHOR_EMAIL,

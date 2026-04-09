@@ -1,6 +1,6 @@
 # pycwr 接口参考
 
-这份文档面向 `pycwr 1.0.7` 的公开接口。
+这份文档面向 `pycwr 1.0.8` 的公开接口。
 它不是源码逐行索引，而是告诉你：
 
 - 应该从哪个模块进入
@@ -19,7 +19,7 @@
 | `pycwr.core` | 核心体扫对象、几何和导出辅助 | `PRD`, `radar.summary()`, `radar.get_sweep_field()` |
 | `pycwr.draw` | 绘图和快速出图 | `plot_ppi`, `plot_ppi_map`, `plot_rhi`, `plot_section`, `plot_vvp`, `plot_wind_profile` |
 | `pycwr.qc` | 双偏振质量控制 | `apply_dualpol_qc`, `run_dualpol_qc` |
-| `pycwr.retrieve` | 水凝物分类和风场反演 | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp` |
+| `pycwr.retrieve` | 水凝物分类和风场反演 | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp`, `retrieve_wind_volume_xy`, `retrieve_wind_volume_lonlat` |
 | `pycwr.interp` | 多雷达组网插值 | `run_radar_network_3d`, `radar_network_3d_to_netcdf` |
 | `pycwr.GraphicalInterface` | 本地 Web viewer | `create_app`, `launch` |
 
@@ -348,7 +348,11 @@ radar.get_vcs_data(...)
 radar.retrieve_vad(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 radar.retrieve_vvp(sweep, field_name=None, range_mode="aligned", **kwargs)
 radar.retrieve_vwp(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.retrieve_wind_volume_xy(XRange, YRange, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.retrieve_wind_volume_lonlat(XLon, YLat, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 radar.add_product_VWP(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.add_product_WIND_VOLUME_xy(XRange, YRange, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.add_product_WIND_VOLUME_lonlat(XLon, YLat, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 ```
 
 行为：
@@ -356,7 +360,11 @@ radar.add_product_VWP(sweeps=None, field_name=None, range_mode="aligned", **kwar
 - `retrieve_vad(...)`：返回环状风反演 `xarray.Dataset`
 - `retrieve_vvp(...)`：返回单层局地水平风反演结果
 - `retrieve_vwp(...)`：返回垂直风廓线 `xarray.Dataset`
+- `retrieve_wind_volume_xy(...)`：返回规则 `xy` 格点上的 `u/v` 三维水平风场
+- `retrieve_wind_volume_lonlat(...)`：返回规则经纬格点上的 `u/v` 三维水平风场
 - `add_product_VWP(...)`：把廓线写入 `radar.product`，变量名是 `VWP_*`
+- `add_product_WIND_VOLUME_xy(...)`：把 `xy` 三维水平风场写到 `radar.product`
+- `add_product_WIND_VOLUME_lonlat(...)`：把经纬网格三维水平风场写到 `radar.product`
 
 ### 导出与互操作
 
@@ -487,14 +495,15 @@ hcl_radar = radar.classify_hydrometeors(
 公开入口：
 
 ```python
-from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp
+from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp, retrieve_wind_volume_xy
 ```
 
-三条主算法：
+四条主算法：
 
 - `VAD`：一个或多个 sweep 的谐波拟合
 - `VVP`：单层 sweep 的局地最小二乘水平风反演
 - `VWP`：由多层 VAD 聚合的稳健垂直风廓线
+- `WIND_VOLUME`：由多个 sweep 的 VVP 结果重建到固定高度层后的规则格点三维水平风场
 
 典型用法：
 
@@ -502,6 +511,14 @@ from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp
 vad = radar.retrieve_vad(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4)
 vvp = radar.retrieve_vvp(0, max_range_km=20.0, az_num=91, bin_num=5)
 vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
+wind = retrieve_wind_volume_xy(
+    radar,
+    XRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    YRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    level_heights=np.array([500.0, 1000.0, 1500.0]),
+    sweeps=[0, 1, 2],
+    max_range_km=30.0,
+)
 ```
 
 返回值都是 `xarray.Dataset`，常见变量包括：
@@ -510,6 +527,7 @@ vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 - `v`
 - `wind_speed`
 - `wind_direction`
+- `source_sweep_count`
 - `fit_rmse`
 - 不同算法对应的覆盖率或样本数指标
 
@@ -523,6 +541,7 @@ vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 
 - Browning and Wexler (1968), VAD
 - Waldteufel and Corbin (1979), VVP
+- Holleman (2003, 2005), 业务风廓线质量控制和检验
 
 ## `pycwr.interp`
 

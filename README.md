@@ -5,7 +5,7 @@ It covers radar base-data reading, geometry, plotting, quality control,
 hydrometeor classification, single-radar wind retrieval, multi-radar
 compositing, and export.
 
-- Current release: `1.0.7`
+- Current release: `1.0.8`
 - [中文说明](README_CN.md)
 - [API reference](docs/api_reference.md)
 - [Radar network quickstart](docs/radar_network_quickstart_en.md)
@@ -13,9 +13,9 @@ compositing, and export.
 - [Test guide](test/README.md)
 - [Draw quickstart](docs/draw_quickstart.md)
 
-## Why 1.0.7 matters
+## Why 1.0.8 matters
 
-`1.0.7` continues the first stable release line intended to be usable for production-style
+`1.0.8` continues the first stable release line intended to be usable for production-style
 usage and GitHub distribution.
 This refresh keeps the PA reader behavior aligned while improving the
 maintainability of the PA decode path and preserving the plotting colormap
@@ -30,7 +30,7 @@ Highlights:
 - lighter default dependencies with plotting, QC, web viewer, and interop
   isolated into the optional full stack
 - stronger geometry and regression coverage
-- built-in single-radar wind retrieval workflows: `VAD`, `VVP`, and `VWP`
+- built-in single-radar wind retrieval workflows: `VAD`, `VVP`, `VWP`, and gridded horizontal wind volumes
 - improved multi-radar compositing and reference-style CR plotting
 - `read_auto` and `read_PA` now correctly recognize and build supported PA files
 - `plot_ppi`, `plot_ppi_map`, and the legacy `Graph` / `GraphMap` plotting paths
@@ -68,7 +68,7 @@ python -m pip install ".[full]"
 
 Notes:
 
-- `pycwr 1.0.7` requires Python `>=3.9`
+- `pycwr 1.0.8` requires Python `>=3.9`
 - `python -m pip install pycwr` is the recommended path for normal users
 - base install is enough for readers, `PRD`, geometry, interpolation, and
   NetCDF-style export
@@ -77,7 +77,7 @@ Notes:
 - upstream `arm_pyart` and `xradar` currently require Python `>=3.10`, so on
   Python `3.9` the full install still covers plotting, QC, and the web
   viewer, but not those two optional interop stacks
-- `pandas` is pinned to `<3` in `1.0.7` for release stability
+- `pandas` is pinned to `<3` in `1.0.8` for release stability
 - source install is still useful when you are developing locally or rebuilding
   the Cython extension
 
@@ -156,7 +156,7 @@ print(radar.product)
 | `pycwr.core` | Central volume object, geometry, export helpers | `PRD`, `radar.summary()`, `radar.get_sweep_field()` |
 | `pycwr.draw` | Plotting and quick-look figures | `plot_ppi`, `plot_ppi_map`, `plot_rhi`, `plot_section`, `plot_vvp`, `plot_wind_profile` |
 | `pycwr.qc` | Dual-pol QC | `apply_dualpol_qc`, `run_dualpol_qc` |
-| `pycwr.retrieve` | Hydrometeor and wind retrieval | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp` |
+| `pycwr.retrieve` | Hydrometeor and wind retrieval | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp`, `retrieve_wind_volume_xy`, `retrieve_wind_volume_lonlat` |
 | `pycwr.interp` | Multi-radar compositing | `run_radar_network_3d` |
 | `pycwr.GraphicalInterface` | Local web viewer | `create_app`, `launch` |
 
@@ -319,18 +319,26 @@ You can also classify directly from arrays with
 
 ### Wind retrieval
 
-`pycwr` ships three single-radar wind workflows:
+`pycwr` ships four single-radar wind workflows:
 
 - `retrieve_vad`: ring-wise harmonic fit on one or more sweeps
 - `retrieve_vvp`: local least-squares horizontal wind retrieval on one sweep
 - `retrieve_vwp`: vertical wind profile built from multiple VAD layers
+- `retrieve_wind_volume_xy` / `retrieve_wind_volume_lonlat`: fixed-height gridded horizontal wind volume built from multiple VVP sweeps
 
-Example:
+Quick example:
 
 ```python
 vad = radar.retrieve_vad(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4)
 vvp = radar.retrieve_vvp(0, max_range_km=20.0, az_num=91, bin_num=5)
 vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
+wind = radar.retrieve_wind_volume_xy(
+    XRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    YRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    level_heights=np.array([500.0, 1000.0, 1500.0]),
+    sweeps=[0, 1, 2],
+    max_range_km=30.0,
+)
 ```
 
 The stored profile product path is:
@@ -338,6 +346,180 @@ The stored profile product path is:
 ```python
 radar.add_product_VWP(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
 ```
+
+Store the gridded horizontal wind volume in `radar.product`:
+
+```python
+radar.add_product_WIND_VOLUME_xy(
+    XRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    YRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    level_heights=np.array([500.0, 1000.0, 1500.0]),
+    sweeps=[0, 1, 2],
+)
+```
+
+#### 3-D wind volume: what it is
+
+`retrieve_wind_volume_xy` and `retrieve_wind_volume_lonlat` return a single-radar
+fixed-height horizontal wind volume.
+
+Treat it as:
+
+- gridded `u/v` wind on multiple height levels
+- one wind profile for each horizontal grid point
+- a robust diagnostic product built from Doppler radial velocity
+
+Do not treat it as:
+
+- a full dynamic `u/v/w` retrieval
+- a dual-Doppler or multi-radar variational wind analysis
+- a substitute for vertical motion retrieval in convective dynamics studies
+
+#### 3-D wind volume: retrieval chain
+
+The operational logic is:
+
+1. For each requested sweep, `pycwr` selects the velocity field, preferring
+   corrected velocity when available.
+2. A local VVP is solved on each sweep with a moving azimuth-range window.
+3. Each sweep is summarized and, when `sweeps=None` or `sweeps="auto"`, the
+   strongest sweeps are selected automatically.
+4. The valid sweep-level VVP samples are interpolated horizontally onto the
+   target grid with inverse-distance weighting.
+5. Fixed-height wind values are reconstructed from the selected sweeps with
+   local vertical aggregation or short-gap linear interpolation.
+6. Diagnostics such as fit residual, support counts, and heuristic quality
+   score are stored with the result.
+
+This makes the product more stable on real radar volumes with missing velocity,
+weak echo regions, or sweep-to-sweep range differences.
+
+#### 3-D wind volume: recommended API
+
+Use:
+
+- `radar.retrieve_wind_volume_xy(...)` for Cartesian `x/y/z`
+- `radar.retrieve_wind_volume_lonlat(...)` for regular lon/lat grids
+- `radar.add_product_WIND_VOLUME_xy(...)` or
+  `radar.add_product_WIND_VOLUME_lonlat(...)` to store the result in
+  `radar.product`
+
+Recommended defaults for production-style usage:
+
+- use `sweeps=None` to enable auto sweep selection
+- use `sweeps="all"` only when you explicitly want every available sweep
+- set a realistic `max_range_km` instead of using the whole radar volume
+- increase `workers` on multi-core machines when the target grid is not tiny
+
+Example with explicit operational settings:
+
+```python
+wind = radar.retrieve_wind_volume_xy(
+    XRange=np.arange(-60_000.0, 60_001.0, 5_000.0),
+    YRange=np.arange(-60_000.0, 60_001.0, 5_000.0),
+    level_heights=np.arange(500.0, 3_500.0, 500.0),
+    sweeps=None,
+    max_range_km=60.0,
+    az_num=31,
+    bin_num=5,
+    azimuth_step=12,
+    range_step=6,
+    horizontal_radius_m=8_000.0,
+    max_horizontal_radius_m=14_000.0,
+    horizontal_min_neighbors=3,
+    vertical_tolerance_m=400.0,
+    max_vertical_gap_m=1_200.0,
+    workers=4,
+)
+```
+
+#### 3-D wind volume: key arguments
+
+- `XRange`, `YRange`, `level_heights`: target output grid in meters
+- `XLon`, `YLat`: target output grid in degrees for lon/lat mode
+- `sweeps`: `None` or `"auto"` enables auto selection; `"all"` keeps all
+  sweeps; a list such as `[0, 1, 2]` forces explicit sweeps
+- `max_range_km`: strongest first-order control for retrieval stability
+- `az_num`, `bin_num`: local VVP window size
+- `azimuth_step`, `range_step`: output thinning of the local sweep VVP
+- `horizontal_radius_m`: horizontal radius used when mapping sweep VVP samples
+  to the target grid
+- `max_horizontal_radius_m`: optional expanded search radius when local support
+  is sparse
+- `vertical_tolerance_m`: local height matching tolerance
+- `max_vertical_gap_m`: maximum allowed vertical interpolation gap
+- `workers`: process-based parallelism for sweep-level and grid-level work
+
+Practical tuning rules:
+
+- use a wider `az_num` when velocity is sparse or noisy
+- keep `bin_num` modest; too small is noisy and too large oversmooths
+- do not push `max_range_km` farther than the range where velocity remains
+  reasonably continuous
+- on sparse cases, it is better to slightly increase search radius than to
+  force too many poor sweeps
+
+#### 3-D wind volume: output fields and metadata
+
+The returned dataset includes:
+
+- `u`, `v`: eastward and northward wind components
+- `wind_speed`, `wind_direction`
+- `fit_rmse`: local retrieval residual
+- `valid_count`: effective sample count
+- `source_sweep_count`: number of sweeps contributing to the voxel
+- `neighbor_count`: horizontal support count
+- `effective_vertical_support`: number of vertically supporting sweep samples
+- `sweep_spread_m`: vertical spread of supporting sweeps
+- `quality_score`: heuristic score from `0` to `100`
+- `quality_flag`: `0/1/2/3` for invalid, low-confidence, usable, and
+  high-confidence voxels
+
+Important attrs include:
+
+- `selection_mode`
+- `requested_sweeps`
+- `selected_sweeps`
+- `rejected_sweeps`
+- `rejected_sweep_reasons`
+- `workers_used`
+- `parallel_mode`
+
+These attrs are often more informative than the plot itself when diagnosing
+why a real case contains gaps.
+
+#### 3-D wind volume: quality interpretation
+
+If a real case has large missing areas, that does not automatically mean the
+algorithm failed.
+
+Common causes are:
+
+- no precipitation or very weak echo, so there is no valid Doppler velocity
+- poor azimuth coverage in the local window
+- sweep geometry that does not support the requested height well
+- too aggressive a range limit or too small a horizontal search radius
+
+When checking a case, inspect:
+
+- `quality_score` and `quality_flag`
+- `fit_rmse`
+- `valid_count`
+- `source_sweep_count`
+- `selected_sweeps` and `rejected_sweep_reasons`
+
+#### 3-D wind volume: performance and parallelism
+
+The `workers` argument uses process-based parallelism, not Python threads.
+
+In practice:
+
+- small grids may see little benefit
+- moderate and large grids usually benefit from `workers=2` or `workers=4`
+- very large worker counts may stop scaling once process overhead dominates
+
+For reproducible validation, compare a serial run and a parallel run on the
+same case and confirm that `u`, `v`, and `quality_flag` match.
 
 ### Export and interop
 
@@ -388,12 +570,12 @@ The viewer is local-only by design and requires a token for API access.
 
 ## Release notes for users
 
-For `1.0.7`, the most important user-visible behavior rules are:
+For `1.0.8`, the most important user-visible behavior rules are:
 
 - radar reading returns one stable `PRD` object across supported formats
 - low-level reflectivity can now be queried explicitly in aligned or native mode
 - QC and hydrometeor classification can write corrected fields back into `PRD`
-- single-radar wind retrieval is now part of the public API
+- single-radar wind retrieval is now part of the public API, including gridded horizontal wind volumes
 - multi-radar compositing has a documented high-level workflow
 - packaging is split into base and full dependency sets for lower installation
   friction

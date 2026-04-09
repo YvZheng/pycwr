@@ -23,6 +23,10 @@ class WindRetrievalTests(unittest.TestCase):
             / "Z_RADR_I_Z9046_20260317065928_O_DOR_SAD_CAP_FMT.bin.bz2"
         )
 
+    @classmethod
+    def _sample_z9220(cls):
+        return cls._repo_root() / "Z_RADR_I_Z9220_20230710160006_O_DOR_SA_CAP_FMT.bin.bz2"
+
     @staticmethod
     def _build_uniform_wind_prd(u=8.0, v=-4.0, include_vc=False):
         from pycwr.core.NRadar import PRD
@@ -87,6 +91,15 @@ class WindRetrievalTests(unittest.TestCase):
         sparse[::4, :] = np.nan
         sparse[10:15, 5:10] = sparse[10:15, 5:10] + 15.0
         prd.fields[0]["V"].values[:] = sparse
+        prd._invalidate_cached_views()
+        return prd
+
+    @staticmethod
+    def _degrade_second_sweep(prd):
+        sparse = prd.fields[1]["V"].values.copy()
+        sparse[:] = np.nan
+        sparse[:12, :6] = 0.0
+        prd.fields[1]["V"].values[:] = sparse
         prd._invalidate_cached_views()
         return prd
 
@@ -161,8 +174,182 @@ class WindRetrievalTests(unittest.TestCase):
         self.assertIn("VWP_speed", prd.product)
         self.assertIn("z_vwp", prd.product.coords)
 
+    def test_retrieve_wind_volume_xy_recovers_uniform_flow(self):
+        prd = self._build_uniform_wind_prd()
+        x_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        y_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        level_heights = np.array([110.0, 140.0, 170.0], dtype=np.float64)
+
+        volume = prd.retrieve_wind_volume_xy(
+            XRange=x_range,
+            YRange=y_range,
+            level_heights=level_heights,
+            sweeps=[0, 1],
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+        )
+
+        valid = np.isfinite(volume["u"].values)
+        self.assertGreater(valid.sum(), 0)
+        self.assertAlmostEqual(float(np.nanmean(volume["u"].values)), 8.0, places=3)
+        self.assertAlmostEqual(float(np.nanmean(volume["v"].values)), -4.0, places=3)
+        self.assertEqual(volume.attrs["method"], "single_radar_horizontal_wind_volume")
+        self.assertEqual(volume.attrs["grid_definition"], "xy")
+        self.assertIn("quality_score", volume)
+        self.assertIn("quality_flag", volume)
+        self.assertIn("selected_sweeps", volume.attrs)
+
+    def test_retrieve_wind_volume_lonlat_matches_xy(self):
+        prd = self._build_uniform_wind_prd()
+        x_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        y_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        level_heights = np.array([110.0, 140.0, 170.0], dtype=np.float64)
+        proj = prd._get_local_projection()
+        grid_x, grid_y = np.meshgrid(x_range, y_range, indexing="ij")
+        lon, lat = proj(grid_x, grid_y, inverse=True)
+
+        volume_xy = prd.retrieve_wind_volume_xy(
+            XRange=x_range,
+            YRange=y_range,
+            level_heights=level_heights,
+            sweeps=[0, 1],
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+        )
+        volume_geo = prd.retrieve_wind_volume_lonlat(
+            XLon=lon[:, 0],
+            YLat=lat[0, :],
+            level_heights=level_heights,
+            sweeps=[0, 1],
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(volume_geo["u"].values, dtype=np.float64),
+            np.asarray(volume_xy["u"].values, dtype=np.float64),
+            atol=1.0e-4,
+            rtol=0.0,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            np.asarray(volume_geo["v"].values, dtype=np.float64),
+            np.asarray(volume_xy["v"].values, dtype=np.float64),
+            atol=1.0e-4,
+            rtol=0.0,
+            equal_nan=True,
+        )
+        self.assertEqual(volume_geo.attrs["grid_definition"], "lonlat")
+
+    def test_retrieve_wind_volume_auto_selection_skips_bad_sweep(self):
+        prd = self._degrade_second_sweep(self._build_uniform_wind_prd())
+        x_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        y_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        level_heights = np.array([110.0, 140.0, 170.0], dtype=np.float64)
+
+        volume = prd.retrieve_wind_volume_xy(
+            XRange=x_range,
+            YRange=y_range,
+            level_heights=level_heights,
+            sweeps=None,
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+        )
+
+        self.assertEqual(volume.attrs["selection_mode"], "auto")
+        self.assertEqual(json.loads(volume.attrs["selected_sweeps"]), [0])
+        self.assertIn("1", json.loads(volume.attrs["rejected_sweep_reasons"]))
+
+    def test_retrieve_wind_volume_workers_match_serial(self):
+        prd = self._build_uniform_wind_prd()
+        x_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        y_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        level_heights = np.array([110.0, 140.0, 170.0], dtype=np.float64)
+
+        serial = prd.retrieve_wind_volume_xy(
+            XRange=x_range,
+            YRange=y_range,
+            level_heights=level_heights,
+            sweeps="all",
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+            workers=1,
+        )
+        parallel = prd.retrieve_wind_volume_xy(
+            XRange=x_range,
+            YRange=y_range,
+            level_heights=level_heights,
+            sweeps="all",
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+            workers=2,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(parallel["u"].values, dtype=np.float64),
+            np.asarray(serial["u"].values, dtype=np.float64),
+            atol=1.0e-6,
+            rtol=0.0,
+            equal_nan=True,
+        )
+        np.testing.assert_array_equal(
+            np.asarray(parallel["quality_flag"].values, dtype=np.uint8),
+            np.asarray(serial["quality_flag"].values, dtype=np.uint8),
+        )
+        self.assertGreaterEqual(int(parallel.attrs["workers_used"]), 1)
+
+    def test_add_product_wind_volume_xy_writes_volume_variables(self):
+        prd = self._build_uniform_wind_prd()
+        x_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        y_range = np.array([-1000.0, 0.0, 1000.0], dtype=np.float64)
+        level_heights = np.array([110.0, 140.0, 170.0], dtype=np.float64)
+
+        volume = prd.add_product_WIND_VOLUME_xy(
+            XRange=x_range,
+            YRange=y_range,
+            level_heights=level_heights,
+            sweeps=[0, 1],
+            field_name="V",
+            az_num=9,
+            bin_num=5,
+            horizontal_radius_m=1500.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=40.0,
+        )
+
+        self.assertEqual(volume.attrs["grid_definition"], "xy")
+        self.assertIn("WIND_VOLUME_u", prd.product)
+        self.assertIn("WIND_VOLUME_speed", prd.product)
+        self.assertIn("WIND_VOLUME_quality_score", prd.product)
+        self.assertIn("WIND_VOLUME_quality_flag", prd.product)
+        self.assertIn("z_wind", prd.product.coords)
+
     def test_backward_compatible_helpers_still_work(self):
-        from pycwr.retrieve import VAD, VVP
+        from pycwr.retrieve import VAD, VVP, retrieve_wind_volume_xy
 
         azimuth = np.linspace(0.0, 360.0, 72, endpoint=False)
         elevation = 1.0
@@ -184,6 +371,7 @@ class WindRetrievalTests(unittest.TestCase):
         self.assertAlmostEqual(v, 3.0, places=6)
         self.assertEqual(field_u.shape, velocity.shape)
         self.assertEqual(field_v.shape, velocity.shape)
+        self.assertTrue(callable(retrieve_wind_volume_xy))
 
     def test_easy_plot_wind_products_smoke(self):
         from pycwr.draw import plot_vvp, plot_wind_profile
@@ -215,6 +403,36 @@ class WindRetrievalTests(unittest.TestCase):
         self.assertGreater(int(np.isfinite(vad["u"].values).sum()), 0)
         self.assertGreater(int(np.isfinite(vvp["u"].values).sum()), 0)
         self.assertGreater(int(np.isfinite(profile["u"].values).sum()), 0)
+
+    def test_real_sample_wind_volume_smoke_on_z9220(self):
+        from pycwr.io import read_auto
+
+        sample = self._sample_z9220()
+        if not sample.exists():
+            self.skipTest("sample radar file is not available in this workspace")
+
+        prd = read_auto(str(sample))
+        volume = prd.retrieve_wind_volume_xy(
+            XRange=np.array([-10_000.0, 0.0, 10_000.0], dtype=np.float64),
+            YRange=np.array([-10_000.0, 0.0, 10_000.0], dtype=np.float64),
+            level_heights=np.array([500.0, 1000.0, 1500.0], dtype=np.float64),
+            sweeps=None,
+            max_range_km=30.0,
+            az_num=31,
+            bin_num=5,
+            azimuth_step=24,
+            range_step=8,
+            horizontal_radius_m=8_000.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=400.0,
+        )
+
+        self.assertEqual(volume.attrs["method"], "single_radar_horizontal_wind_volume")
+        self.assertEqual(volume.attrs["grid_definition"], "xy")
+        self.assertGreater(int(np.isfinite(volume["u"].values).sum()), 0)
+        self.assertGreater(int(np.nanmax(volume["source_sweep_count"].values)), 0)
+        self.assertIn("quality_score", volume)
+        self.assertEqual(volume.attrs["selection_mode"], "auto")
 
 
 if __name__ == "__main__":

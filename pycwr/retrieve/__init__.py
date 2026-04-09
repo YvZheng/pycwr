@@ -9,6 +9,8 @@ __all__ = [
     "retrieve_vad",
     "retrieve_vvp",
     "retrieve_vwp",
+    "retrieve_wind_volume_xy",
+    "retrieve_wind_volume_lonlat",
     "select_velocity_field",
     "fhc_HCL",
     "fhc_hcl",
@@ -26,7 +28,19 @@ __all__ = [
 
 
 def __getattr__(name):
-    if name in {"VAD", "VVP", "vad", "vvp", "retrieve_vad", "retrieve_vvp", "retrieve_vwp", "select_velocity_field", "WIND_REFERENCE_NOTES"}:
+    if name in {
+        "VAD",
+        "VVP",
+        "vad",
+        "vvp",
+        "retrieve_vad",
+        "retrieve_vvp",
+        "retrieve_vwp",
+        "retrieve_wind_volume_xy",
+        "retrieve_wind_volume_lonlat",
+        "select_velocity_field",
+        "WIND_REFERENCE_NOTES",
+    }:
         module = import_module(".WindField", __name__)
         value = getattr(module, name)
         globals()[name] = value

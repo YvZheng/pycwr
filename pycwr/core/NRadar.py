@@ -396,6 +396,40 @@ class PRD(object):
             **kwargs
         )
 
+    def retrieve_wind_volume_xy(self, XRange, YRange, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs):
+        """
+        Retrieve a gridded 3-D horizontal wind volume on a Cartesian grid.
+        """
+        from ..retrieve.WindField import retrieve_wind_volume_xy
+
+        return retrieve_wind_volume_xy(
+            self,
+            XRange=XRange,
+            YRange=YRange,
+            level_heights=level_heights,
+            sweeps=sweeps,
+            field_name=field_name,
+            range_mode=range_mode,
+            **kwargs
+        )
+
+    def retrieve_wind_volume_lonlat(self, XLon, YLat, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs):
+        """
+        Retrieve a gridded 3-D horizontal wind volume on a lon/lat grid.
+        """
+        from ..retrieve.WindField import retrieve_wind_volume_lonlat
+
+        return retrieve_wind_volume_lonlat(
+            self,
+            XLon=XLon,
+            YLat=YLat,
+            level_heights=level_heights,
+            sweeps=sweeps,
+            field_name=field_name,
+            range_mode=range_mode,
+            **kwargs
+        )
+
     def classify_hydrometeors(self, sweeps=None, inplace=False, **kwargs):
         """
         Add hydrometeor classification fields to selected sweeps.
@@ -1574,6 +1608,140 @@ class PRD(object):
             sort_keys=True,
         )
         return profile
+
+    def add_product_WIND_VOLUME_xy(
+        self,
+        XRange,
+        YRange,
+        level_heights,
+        sweeps=None,
+        field_name=None,
+        range_mode="aligned",
+        **kwargs
+    ):
+        """
+        Compute and store a gridded 3-D horizontal wind volume on a Cartesian grid.
+        """
+        volume = self.retrieve_wind_volume_xy(
+            XRange=XRange,
+            YRange=YRange,
+            level_heights=level_heights,
+            sweeps=sweeps,
+            field_name=field_name,
+            range_mode=range_mode,
+            **kwargs
+        )
+        self.product.coords["z_wind"] = np.asarray(volume["z_wind"].values, dtype=np.float64)
+        self.product.coords["x_wind"] = np.asarray(volume["x_wind"].values, dtype=np.float64)
+        self.product.coords["y_wind"] = np.asarray(volume["y_wind"].values, dtype=np.float64)
+        variable_map = {
+            self._product_name("WIND_VOLUME_u", range_mode): "u",
+            self._product_name("WIND_VOLUME_v", range_mode): "v",
+            self._product_name("WIND_VOLUME_speed", range_mode): "wind_speed",
+            self._product_name("WIND_VOLUME_direction", range_mode): "wind_direction",
+            self._product_name("WIND_VOLUME_fit_rmse", range_mode): "fit_rmse",
+            self._product_name("WIND_VOLUME_valid_count", range_mode): "valid_count",
+            self._product_name("WIND_VOLUME_source_sweep_count", range_mode): "source_sweep_count",
+            self._product_name("WIND_VOLUME_neighbor_count", range_mode): "neighbor_count",
+            self._product_name("WIND_VOLUME_effective_vertical_support", range_mode): "effective_vertical_support",
+            self._product_name("WIND_VOLUME_sweep_spread_m", range_mode): "sweep_spread_m",
+            self._product_name("WIND_VOLUME_quality_score", range_mode): "quality_score",
+            self._product_name("WIND_VOLUME_quality_flag", range_mode): "quality_flag",
+        }
+        for target_name, source_name in variable_map.items():
+            self.product[target_name] = (
+                ("z_wind", "x_wind", "y_wind"),
+                np.asarray(volume[source_name].values),
+            )
+            self.product[target_name].attrs = dict(volume[source_name].attrs)
+            self.product[target_name].attrs["source_volume"] = "WIND_VOLUME"
+            self.product[target_name].attrs["references"] = volume.attrs.get("references", "[]")
+        self.product.coords["z_wind"].attrs = dict(volume["z_wind"].attrs)
+        self.product.coords["x_wind"].attrs = dict(volume["x_wind"].attrs)
+        self.product.coords["y_wind"].attrs = dict(volume["y_wind"].attrs)
+        self.product.attrs["WIND_VOLUME_config"] = json.dumps(
+            {
+                "method": volume.attrs.get("method", "single_radar_horizontal_wind_volume"),
+                "source_method": volume.attrs.get("source_method", "VVP"),
+                "range_mode": range_mode,
+                "grid_definition": "xy",
+                "selection_mode": volume.attrs.get("selection_mode", "auto"),
+                "selected_sweeps": volume.attrs.get("selected_sweeps", "[]"),
+                "workers_used": volume.attrs.get("workers_used", 1),
+                "parallel_mode": volume.attrs.get("parallel_mode", "serial"),
+                "velocity_field_used_by_sweep": volume.attrs.get("velocity_field_used_by_sweep", "{}"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return volume
+
+    def add_product_WIND_VOLUME_lonlat(
+        self,
+        XLon,
+        YLat,
+        level_heights,
+        sweeps=None,
+        field_name=None,
+        range_mode="aligned",
+        **kwargs
+    ):
+        """
+        Compute and store a gridded 3-D horizontal wind volume on a lon/lat grid.
+        """
+        volume = self.retrieve_wind_volume_lonlat(
+            XLon=XLon,
+            YLat=YLat,
+            level_heights=level_heights,
+            sweeps=sweeps,
+            field_name=field_name,
+            range_mode=range_mode,
+            **kwargs
+        )
+        self.product.coords["z_wind_geo"] = np.asarray(volume["z_wind_geo"].values, dtype=np.float64)
+        self.product.coords["lon_wind"] = np.asarray(volume["lon_wind"].values, dtype=np.float64)
+        self.product.coords["lat_wind"] = np.asarray(volume["lat_wind"].values, dtype=np.float64)
+        variable_map = {
+            self._product_name("WIND_VOLUME_geo_u", range_mode): "u",
+            self._product_name("WIND_VOLUME_geo_v", range_mode): "v",
+            self._product_name("WIND_VOLUME_geo_speed", range_mode): "wind_speed",
+            self._product_name("WIND_VOLUME_geo_direction", range_mode): "wind_direction",
+            self._product_name("WIND_VOLUME_geo_fit_rmse", range_mode): "fit_rmse",
+            self._product_name("WIND_VOLUME_geo_valid_count", range_mode): "valid_count",
+            self._product_name("WIND_VOLUME_geo_source_sweep_count", range_mode): "source_sweep_count",
+            self._product_name("WIND_VOLUME_geo_neighbor_count", range_mode): "neighbor_count",
+            self._product_name("WIND_VOLUME_geo_effective_vertical_support", range_mode): "effective_vertical_support",
+            self._product_name("WIND_VOLUME_geo_sweep_spread_m", range_mode): "sweep_spread_m",
+            self._product_name("WIND_VOLUME_geo_quality_score", range_mode): "quality_score",
+            self._product_name("WIND_VOLUME_geo_quality_flag", range_mode): "quality_flag",
+        }
+        for target_name, source_name in variable_map.items():
+            self.product[target_name] = (
+                ("z_wind_geo", "lon_wind", "lat_wind"),
+                np.asarray(volume[source_name].values),
+            )
+            self.product[target_name].attrs = dict(volume[source_name].attrs)
+            self.product[target_name].attrs["source_volume"] = "WIND_VOLUME_geo"
+            self.product[target_name].attrs["references"] = volume.attrs.get("references", "[]")
+        self.product.coords["z_wind_geo"].attrs = dict(volume["z_wind_geo"].attrs)
+        self.product.coords["lon_wind"].attrs = dict(volume["lon_wind"].attrs)
+        self.product.coords["lat_wind"].attrs = dict(volume["lat_wind"].attrs)
+        self.product.attrs["WIND_VOLUME_geo_config"] = json.dumps(
+            {
+                "method": volume.attrs.get("method", "single_radar_horizontal_wind_volume"),
+                "source_method": volume.attrs.get("source_method", "VVP"),
+                "range_mode": range_mode,
+                "grid_definition": "lonlat",
+                "selection_mode": volume.attrs.get("selection_mode", "auto"),
+                "selected_sweeps": volume.attrs.get("selected_sweeps", "[]"),
+                "workers_used": volume.attrs.get("workers_used", 1),
+                "parallel_mode": volume.attrs.get("parallel_mode", "serial"),
+                "velocity_field_used_by_sweep": volume.attrs.get("velocity_field_used_by_sweep", "{}"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return volume
 
     def add_product_CR_lonlat(self, XLon, YLat, range_mode=None):
         """

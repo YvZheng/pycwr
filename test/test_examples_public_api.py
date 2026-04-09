@@ -431,7 +431,7 @@ finally:
 
     def test_single_radar_wind_retrieval_example(self):
         from pycwr.io import read_auto
-        from pycwr.retrieve import retrieve_vad, retrieve_vvp
+        from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_wind_volume_xy
 
         sample = self._sample_z9046()
         if not sample.exists():
@@ -442,16 +442,50 @@ finally:
         vvp = retrieve_vvp(prd, sweep=0, max_range_km=20.0, az_num=91, bin_num=5, azimuth_step=12, range_step=4)
         profile = prd.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4, height_step=500.0)
         stored = prd.add_product_VWP(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4, height_step=500.0)
+        wind = retrieve_wind_volume_xy(
+            prd,
+            XRange=np.array([0.0], dtype=np.float64),
+            YRange=np.array([0.0], dtype=np.float64),
+            level_heights=np.array([500.0, 1000.0], dtype=np.float64),
+            max_range_km=20.0,
+            az_num=31,
+            bin_num=5,
+            azimuth_step=24,
+            range_step=8,
+            horizontal_radius_m=8_000.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=400.0,
+        )
+        stored_wind = prd.add_product_WIND_VOLUME_xy(
+            XRange=np.array([0.0], dtype=np.float64),
+            YRange=np.array([0.0], dtype=np.float64),
+            level_heights=np.array([500.0, 1000.0], dtype=np.float64),
+            max_range_km=20.0,
+            az_num=31,
+            bin_num=5,
+            azimuth_step=24,
+            range_step=8,
+            horizontal_radius_m=8_000.0,
+            horizontal_min_neighbors=3,
+            vertical_tolerance_m=400.0,
+        )
 
         self.assertEqual(vad.attrs["method"], "VAD")
         self.assertEqual(vvp.attrs["method"], "VVP")
         self.assertEqual(profile.attrs["method"], "VWP")
         self.assertEqual(stored.attrs["method"], "VWP")
+        self.assertEqual(wind.attrs["method"], "single_radar_horizontal_wind_volume")
+        self.assertEqual(stored_wind.attrs["method"], "single_radar_horizontal_wind_volume")
+        self.assertEqual(wind.attrs["selection_mode"], "auto")
         self.assertGreater(int(np.isfinite(vad["u"].values).sum()), 0)
         self.assertGreater(int(np.isfinite(vvp["u"].values).sum()), 0)
         self.assertGreater(int(np.isfinite(profile["u"].values).sum()), 0)
+        self.assertGreater(int(np.isfinite(wind["u"].values).sum()), 0)
         self.assertIn("VWP_u", prd.product)
         self.assertIn("z_vwp", prd.product.coords)
+        self.assertIn("WIND_VOLUME_u", prd.product)
+        self.assertIn("WIND_VOLUME_quality_flag", prd.product)
+        self.assertIn("z_wind", prd.product.coords)
 
     def test_web_viewer_metadata_on_real_sample(self):
         try:

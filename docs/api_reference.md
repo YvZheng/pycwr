@@ -1,7 +1,7 @@
 # pycwr API Reference
 
 This document is a practical reference for the public APIs most users need in
-`pycwr 1.0.7`. It does not try to mirror every internal helper. The focus is:
+`pycwr 1.0.8`. It does not try to mirror every internal helper. The focus is:
 
 - where to enter the package
 - which object each API returns
@@ -18,7 +18,7 @@ For runnable examples grouped by feature, see [../test/README.md](../test/README
 | `pycwr.core` | Central volume object, geometry, export helpers | `PRD`, `radar.summary()`, `radar.get_sweep_field()` |
 | `pycwr.draw` | Plotting and quick-look figures | `plot_ppi`, `plot_ppi_map`, `plot_rhi`, `plot_section`, `plot_vvp`, `plot_wind_profile` |
 | `pycwr.qc` | Dual-pol quality control | `apply_dualpol_qc`, `run_dualpol_qc` |
-| `pycwr.retrieve` | Hydrometeor and wind retrieval | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp` |
+| `pycwr.retrieve` | Hydrometeor and wind retrieval | `classify_hydrometeors`, `retrieve_vad`, `retrieve_vvp`, `retrieve_vwp`, `retrieve_wind_volume_xy`, `retrieve_wind_volume_lonlat` |
 | `pycwr.interp` | Multi-radar compositing | `run_radar_network_3d`, `radar_network_3d_to_netcdf` |
 | `pycwr.GraphicalInterface` | Local web viewer | `create_app`, `launch` |
 
@@ -351,7 +351,11 @@ Use these for vertical sections, lon/lat sections, and RHI-style extraction.
 radar.retrieve_vad(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 radar.retrieve_vvp(sweep, field_name=None, range_mode="aligned", **kwargs)
 radar.retrieve_vwp(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.retrieve_wind_volume_xy(XRange, YRange, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.retrieve_wind_volume_lonlat(XLon, YLat, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 radar.add_product_VWP(sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.add_product_WIND_VOLUME_xy(XRange, YRange, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
+radar.add_product_WIND_VOLUME_lonlat(XLon, YLat, level_heights, sweeps=None, field_name=None, range_mode="aligned", **kwargs)
 ```
 
 Behavior:
@@ -359,7 +363,11 @@ Behavior:
 - `retrieve_vad(...)`: returns ring-wise `xarray.Dataset` results
 - `retrieve_vvp(...)`: returns local wind analysis on one sweep
 - `retrieve_vwp(...)`: returns a vertical wind profile `xarray.Dataset`
+- `retrieve_wind_volume_xy(...)`: returns a gridded Cartesian `u/v` wind volume
+- `retrieve_wind_volume_lonlat(...)`: returns a gridded lon/lat `u/v` wind volume
 - `add_product_VWP(...)`: stores the profile in `radar.product` as `VWP_*`
+- `add_product_WIND_VOLUME_xy(...)`: stores the Cartesian wind volume in `radar.product`
+- `add_product_WIND_VOLUME_lonlat(...)`: stores the lon/lat wind volume in `radar.product`
 
 ### Export and interop
 
@@ -490,7 +498,7 @@ Use cases:
 Public helpers:
 
 ```python
-from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp
+from pycwr.retrieve import retrieve_vad, retrieve_vvp, retrieve_vwp, retrieve_wind_volume_xy
 ```
 
 The main algorithms are:
@@ -498,6 +506,7 @@ The main algorithms are:
 - `VAD`: harmonic fit on one or more sweeps
 - `VVP`: local least-squares horizontal wind retrieval on one sweep
 - `VWP`: robust vertical profile built from multiple VAD layers
+- `WIND_VOLUME`: fixed-height gridded horizontal wind volume built from multiple VVP sweeps
 
 Typical usage:
 
@@ -505,6 +514,14 @@ Typical usage:
 vad = radar.retrieve_vad(sweeps=[0, 1, 2], max_range_km=40.0, gate_step=4)
 vvp = radar.retrieve_vvp(0, max_range_km=20.0, az_num=91, bin_num=5)
 vwp = radar.retrieve_vwp(sweeps=[0, 1, 2], max_range_km=40.0, height_step=500.0)
+wind = retrieve_wind_volume_xy(
+    radar,
+    XRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    YRange=np.arange(-20_000.0, 20_001.0, 10_000.0),
+    level_heights=np.array([500.0, 1000.0, 1500.0]),
+    sweeps=[0, 1, 2],
+    max_range_km=30.0,
+)
 ```
 
 Outputs are `xarray.Dataset` objects containing variables such as:
@@ -513,6 +530,7 @@ Outputs are `xarray.Dataset` objects containing variables such as:
 - `v`
 - `wind_speed`
 - `wind_direction`
+- `source_sweep_count`
 - `fit_rmse`
 - coverage or sample-count metrics depending on the algorithm
 
@@ -526,6 +544,7 @@ Method references included in the module:
 
 - Browning and Wexler (1968), VAD
 - Waldteufel and Corbin (1979), VVP
+- Holleman (2003, 2005), operational radar wind-profile quality control and verification
 
 ## `pycwr.interp`
 

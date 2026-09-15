@@ -1,0 +1,107 @@
+# Install this workflow at .github/workflows/classroom-wheels.yml.
+# Keep demos/distribution/*.py and demos/requirements-classroom.txt at their paths.
+# Build-only: no PyPI upload, token, or remote publication is configured here.
+name: pycwr-1.0.8-classroom-wheels
+
+on:
+  push:
+    branches: ["codex/classroom-wheels-20260915"]
+    paths:
+      - ".github/workflows/classroom-wheels.yml"
+      - "demos/distribution/*.py"
+      - "demos/requirements-classroom.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Python 3.11 / ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-x64
+            os: windows-2022
+            host_arch: x64
+            build: cp311-win_amd64
+            arch: AMD64
+          - target: macos-arm64
+            os: macos-14
+            host_arch: arm64
+            build: cp311-macosx_arm64
+            arch: arm64
+          - target: macos-x64
+            os: macos-15-intel
+            host_arch: x64
+            build: cp311-macosx_x86_64
+            arch: x86_64
+          - target: linux-x64
+            os: ubuntu-22.04
+            host_arch: x64
+            build: cp311-manylinux_x86_64
+            arch: x86_64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          architecture: ${{ matrix.host_arch }}
+      - name: Install pinned build orchestrator
+        run: python -m pip install cibuildwheel==3.2.1 twine==6.2.0
+      - name: Fetch and verify the immutable published source
+        run: python demos/distribution/fetch_release_sdist.py --dest release-source --extract
+      - name: Build a binary wheel and test it outside the source tree
+        env:
+          CIBW_BUILD: ${{ matrix.build }}
+          CIBW_ARCHS: ${{ matrix.arch }}
+          CIBW_BUILD_FRONTEND: "pip; args: --no-build-isolation"
+          CIBW_BEFORE_BUILD: python -m pip install numpy==2.2.6 Cython==3.0.12 setuptools==76.1.0 wheel==0.44.0
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11.0
+          CIBW_TEST_REQUIRES: >-
+            numpy==2.2.6 scipy==1.15.2 matplotlib==3.10.3 xarray==2025.4.0
+            netCDF4==1.7.1.post2 pandas==2.2.3 pyproj==3.7.1 easydict==1.13
+          CIBW_TEST_COMMAND: python "{project}/demos/distribution/smoke_wheel.py"
+        run: python -m cibuildwheel release-source/pycwr-1.0.8 --output-dir wheelhouse
+      - name: Check distribution metadata
+        run: python -m twine check wheelhouse/*.whl
+      - name: Download the complete classroom dependency bundle
+        run: >-
+          python -m pip download --only-binary=:all: --find-links wheelhouse
+          -r demos/requirements-classroom.txt --dest classroom-wheelhouse
+      - name: Prove the bundle installs without network or a compiler
+        run: >-
+          python demos/distribution/prepare_classroom_bundle.py
+          --wheelhouse classroom-wheelhouse --requirements demos/requirements-classroom.txt
+          --dest classroom-bundle
+      - name: Verify the exact student offline installation command
+        run: >-
+          python demos/distribution/verify_offline_bundle.py
+          --bundle classroom-bundle
+          --output verification
+      - name: Include validation results with the classroom bundle
+        run: python -c "import shutil; shutil.copytree('verification', 'classroom-bundle/verification')"
+      - name: Upload tested pycwr release wheel
+        uses: actions/upload-artifact@v5
+        with:
+          name: pycwr-1.0.8-cp311-${{ matrix.target }}
+          path: |
+            wheelhouse/*.whl
+            release-source/release-provenance.json
+            verification/*.json
+          if-no-files-found: error
+      - name: Upload tested offline classroom wheelhouse
+        uses: actions/upload-artifact@v5
+        with:
+          name: pycwr-classroom-cp311-${{ matrix.target }}
+          path: classroom-bundle/
+          if-no-files-found: error

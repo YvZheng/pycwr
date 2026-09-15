@@ -1,0 +1,11 @@
+pycwr==1.0.8
+numpy==2.2.6
+scipy==1.15.2
+matplotlib==3.10.3
+xarray==2025.4.0
+netCDF4==1.7.1.post2
+pandas==2.2.3
+pyproj==3.7.1
+easydict==1.13
+ipykernel==7.1.0
+jupyterlab==4.4.6

@@ -66,6 +66,8 @@ jobs:
           CIBW_BUILD_FRONTEND: "pip; args: --no-build-isolation"
           CIBW_BEFORE_BUILD: python -m pip install numpy==2.2.6 Cython==3.0.12 setuptools==76.1.0 wheel==0.44.0
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          # cibuildwheel installs the wheel before TEST_REQUIRES; constrain that first install too.
+          CIBW_ENVIRONMENT_LINUX: "PIP_CONSTRAINT=/project/demos/requirements-classroom.txt PIP_ONLY_BINARY=:all:"
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11.0
           CIBW_TEST_REQUIRES: >-
             numpy==2.2.6 scipy==1.15.2 matplotlib==3.10.3 xarray==2025.4.0

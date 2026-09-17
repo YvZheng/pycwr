@@ -7,6 +7,7 @@ include requirements-core.txt
 include requirements-full.txt
 include .coveragerc
 include scripts/ci_import_smoke.py
+include scripts/ci_run_tests.py
 include scripts/audit_public_api.py
 recursive-include test *.py
 recursive-include docs *.md

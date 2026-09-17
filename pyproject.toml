@@ -14,7 +14,7 @@ test-extras = ["full"]
 test-requires = ["PyYAML"]
 test-command = [
     "python {project}/scripts/ci_import_smoke.py --repo-root {project} --require-compiled",
-    "python -m unittest discover -s {project}/test -p test_*.py",
+    "python {project}/scripts/ci_run_tests.py --repo-root {project}",
 ]
 
 [tool.cibuildwheel.linux]

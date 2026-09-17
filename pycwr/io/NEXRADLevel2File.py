@@ -162,19 +162,29 @@ def _get_prd_ray(prd, sweep, field_name, iray):
 
 def _range_geometry(range_values):
     range_values = np.asarray(range_values, dtype=np.float64)
-    if range_values.size == 0:
-        raise ValueError("Export range vector cannot be empty.")
+    if range_values.ndim != 1 or range_values.size == 0:
+        raise ValueError("Export range vector must be one-dimensional and non-empty.")
+    if not np.all(np.isfinite(range_values)):
+        raise ValueError("Export range vector must contain only finite values.")
     if range_values.size > 1:
         spacing = float(range_values[1] - range_values[0])
         if spacing <= 0.0:
             raise ValueError("Range spacing must be positive.")
+        if not np.allclose(np.diff(range_values), spacing, rtol=0.0, atol=1e-6):
+            raise ValueError("Export range vector must have uniform spacing.")
     else:
         spacing = float(range_values[0]) if float(range_values[0]) > 0.0 else 1.0
-    return int(round(float(range_values[0]))), int(round(spacing))
+    first_gate = float(range_values[0])
+    if not np.isclose(first_gate, round(first_gate), rtol=0.0, atol=1e-6) or not np.isclose(
+        spacing, round(spacing), rtol=0.0, atol=1e-6
+    ):
+        raise ValueError("NEXRAD gate starts and spacing must be representable in integer metres.")
+    return int(round(first_gate)), int(round(spacing))
 
 
 def _encode_quantized(values, scale, offset, max_code, missing_code=0, word_size=8):
-    codes = np.round(np.asarray(values, dtype=np.float64) * float(scale) + float(offset))
+    # Match the quantization used to choose the volume offset, including ties.
+    codes = np.rint(np.asarray(values, dtype=np.float64) * float(scale)) + float(offset)
     codes[~np.isfinite(values)] = missing_code
     codes = np.clip(codes.astype(np.int64), 0, max_code)
     if word_size == 8:
@@ -182,6 +192,36 @@ def _encode_quantized(values, scale, offset, max_code, missing_code=0, word_size
     if word_size == 16:
         return codes.astype(">u2").tobytes()
     raise ValueError("Unsupported word size: %s" % word_size)
+
+
+def _fit_msg31_field_specs(prd, field_names):
+    """Choose one lossless quantization layout per moment for the entire volume."""
+    fitted = {}
+    for name in field_names:
+        spec = dict(NEXRAD_MSG31_FIELD_SPECS[name])
+        bounds = []
+        for sweep in range(int(prd.nsweeps)):
+            source = prd.resolve_field_name(name, sweep=sweep, range_mode=None, required=False)
+            if source is None:
+                continue
+            values = np.asarray(prd.get_sweep_field(sweep, source, range_mode=None).values)
+            finite = values[np.isfinite(values)]
+            if finite.size:
+                bounds.extend((float(finite.min()), float(finite.max())))
+        if bounds:
+            with np.errstate(over="ignore", invalid="ignore"):
+                quantized = np.rint(np.asarray(bounds) * spec["scale"])
+            if not np.all(np.isfinite(quantized)):
+                raise ValueError("Field values exceed the NEXRAD MSG31 encoding range.")
+            lowest, highest = float(quantized.min()), float(quantized.max())
+            if lowest + spec["offset"] < 2 or highest + spec["offset"] > 65535:
+                spec["offset"] = float(2 - lowest)
+            if highest + spec["offset"] > 65535 or np.float32(spec["offset"]) != spec["offset"]:
+                raise ValueError("Field values exceed the NEXRAD MSG31 encoding range.")
+            if highest + spec["offset"] > 255:
+                spec["word_size"] = 16
+        fitted[name] = spec
+    return fitted
 
 
 def _pack_msg31_moment_block(moment_name, values, first_gate, gate_spacing, scale, offset, word_size):
@@ -207,7 +247,7 @@ def _pack_msg31_moment_block(moment_name, values, first_gate, gate_spacing, scal
     return block
 
 
-def _pack_msg31_radial(prd, sweep, iray, field_names, seq_id):
+def _pack_msg31_radial(prd, sweep, iray, field_names, seq_id, field_specs=None):
     azimuth = float(prd.fields[sweep].azimuth.values[iray])
     elevation = float(prd.fields[sweep].elevation.values[iray])
     dt = _python_datetime(prd.fields[sweep].time.values[iray])
@@ -224,7 +264,7 @@ def _pack_msg31_radial(prd, sweep, iray, field_names, seq_id):
     moment_blocks = []
     max_range_m = 0.0
     for field_name in field_names:
-        spec = NEXRAD_MSG31_FIELD_SPECS[field_name]
+        spec = (NEXRAD_MSG31_FIELD_SPECS if field_specs is None else field_specs)[field_name]
         values, ranges = _get_prd_ray(prd, sweep, field_name, iray)
         first_gate, gate_spacing = _range_geometry(ranges)
         if ranges.size:
@@ -403,6 +443,7 @@ def write_nexrad_level2_msg31(prd, filename, field_names=None, strict=True, over
     _ensure_ppi_volume(prd)
     path = _ensure_output_path(filename, overwrite=overwrite)
     selected_fields = _available_supported_fields(prd, NEXRAD_MSG31_FIELD_SPECS, field_names=field_names, strict=strict)
+    field_specs = _fit_msg31_field_specs(prd, selected_fields)
     start_time = _python_datetime(prd.scan_info["start_time"].values)
     volume_header = struct.pack(
         VOLUME_HEADER_FMT,
@@ -420,7 +461,7 @@ def write_nexrad_level2_msg31(prd, filename, field_names=None, strict=True, over
         for sweep in range(int(prd.nsweeps)):
             rays_per_sweep = int(prd.scan_info["rays_per_sweep"].values[sweep])
             for iray in range(rays_per_sweep):
-                radial, seq_id = _pack_msg31_radial(prd, sweep, iray, selected_fields, seq_id)
+                radial, seq_id = _pack_msg31_radial(prd, sweep, iray, selected_fields, seq_id, field_specs=field_specs)
                 handle.write(radial)
     return path
 

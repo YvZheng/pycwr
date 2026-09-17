@@ -124,7 +124,7 @@ def _default_directory():
     return cwd
 
 
-def _scan_directory(directory):
+def _scan_directory(directory, allowed_roots=None):
     directory = os.path.abspath(directory)
     if not os.path.isdir(directory):
         raise FileNotFoundError("Directory does not exist.")
@@ -132,13 +132,16 @@ def _scan_directory(directory):
     for item in sorted(Path(directory).iterdir(), key=lambda path: path.name.lower()):
         if not item.is_file():
             continue
-        info = _supported_file_info(item)
+        info = _supported_file_info(item, allowed_roots=allowed_roots)
         if info is not None:
             files.append(info)
     return files
 
 
-def _supported_file_info(item):
+def _supported_file_info(item, allowed_roots=None):
+    resolved = item.resolve()
+    if allowed_roots is not None and not any(_is_relative_to(resolved, root) for root in allowed_roots):
+        return None
     if not _matches_supported_filename(item.name):
         return None
     try:
@@ -163,11 +166,11 @@ def _matches_supported_filename(name):
     return any(lower_name.endswith(pattern) for pattern in SUPPORTED_PATTERNS)
 
 
-def _scan_tree(directory):
+def _scan_tree(directory, allowed_roots=None):
     directory = os.path.abspath(directory)
     if not os.path.isdir(directory):
         raise FileNotFoundError("Directory does not exist.")
-    node = _tree_directory_node(Path(directory))
+    node = _tree_directory_node(Path(directory), allowed_roots=allowed_roots)
     return node or {
         "type": "directory",
         "name": Path(directory).name or Path(directory).anchor,
@@ -177,7 +180,14 @@ def _scan_tree(directory):
     }
 
 
-def _tree_directory_node(directory):
+def _tree_directory_node(directory, allowed_roots=None, visited=None):
+    resolved = directory.resolve()
+    if allowed_roots is not None and not any(_is_relative_to(resolved, root) for root in allowed_roots):
+        return None
+    visited = set() if visited is None else visited
+    if resolved in visited:
+        return None
+    visited.add(resolved)
     children = []
     file_count = 0
     entries = sorted(
@@ -188,7 +198,7 @@ def _tree_directory_node(directory):
         if item.name.startswith(".") or item.name in IGNORED_DIRECTORIES:
             continue
         if item.is_dir():
-            child = _tree_directory_node(item)
+            child = _tree_directory_node(item, allowed_roots=allowed_roots, visited=visited)
             if child is None:
                 continue
             children.append(child)
@@ -196,7 +206,7 @@ def _tree_directory_node(directory):
             continue
         if not item.is_file():
             continue
-        info = _supported_file_info(item)
+        info = _supported_file_info(item, allowed_roots=allowed_roots)
         if info is None:
             continue
         children.append(info)
@@ -391,6 +401,8 @@ def _parse_optional_float(name, minimum=None, maximum=None):
     if raw is None or raw == "" or raw.lower() == "auto":
         return None
     value = float(raw)
+    if not np.isfinite(value):
+        raise ValueError("`%s` must be finite." % name)
     if minimum is not None:
         value = max(minimum, value)
     if maximum is not None:
@@ -403,6 +415,8 @@ def _parse_float(name, minimum=None, maximum=None):
     if raw is None or raw == "":
         raise ValueError("Missing `%s` parameter." % name)
     value = float(raw)
+    if not np.isfinite(value):
+        raise ValueError("`%s` must be finite." % name)
     if minimum is not None:
         value = max(minimum, value)
     if maximum is not None:
@@ -686,7 +700,7 @@ def create_app(allowed_roots=None, auth_token=None):
         directory = request.args.get("dir", "").strip() or _default_directory()
         try:
             safe_directory = _resolve_within_roots(directory, configured_roots, expect_directory=True)
-            files = _scan_directory(safe_directory)
+            files = _scan_directory(safe_directory, allowed_roots=configured_roots)
         except PermissionError:
             return jsonify({"ok": False, "error": "Requested directory is outside the allowed roots."}), 403
         except Exception as exc:
@@ -698,7 +712,7 @@ def create_app(allowed_roots=None, auth_token=None):
         directory = request.args.get("dir", "").strip() or _default_directory()
         try:
             safe_directory = _resolve_within_roots(directory, configured_roots, expect_directory=True)
-            tree = _scan_tree(safe_directory)
+            tree = _scan_tree(safe_directory, allowed_roots=configured_roots)
         except PermissionError:
             return jsonify({"ok": False, "error": "Requested directory is outside the allowed roots."}), 403
         except Exception as exc:
@@ -710,7 +724,7 @@ def create_app(allowed_roots=None, auth_token=None):
         directory = request.args.get("dir", "").strip() or _default_directory()
         try:
             safe_directory = _resolve_within_roots(directory, configured_roots, expect_directory=True)
-            tree = _scan_tree(safe_directory)
+            tree = _scan_tree(safe_directory, allowed_roots=configured_roots)
             catalog = _build_catalog(tree)
         except PermissionError:
             return jsonify({"ok": False, "error": "Requested directory is outside the allowed roots."}), 403

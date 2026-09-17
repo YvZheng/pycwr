@@ -44,15 +44,17 @@ class PABaseData(object):
         self.station_lat = station_lat
         self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename)  ##对压缩的文件进行解码
-        self._check_standard_basedata()  ##确定文件是standard文件
-        self.header = self._parse_BaseDataHeader()
-        self.radial = self._parse_radial()
-        self.nrays = len(self.radial)
-        self.nsweeps = _validate_count("CutNumber", self.header['TaskConfig']['CutNumber'], minimum=1, maximum=MAX_PA_SWEEPS)
-        if self.nrays < self.nsweeps:
-            raise ValueError("PA radial count is smaller than the declared sweep count.")
-        self.sweep_start_ray_index, self.sweep_end_ray_index = self._build_sweep_indices()
-        self.fid.close()
+        try:
+            self._check_standard_basedata()  ##确定文件是standard文件
+            self.header = self._parse_BaseDataHeader()
+            self.radial = self._parse_radial()
+            self.nrays = len(self.radial)
+            self.nsweeps = _validate_count("CutNumber", self.header['TaskConfig']['CutNumber'], minimum=1, maximum=MAX_PA_SWEEPS)
+            if self.nrays < self.nsweeps:
+                raise ValueError("PA radial count is smaller than the declared sweep count.")
+            self.sweep_start_ray_index, self.sweep_end_ray_index = self._build_sweep_indices()
+        finally:
+            self.fid.close()
 
     def _check_standard_basedata(self):
         """

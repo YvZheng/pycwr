@@ -305,6 +305,53 @@ class WebViewerSecurityTests(unittest.TestCase):
             self.assertEqual(payload["tree"]["file_count"], 0)
             self.assertEqual(payload["tree"]["children"], [])
 
+    def test_directory_scans_do_not_follow_links_outside_allowed_roots(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            allowed = root / "allowed"
+            outside = root / "outside"
+            allowed.mkdir()
+            outside.mkdir()
+            secret = outside / "private.bin"
+            secret.write_bytes(b"RSTM" + b"\0" * 128)
+            (allowed / "linked.bin").symlink_to(secret)
+            (allowed / "linked-directory").symlink_to(outside, target_is_directory=True)
+            client = self._create_app(allowed).test_client()
+            for route in ("/api/files", "/api/tree", "/api/catalog"):
+                with self.subTest(route=route):
+                    response = client.get(route, query_string={"dir": str(allowed), "token": "test-token"})
+                    self.assertEqual(response.status_code, 200)
+                    self.assertNotIn("private.bin", response.get_data(as_text=True))
+                    self.assertNotIn("linked.bin", response.get_data(as_text=True))
+
+    def test_tree_handles_directory_symlink_cycles(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "sample.bin").write_bytes(b"RSTM" + b"\0" * 128)
+            (root / "cycle").symlink_to(root, target_is_directory=True)
+            response = self._create_app(root).test_client().get(
+                "/api/tree", query_string={"dir": str(root), "token": "test-token"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["tree"]["file_count"], 1)
+
+    def test_plot_parameters_reject_nonfinite_coordinates(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sample = Path(tmpdir) / "sample.bin"
+            sample.write_bytes(b"placeholder")
+            from test_examples_sections import SectionExtractionTests
+            radar = SectionExtractionTests()._build_ppi_prd()
+            client = self._create_app(tmpdir).test_client()
+            for value in ("nan", "inf", "-inf"):
+                with self.subTest(value=value), mock.patch(
+                    "pycwr.GraphicalInterface.web_app.RadarFileCache.get", return_value=radar
+                ), mock.patch("pycwr.GraphicalInterface.web_app._render_section_png") as render:
+                    response = client.get("/plot/section.png", query_string={
+                        "path": str(sample), "token": "test-token", "start_x_km": value,
+                        "start_y_km": 0, "end_x_km": 10, "end_y_km": 0,
+                    })
+                    self.assertEqual(response.status_code, 400)
+                    render.assert_not_called()
+
     def test_plot_section_returns_png(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             allowed = Path(tmpdir)

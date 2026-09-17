@@ -24,12 +24,14 @@ class SCBaseData(object):
         self.station_lat = station_lat
         self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename)
-        buf_header = _read_exact(self.fid, dtype_sc.BaseDataHeaderSize, "SC header")
-        self.header = self._parse_BaseDataHeader(buf_header)
-        self.MaxV = self.header['LayerParam']['MaxV'][0] / 100.
-        self._radial_buf = self._check_sc_basedata()
-        self.radial = self._parse_radial()
-        self.fid.close()
+        try:
+            buf_header = _read_exact(self.fid, dtype_sc.BaseDataHeaderSize, "SC header")
+            self.header = self._parse_BaseDataHeader(buf_header)
+            self.MaxV = self.header['LayerParam']['MaxV'][0] / 100.
+            self._radial_buf = self._check_sc_basedata()
+            self.radial = self._parse_radial()
+        finally:
+            self.fid.close()
 
     def _check_sc_basedata(self):
         """Check that the radial payload length matches the header metadata."""
@@ -118,7 +120,7 @@ class SCBaseData(object):
         return nyquist_velocity.astype(np.float32)
     def get_unambiguous_range(self):
         """Return the per-ray unambiguous range."""
-        return np.concatenate([np.array([self.header['LayerParam']['MaxL'][isweep] *10 \
+        return np.concatenate([np.array([self.header['LayerParam']['MaxL'][isweep] *10. \
                             ] * self.header['LayerParam']['recordnumber'][isweep]) for \
                             isweep in range(self.nsweeps)])
 
@@ -147,7 +149,10 @@ class SCBaseData(object):
 
     def get_azimuth(self):
         """Return the azimuth angle for each ray."""
-        return np.concatenate([np.arange(0,360,1.0), ] * self.nsweeps)
+        return np.concatenate([
+            np.linspace(0.0, 360.0, int(count), endpoint=False)
+            for count in self.get_rays_per_sweep()
+        ])
 
     def get_elevation(self):
         """Return the elevation angle for each ray."""

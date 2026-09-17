@@ -112,9 +112,9 @@ def resolve_pyart_radar_class(use_external=None, strict=False):
         When ``True`` and ``use_external`` requests upstream Py-ART, raise a
         clear ``ImportError`` if the optional dependency is missing.
     """
-    external_radar_class = _import_external_pyart_radar_class()
     if use_external is False:
         return InternalRadar, False
+    external_radar_class = _import_external_pyart_radar_class()
     if external_radar_class is not None:
         return external_radar_class, True
     if use_external is True and strict:
@@ -619,9 +619,19 @@ def build_xradar_sweep_datasets(prd, range_mode=None, field_names=None):
             )
             dataset[_xradar_field_name(field_name)].encoding["_FillValue"] = get_fillvalue()
         if model is not None:
+            location_coords = {name: dataset[name] for name in ("latitude", "longitude", "altitude")}
             dataset = model.conform_cfradial2_sweep_group(dataset, optional=True)
+            # Standalone sweep exports need location even without a parent tree.
+            dataset = dataset.assign_coords(location_coords)
             dataset.attrs["site_name"] = prd.metadata["site_name"]
             dataset.attrs["range_mode"] = range_mode
+        if np.issubdtype(dataset["time"].dtype, np.datetime64):
+            # xarray owns CF time units/calendar during datetime serialization.
+            # Keeping these keys in attrs causes to_netcdf() to fail.
+            for key in ("units", "calendar"):
+                if key in dataset["time"].attrs:
+                    dataset["time"].encoding[key] = dataset["time"].attrs.pop(key)
+            dataset["time"].encoding["dtype"] = np.float64
         datasets["sweep_%d" % sweep] = dataset
     return datasets
 

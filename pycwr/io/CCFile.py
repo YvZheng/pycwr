@@ -25,11 +25,13 @@ class CCBaseData(object):
         self.station_lat = station_lat
         self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename)
-        buf_header = _read_exact(self.fid, dtype_cc.BaseDataHeaderSize, "CC header")
-        self.header = self._parse_BaseDataHeader(buf_header)
-        self._radial_buf = self._check_cc_basedata()
-        self.radial = self._parse_radial()
-        self.fid.close()
+        try:
+            buf_header = _read_exact(self.fid, dtype_cc.BaseDataHeaderSize, "CC header")
+            self.header = self._parse_BaseDataHeader(buf_header)
+            self._radial_buf = self._check_cc_basedata()
+            self.radial = self._parse_radial()
+        finally:
+            self.fid.close()
 
     def _check_cc_basedata(self):
         """Check that the radial payload length matches the header metadata."""
@@ -69,7 +71,7 @@ class CCBaseData(object):
     def _parse_radial_single(self, buf_radial, radialnumber):
         """Parse one CC radial."""
         Radial = {}
-        RadialData = np.frombuffer(buf_radial, dtype_cc.RadialData(radialnumber))
+        RadialData = np.frombuffer(buf_radial, dtype_cc.RadialData(radialnumber), count=1)
         Radial['fields'] = {}
         Radial['fields']['dBZ'] = np.where(RadialData['dBZ'] != -32768, RadialData['dBZ'] / 10.,
                                            np.nan).astype(np.float32)
@@ -131,7 +133,7 @@ class CCBaseData(object):
 
     def get_azimuth(self):
         """Return the azimuth angle for each ray."""
-        return np.concatenate([np.linspace(0, 360, self.header['CutConfig']['usRecordNumber'][isweep]) \
+        return np.concatenate([np.linspace(0, 360, self.header['CutConfig']['usRecordNumber'][isweep], endpoint=False) \
                                for isweep in range(self.nsweeps)], axis=0)
 
     def get_elevation(self):
@@ -229,7 +231,11 @@ class CC2NRadar(object):
         fields = {}
         field_keys = self.radial[0]['fields'].keys()
         for ikey in field_keys:
-            fields[ikey] = np.array([(iray['fields'][ikey]).ravel() for iray in self.radial])
+            data = np.full((self.nrays, self.max_bins), np.nan, dtype=np.float32)
+            for index, radial in enumerate(self.radial):
+                values = radial['fields'][ikey].ravel()
+                data[index, :values.size] = values
+            fields[ikey] = data
         return fields
 
     def get_nradar_nyquist_speed(self):

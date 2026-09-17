@@ -63,7 +63,7 @@ def run_dualpol_qc(
     """
     Run a classical dual-polarization QC chain on one sweep array set.
     """
-    reflectivity = np.asanyarray(ref, dtype=float)
+    reflectivity = np.ma.asarray(ref, dtype=float).filled(np.nan)
     if reflectivity.ndim < 2:
         raise ValueError("ref must have at least two dimensions with range on the last axis")
 
@@ -72,7 +72,7 @@ def run_dualpol_qc(
     base_mask = np.isfinite(reflectivity)
 
     if phidp is not None:
-        phase = np.asanyarray(phidp, dtype=float)
+        phase = np.ma.asarray(phidp, dtype=float).filled(np.nan)
         phidp_smooth = smooth_phidp(phase, mask=base_mask)
         texture = phidp_texture(phidp_smooth)
     else:
@@ -108,7 +108,7 @@ def run_dualpol_qc(
     qc_mask = despeckle_mask(accepted_mask, min_size=9, connectivity=8)
 
     if kdp is not None and use_existing_kdp:
-        kdp_used = np.where(qc_mask, np.asanyarray(kdp, dtype=float), np.nan)
+        kdp_used = np.where(qc_mask, np.ma.asarray(kdp, dtype=float).filled(np.nan), np.nan)
     elif phase is not None:
         kdp_used = np.where(qc_mask, kdp_from_phidp(phidp_smooth, dr=gate_length), np.nan)
     else:

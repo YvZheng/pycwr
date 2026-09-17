@@ -19,6 +19,25 @@ Run the whole automated suite:
 python3 -m unittest discover -s test -p 'test_*.py'
 ```
 
+Public-function contracts that do not require external radar samples are in
+`test_public_*_contracts.py`. They cover normal inputs, missing data, invalid
+arguments, and compatibility entry points. `test_issue60_colormap.py` starts fresh
+Python processes against the same source tree or installed wheel as its parent.
+
+To inspect measured execution coverage by public function:
+
+```bash
+python -m pip install coverage
+python -m coverage run -m unittest discover -s test -p 'test_*.py'
+python -m coverage combine
+python -m coverage json --show-contexts -o coverage.json
+python scripts/audit_public_api.py coverage.json --output public-api-coverage.json
+```
+
+The report lists test contexts and missing lines. Coverage measures execution,
+not correctness for every possible input. Compiled wheels are separately checked
+with `scripts/ci_import_smoke.py --require-compiled` before the full test suite.
+
 Run one feature group:
 
 ```bash

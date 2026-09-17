@@ -181,8 +181,11 @@ def resolve_field_range(radar, sweep_index, field_key, field_data, value_range=N
             configured_range = CINRAD_field_normvar.get(metadata_name, -1)
             if configured_range == -1:
                 data = as_numpy(field_data).astype(float)
-                vmin = float(np.nanmin(data))
-                vmax = float(np.nanmax(data))
+                finite = data[np.isfinite(data)]
+                if finite.size == 0:
+                    return 0.0, 1.0
+                vmin = float(finite.min())
+                vmax = float(finite.max())
             else:
                 vmin, vmax = configured_range
     if not np.isfinite(vmin) or not np.isfinite(vmax):
@@ -247,8 +250,9 @@ def normalize_style(style, data=None):
             style.value_range = (0.0, 1.0)
         else:
             array = as_numpy(data).astype(float)
-            vmin = float(np.nanmin(array))
-            vmax = float(np.nanmax(array))
+            finite = array[np.isfinite(array)]
+            vmin = float(finite.min()) if finite.size else 0.0
+            vmax = float(finite.max()) if finite.size else 1.0
             if vmin == vmax:
                 delta = max(abs(vmin) * 0.05, 1.0)
                 style.value_range = (vmin - delta, vmax + delta)
@@ -274,12 +278,17 @@ def _resolve_matplotlib_cmap(cmap_spec):
         # so ensure pycwr's named colormaps are registered before retrying.
         if isinstance(cmap_spec, str):
             import_module(".colormap", __package__)
+            # Bundled Py-ART palettes use an isolated prefix to avoid clashes
+            # when the optional Py-ART package is imported in the same process.
+            # Accept the historical names used by the default field styles.
+            if cmap_spec.startswith("pyart_") and "copy_" + cmap_spec in plt.colormaps():
+                return plt.get_cmap("copy_" + cmap_spec)
             return plt.get_cmap(cmap_spec)
         raise
 
 
-def build_colormap(style):
-    style = normalize_style(style)
+def build_colormap(style, data=None):
+    style = normalize_style(style, data=data)
     cmap = _resolve_matplotlib_cmap(style.cmap)
     if style.levels is not None:
         levels = np.asarray(style.levels, dtype=float)
@@ -365,7 +374,8 @@ def pcolormesh_coordinates(x_coords, y_coords, data):
     if data.ndim != 2:
         return x_coords, y_coords
     if x_coords.ndim == 1 and y_coords.ndim == 1:
-        if x_coords.size == data.shape[0] and y_coords.size == data.shape[1]:
+        # Matplotlib's columns follow x, while its rows follow y.
+        if x_coords.size == data.shape[1] and y_coords.size == data.shape[0]:
             return _edges_from_centers_1d(x_coords), _edges_from_centers_1d(y_coords)
         return x_coords, y_coords
     if x_coords.ndim == 2 and y_coords.ndim == 2 and x_coords.shape == data.shape and y_coords.shape == data.shape:
@@ -434,7 +444,10 @@ def ensure_geographic_coordinates(
 
 
 def _max_cartesian_radius_km(x_m, y_m):
-    return float(np.nanmax(np.hypot(as_numpy(x_m), as_numpy(y_m))) / 1000.0)
+    x_m, y_m = as_numpy(x_m), as_numpy(y_m)
+    if x_m.ndim == 1 and y_m.ndim == 1:
+        return float(np.hypot(np.nanmax(np.abs(x_m)), np.nanmax(np.abs(y_m))) / 1000.0)
+    return float(np.nanmax(np.hypot(x_m, y_m)) / 1000.0)
 
 
 def cartesian_extent_from_xy(x_m, y_m, extent_km=None):
@@ -579,8 +592,8 @@ def plot_cartesian(
     **kwargs
 ):
     require_mpl_axes(ax)
-    cmap, norm, _, _ = build_colormap(style)
-    mesh_x, mesh_y = pcolormesh_coordinates(x_m / 1000.0, y_m / 1000.0, data)
+    cmap, norm, _, _ = build_colormap(style, data=data)
+    mesh_x, mesh_y = pcolormesh_coordinates(as_numpy(x_m) / 1000.0, as_numpy(y_m) / 1000.0, data)
     mesh = ax.pcolormesh(
         mesh_x,
         mesh_y,
@@ -649,12 +662,20 @@ def apply_map_axes(ax, extent, map_options, title=None):
         )
     ax.set_title(title or "", fontsize=14)
     tick_step = map_options.tick_step_degrees or _auto_tick_step(extent)
-    meridians = np.arange(math.floor(extent[0]), math.ceil(extent[1]) + tick_step, tick_step)
-    parallels = np.arange(math.floor(extent[2]), math.ceil(extent[3]) + tick_step, tick_step)
-    ax.set_xticks(meridians, crs=data_crs)
-    ax.set_yticks(parallels, crs=data_crs)
-    ax.xaxis.set_major_formatter(LongitudeFormatter())
-    ax.yaxis.set_major_formatter(LatitudeFormatter())
+    meridians = np.arange(math.ceil(extent[0] / tick_step) * tick_step, extent[1] + tick_step * 1e-9, tick_step)
+    parallels = np.arange(math.ceil(extent[2] / tick_step) * tick_step, extent[3] + tick_step * 1e-9, tick_step)
+    if isinstance(ax.projection, (ccrs.PlateCarree, ccrs.Mercator)):
+        ax.set_xticks(meridians, crs=data_crs)
+        ax.set_yticks(parallels, crs=data_crs)
+        ax.xaxis.set_major_formatter(LongitudeFormatter())
+        ax.yaxis.set_major_formatter(LatitudeFormatter())
+    else:
+        # Non-rectangular projections place geographic labels on gridlines.
+        gridliner = ax.gridlines(crs=data_crs, draw_labels=True, xlocs=meridians, ylocs=parallels)
+        gridliner.top_labels = False
+        gridliner.right_labels = False
+    # Setting ticks may expand Matplotlib's view limits; preserve the requested map.
+    ax.set_extent([extent[0], extent[1], extent[2], extent[3]], crs=data_crs)
 
 
 def plot_map(
@@ -670,7 +691,7 @@ def plot_map(
 ):
     require_cartopy_axes(ax)
     map_options = _default_map_options(map_options)
-    cmap, norm, _, _ = build_colormap(style)
+    cmap, norm, _, _ = build_colormap(style, data=data)
     extent = geographic_extent_from_lonlat(lon, lat, extent=extent)
     apply_map_axes(ax, extent, map_options=map_options)
     mesh_lon, mesh_lat = pcolormesh_coordinates(lon, lat, data)
@@ -769,12 +790,14 @@ def plot_vertical_section(
     require_mpl_axes(ax)
     if labels is None:
         labels = ("Distance from section start (km)", "Height (km)")
-    cmap, norm, _, _ = build_colormap(style)
     last_mesh = None
     height_limit = height_km
     panels = _section_panels(mesh_xy, mesh_z, field_data)
     if not panels:
         raise ValueError("field_data is empty")
+    if style.value_range is None and style.norm is None and style.levels is None:
+        normalize_style(style, data=np.concatenate([as_numpy(panel[2]).ravel() for panel in panels]))
+    cmap, norm, _, _ = build_colormap(style)
     if height_limit is None:
         max_height = 0.0
         for _, z_coords, section in panels:
@@ -839,7 +862,10 @@ def geographic_line_to_cartesian(start_lonlat, end_lonlat, radar_lon, radar_lat)
         lat_0=radar_lat,
         lon_0=radar_lon,
     )
-    return (start_x[0], start_y[0]), (end_x[0], end_y[0])
+    return (
+        (float(np.asarray(start_x).item()), float(np.asarray(start_y).item())),
+        (float(np.asarray(end_x).item()), float(np.asarray(end_y).item())),
+    )
 
 
 def interpolate_points_along_line(start_points, end_points, distance_from_start):
@@ -847,6 +873,8 @@ def interpolate_points_along_line(start_points, end_points, distance_from_start)
     end_x, end_y = end_points
     distance_from_start = as_numpy(distance_from_start)
     line_length = np.sqrt((start_x - end_x) ** 2 + (start_y - end_y) ** 2)
+    if not np.isfinite(line_length) or line_length == 0.0:
+        raise ValueError("start_points and end_points must be distinct finite points")
     return (
         distance_from_start / line_length * (end_x - start_x) + start_x,
         distance_from_start / line_length * (end_y - start_y) + start_y,

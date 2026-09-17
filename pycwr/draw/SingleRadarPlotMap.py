@@ -45,6 +45,8 @@ class RadarGraphMap(object):
         colorbar_orientation="vertical",
         colorbar_ticks=None,
         colorbar_ticklabels=None,
+        cmap=None,
+        cmap_bins=None,
         **kwargs
     ):
         ensure_ppi_scan(self.NRadar)
@@ -55,6 +57,8 @@ class RadarGraphMap(object):
             field_key,
             field,
             value_range=normvar,
+            cmap=cmap,
+            bins=cmap_bins,
             continuous=continuously,
             colorbar_orientation=colorbar_orientation,
             colorbar_ticks=colorbar_ticks,
@@ -99,6 +103,8 @@ class RadarGraphMap(object):
         colorbar_orientation="vertical",
         colorbar_ticks=None,
         colorbar_ticklabels=None,
+        cmap=None,
+        cmap_bins=None,
         **kwargs
     ):
         ensure_ppi_scan(NRadar)
@@ -109,6 +115,8 @@ class RadarGraphMap(object):
             field_key,
             field,
             value_range=normvar,
+            cmap=cmap,
+            bins=cmap_bins,
             continuous=continuously,
             colorbar_orientation=colorbar_orientation,
             colorbar_ticks=colorbar_ticks,
@@ -155,7 +163,7 @@ class RadarGraphMap(object):
         map_options=None,
         **kwargs
     ):
-        station_lonlat = main_point or main_piont
+        station_lonlat = main_point if main_point is not None else main_piont
         lon, lat = ensure_geographic_coordinates(
             radar_data=radar_data,
             ranges=_range,

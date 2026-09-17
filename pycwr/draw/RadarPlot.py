@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import FuncFormatter
 
 from ..configure.default_config import (
     CINRAD_COLORMAP,
@@ -9,6 +10,7 @@ from ..configure.default_config import (
 )
 from ..core.transforms import antenna_vectors_to_cartesian, cartesian_to_geographic_aeqd
 from ._plot_core import (
+    _resolve_matplotlib_cmap,
     CartesianReferenceOptions,
     ColorbarOptions,
     MapOptions,
@@ -220,12 +222,11 @@ class Graph(object):
             clabel=clabel,
             continuously=continuously,
         )
-        scale = 1000.0 if point_units == "km" else 1.0
         section = self.Radar.extract_section(
-            (start_xy[0] * scale, start_xy[1] * scale),
-            (end_xy[0] * scale, end_xy[1] * scale),
-            field_name=field_name,
-            point_units="m",
+            start_xy,
+            end_xy,
+            field_name=field_key,
+            point_units=point_units,
             range_mode=range_mode,
         )
         if title is None:
@@ -270,7 +271,7 @@ class Graph(object):
         self.Radar.add_product_CR_xy(x_range, y_range, range_mode=range_mode)
         product_name = "CR" if range_mode == "aligned" else "CR_native"
         radar_data = self.Radar.product[product_name].values
-        x, y = np.meshgrid(self.Radar.product["CR"].x_cr.values, self.Radar.product["CR"].y_cr.values, indexing="ij")
+        x, y = np.meshgrid(self.Radar.product[product_name].x_cr.values, self.Radar.product[product_name].y_cr.values, indexing="ij")
         style = PlotStyle(
             cmap=cmap,
             value_range=min_max,
@@ -327,8 +328,8 @@ class Graph(object):
         product_name = "CAPPI_%d" % level_height if range_mode == "aligned" else "CAPPI_%d_native" % level_height
         radar_data = self.Radar.product[product_name].values
         x, y = np.meshgrid(
-            self.Radar.product["CAPPI_%d" % level_height]["x_cappi_%d" % level_height].values,
-            self.Radar.product["CAPPI_%d" % level_height]["y_cappi_%d" % level_height].values,
+            self.Radar.product[product_name]["x_cappi_%d" % level_height].values,
+            self.Radar.product[product_name]["y_cappi_%d" % level_height].values,
             indexing="ij",
         )
         if title is None:
@@ -422,7 +423,8 @@ class Graph(object):
             )
             if annotate_samples and sample_count is not None:
                 for height_value, count_value in zip(height_km[valid], sample_count[valid]):
-                    barb_ax.text(0.12, height_value, str(int(count_value)), fontsize=8, color=barb_color, va="center")
+                    if np.isfinite(count_value):
+                        barb_ax.text(0.12, height_value, str(int(count_value)), fontsize=8, color=barb_color, va="center")
             ax._pycwr_barb_axes = barb_ax
             return barbs
         return line[0]
@@ -486,7 +488,7 @@ class Graph(object):
                 y_bg[valid_bg],
                 c=value_bg[valid_bg],
                 s=8,
-                cmap=style.cmap,
+                cmap=_resolve_matplotlib_cmap(style.cmap),
                 vmin=vmin,
                 vmax=vmax,
                 linewidths=0.0,
@@ -508,6 +510,9 @@ class Graph(object):
             if cbar:
                 ax.figure.colorbar(artist, ax=ax, label="Wind Speed (m/s)")
         valid = np.isfinite(u) & np.isfinite(v) & np.isfinite(x_km) & np.isfinite(y_km)
+        if quiver_scale is None and not np.any(np.hypot(u[valid], v[valid]) > 0.0):
+            # Matplotlib's autoscaling divides by zero for calm or empty winds.
+            quiver_scale = 1.0
         quiver = ax.quiver(
             x_km[valid],
             y_km[valid],
@@ -533,6 +538,8 @@ class Graph(object):
         return quiver
 
     def add_rings(self, ax, rings, color="#5B5B5B", linestyle="-", linewidth=0.6, **kwargs):
+        if len(rings) == 0:
+            return ax
         theta = np.linspace(0, 2 * np.pi, 200)
         for radius in rings:
             x0 = radius * np.cos(theta)
@@ -778,9 +785,11 @@ class GraphMap(object):
         section = self.Radar.extract_section_lonlat(
             start_lonlat,
             end_lonlat,
-            field_name=field_name,
+            field_name=field_key,
             range_mode=range_mode,
         )
+        if labels is None:
+            labels = ("(Longitude, Latitude) (degrees)", "Height (km)")
         gci = plot_vertical_section(
             ax,
             section,
@@ -793,15 +802,17 @@ class GraphMap(object):
             labels=labels,
             **kwargs
         )
-        xticks = ax.get_xticks()
         start_xy_km = (start_xy[0] / 1000.0, start_xy[1] / 1000.0)
         end_xy_km = (end_xy[0] / 1000.0, end_xy[1] / 1000.0)
-        lon_points, lat_points = lonlat_section_points(start_xy_km, end_xy_km, xticks, radar_lon, radar_lat)
-        ax.set_xticklabels(
-            ["(%.2f, %.2f)" % (lon_points[i], lat_points[i]) for i in range(len(xticks))],
-            rotation=15,
-            fontsize=10,
-        )
+
+        def format_lonlat(distance_km, position):
+            lon, lat = lonlat_section_points(
+                start_xy_km, end_xy_km, distance_km, radar_lon, radar_lat
+            )
+            return "(%.2f, %.2f)" % (float(np.asarray(lon).item()), float(np.asarray(lat).item()))
+
+        ax.xaxis.set_major_formatter(FuncFormatter(format_lonlat))
+        ax.tick_params(axis="x", labelrotation=15, labelsize=10)
         return gci
 
     def add_lines_map(self, ax, start_lonlat, end_lonlat, color="red", marker="x", **kwargs):
@@ -862,6 +873,8 @@ def plot_xy(
 
 
 def add_rings(ax, rings, color="#5B5B5B", linestyle="-", linewidth=0.6, **kwargs):
+    if len(rings) == 0:
+        return ax
     theta = np.linspace(0, 2 * np.pi, 200)
     for radius in rings:
         x0 = radius * np.cos(theta)
@@ -898,7 +911,9 @@ def plot_az_ranges(
     **kwargs
 ):
     _require_mpl_axes(ax)
-    x, y, _ = antenna_vectors_to_cartesian(_range, azimuth, elevation, edges=True)
+    x, y, _ = antenna_vectors_to_cartesian(
+        as_numpy(_range), as_numpy(azimuth), as_numpy(elevation), edges=True
+    )
     return plot_xy(
         ax,
         x,

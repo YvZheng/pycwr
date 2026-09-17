@@ -6,3 +6,20 @@ requires = [
     "numpy",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "*-musllinux_* *-win32 *-manylinux_i686"
+test-extras = ["full"]
+test-requires = ["PyYAML"]
+test-command = [
+    "python {project}/scripts/ci_import_smoke.py --repo-root {project} --require-compiled",
+    "python -m unittest discover -s {project}/test -p test_*.py",
+]
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+manylinux-x86_64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

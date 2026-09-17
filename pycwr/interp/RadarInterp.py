@@ -81,13 +81,59 @@ def get_weight(dist, r, method="barnes"):
     :param method: interpolation method.
     :return: weight for each source point.
     """
+    dist = np.asarray(dist, dtype=np.float64)
+    r = float(r)
+    if not np.isfinite(r) or r <= 0.0:
+        raise ValueError("influence radius must be finite and positive")
     if method == "barnes":
         weight = np.exp(-4*dist**2/r**2)
     elif method == "cressman":
-        weight = (r ** 2 - dist ** 2) / (dist ** 2 + r ** 2)
+        weight = np.maximum((r ** 2 - dist ** 2) / (dist ** 2 + r ** 2), 0.0)
     else:
-        raise Exception("Unidentified method!, must be cressman, barnes")
+        raise ValueError("Unidentified method!, must be cressman, barnes")
     return weight
+
+
+def _prepare_interp_inputs(points, values, xi):
+    """Normalize coordinate forms and exclude missing source samples."""
+    if isinstance(points, tuple):
+        coordinates = [np.ma.asarray(axis, dtype=np.float64).filled(np.nan) for axis in points]
+        points = np.column_stack(np.broadcast_arrays(*coordinates))
+    points = np.ma.asarray(points, dtype=np.float64).filled(np.nan)
+    if points.ndim != 2 or points.shape[1] == 0:
+        raise ValueError("points must have shape (n, D)")
+    values = np.ma.asarray(values)
+    values = values.astype(np.result_type(values.dtype, np.float64)).filled(np.nan)
+    if values.ndim != 1 or values.size != points.shape[0]:
+        raise ValueError("values must be one-dimensional and match the number of points")
+    if isinstance(xi, tuple) or (isinstance(xi, list) and all(isinstance(axis, np.ndarray) for axis in xi)):
+        if len(xi) != points.shape[1]:
+            raise ValueError("xi must have the same coordinate dimension as points")
+        coordinates = np.broadcast_arrays(*[np.asarray(axis, dtype=np.float64) for axis in xi])
+        grid_shape = coordinates[0].shape
+        target = np.column_stack([axis.ravel() for axis in coordinates])
+    else:
+        target = np.asarray(xi, dtype=np.float64)
+        if target.ndim == 0 or target.shape[-1] != points.shape[1]:
+            raise ValueError("xi must have shape (..., D)")
+        grid_shape = target.shape[:-1]
+        target = target.reshape(-1, points.shape[1])
+    valid = np.all(np.isfinite(points), axis=1) & np.isfinite(values)
+    if not np.all(np.isfinite(target)):
+        raise ValueError("xi must contain finite coordinates")
+    return points[valid], values[valid], target, grid_shape
+
+
+def _weighted_interp_values(values, index, distance, radii, method, fill_value):
+    grid_vals = np.full(len(index), fill_value, dtype=np.result_type(values, fill_value, np.float64))
+    for i, neighbors in enumerate(index):
+        if neighbors:
+            weight = get_weight(distance[i], radii[i], method=method)
+            total = np.sum(weight)
+            if total > 0.0:
+                grid_vals[i] = np.dot(values[neighbors], weight) / total
+    return grid_vals
+
 
 def _get_interp_around_point(point_old, point_new, around_r):
     """
@@ -112,17 +158,16 @@ def radar_interp2d(points, values, xi, around_r,  influence_radius=None, method=
         shape (n, D), or a tuple of `ndim` arrays.
     values : ndarray of float or complex, shape (n,)
         Data values.
-    xi : 2-D ndarray of float or tuple of 1-D array, shape (M, D)
-        Points at which to interpolate data.
+    xi : ndarray of float, shape (..., D), or tuple of broadcastable arrays
+        Points at which to interpolate data. A coordinate tuple retains the
+        broadcast grid shape; an array retains all dimensions except the last.
     around_r: interpolate from source points within ``around_r``.
     influence_radius: influence radius used by the weighting function.
     method : {'barnes', 'cressman'}
         Method of interpolation. One of 'barnes', 'cressman'
     fill_value : float, optional
-        Value used to fill in for requested points outside of the
-        convex hull of the input points.  If not provided, then the
-        default is ``nan``. This option has no effect for the
-        'nearest' method.
+        Value used when no finite, unmasked samples have positive weight
+        within the search radius. The default is ``nan``.
     Returns
     -------
     ndarray
@@ -130,17 +175,15 @@ def radar_interp2d(points, values, xi, around_r,  influence_radius=None, method=
     """
     if influence_radius is None:
         influence_radius = around_r
-    grid_shape = xi[0].shape
-    target = np.column_stack([xi_grid.ravel() for xi_grid in xi])
+    get_weight([], influence_radius, method=method)
+    around_r = float(around_r)
+    if not np.isfinite(around_r) or around_r <= 0.0:
+        raise ValueError("around_r must be finite and positive")
+    points, values, target, grid_shape = _prepare_interp_inputs(points, values, xi)
     index, distance = _get_interp_around_point(points, target, around_r)
-    nrows, _ = target.shape
-    grid_vals = np.empty(nrows)
-    for i in range(nrows):
-        if index[i]:
-            weight = get_weight(distance[i], influence_radius, method=method)
-            grid_vals[i] = np.dot(values[index[i]], weight)/np.sum(weight)
-        else:
-            grid_vals[i] = fill_value
+    grid_vals = _weighted_interp_values(
+        values, index, distance, np.full(target.shape[0], influence_radius), method, fill_value
+    )
     return grid_vals.reshape(grid_shape)
 
 def _get_interp_around_point_var(point_old, point_new, bandwidth=1):
@@ -174,17 +217,15 @@ def radar_interp2d_var(points, values, xi, bandwidth=1, method="barnes", fill_va
     :return:
     """
 
-    grid_shape = xi[0].shape
-    target = np.column_stack([xi_grid.ravel() for xi_grid in xi])
+    bandwidth = float(bandwidth)
+    if not np.isfinite(bandwidth) or bandwidth < 0.0:
+        raise ValueError("bandwidth must be finite and non-negative")
+    get_weight([], cfg.interp.mroi, method=method)
+    points, values, target, grid_shape = _prepare_interp_inputs(points, values, xi)
+    if points.shape[1] < 2:
+        raise ValueError("range-dependent interpolation requires at least two coordinates")
     index, distance, roi = _get_interp_around_point_var(points, target, bandwidth=bandwidth)
-    nrows, _ = target.shape
-    grid_vals = np.empty(nrows)
-    for i in range(nrows):
-        if index[i]:
-            weight = get_weight(distance[i], roi[i], method=method)
-            grid_vals[i] = np.dot(values[index[i]], weight) / np.sum(weight)
-        else:
-            grid_vals[i] = fill_value
+    grid_vals = _weighted_interp_values(values, index, distance, roi, method, fill_value)
     return grid_vals.reshape(grid_shape)
 
 

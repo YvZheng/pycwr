@@ -14,15 +14,18 @@ KDP_ATTENUATION_COEFFICIENTS = {
 
 
 def _as_float_array(data):
-    return np.asanyarray(data, dtype=float)
+    return np.ma.asarray(data, dtype=float).filled(np.nan)
 
 
 def _resolve_gate_length_km(data, gate_length):
     if hasattr(data, "range"):
         range_values = np.asanyarray(data.range.values, dtype=float)
         if range_values.size > 1:
-            return float(np.median(np.diff(range_values)) / 1000.0)
-    return float(gate_length)
+            gate_length = np.median(np.diff(range_values)) / 1000.0
+    gate_length = float(gate_length)
+    if not np.isfinite(gate_length) or gate_length <= 0.0:
+        raise ValueError("gate length must be finite and positive")
+    return gate_length
 
 
 def resolve_kdp_coefficients(band="C", gamma=None, beta=None):
@@ -110,8 +113,7 @@ def correct_attenuation(ref, wavelength="C", rscale=0.075):
     else:
         raise ValueError("Unrecognized type")
 
-    if hasattr(ref, "range"):
-        rscale = float((ref.range[1] - ref.range[0]) / 1000.0)
+    rscale = _resolve_gate_length_km(ref, rscale)
 
     Ra = 200
     Rb = 1.6
@@ -154,7 +156,7 @@ def pia_from_kdp(kdp, dr, gamma=0.08, mask=None, clip_negative=True):
         If True, negative KDP is clipped to zero before integration.
     """
     kdp = _as_float_array(kdp)
-    gate_length = float(dr)
+    gate_length = _resolve_gate_length_km(kdp, dr)
     valid = _prepare_mask(kdp, mask=mask)
     flat_kdp = kdp.reshape(-1, kdp.shape[-1])
     flat_valid = valid.reshape(-1, valid.shape[-1])

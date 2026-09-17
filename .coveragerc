@@ -1,0 +1,7 @@
+[run]
+source = pycwr
+dynamic_context = test_function
+parallel = True
+
+[report]
+show_missing = True

@@ -837,19 +837,24 @@ class Radar(object):
         """
 
         # parse and verify parameters
-        sweeps = np.array(sweeps, dtype='int32')
+        sweeps = np.asarray(sweeps)
+        if sweeps.ndim != 1 or sweeps.size == 0 or not np.issubdtype(sweeps.dtype, np.number):
+            raise ValueError('sweeps must be a non-empty one-dimensional array of integers')
+        if not np.all(np.isfinite(sweeps)) or not np.all(sweeps == np.floor(sweeps)):
+            raise ValueError('sweeps must contain finite integer indices')
         if np.any(sweeps > (self.nsweeps - 1)):
             raise ValueError('invalid sweeps indices in sweeps parameter')
         if np.any(sweeps < 0):
             raise ValueError('only positive sweeps can be extracted')
+        sweeps = sweeps.astype('int32')
 
         def mkdic(dic, select):
             """ Make a dictionary, selecting out select from data key """
             if dic is None:
                 return None
             d = dic.copy()
-            if 'data' in d and select is not None:
-                d['data'] = d['data'][select].copy()
+            if 'data' in d:
+                d['data'] = (d['data'] if select is None else d['data'][select]).copy()
             return d
 
         # create array of rays which select the sweeps selected and
@@ -941,7 +946,16 @@ class Radar(object):
                      scan_rate=scan_rate,
                      antenna_transition=antenna_transition,
                      instrument_parameters=instrument_parameters,
-                     radar_calibration=radar_calibration)
+                     radar_calibration=radar_calibration,
+                     rays_are_indexed=mkdic(self.rays_are_indexed, sweeps),
+                     ray_angle_res=mkdic(self.ray_angle_res, sweeps),
+                     rotation=mkdic(self.rotation, rays),
+                     tilt=mkdic(self.tilt, rays),
+                     roll=mkdic(self.roll, rays),
+                     drift=mkdic(self.drift, rays),
+                     heading=mkdic(self.heading, rays),
+                     pitch=mkdic(self.pitch, rays),
+                     georefs_applied=mkdic(self.georefs_applied, rays))
 
 
 def _rays_per_sweep_data_factory(radar):

@@ -105,7 +105,7 @@ def _normalize_weights(weights):
 def _as_float_array(value, name, shape=None):
     if value is None:
         return None
-    array = np.asarray(value, dtype=np.float64)
+    array = np.ma.asarray(value, dtype=np.float64).filled(np.nan)
     if shape is None:
         return array
     if array.shape == shape:

@@ -2,6 +2,7 @@
 """Vertical section plotting helpers with explicit coordinate handling."""
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 from ._plot_core import (
     ColorbarOptions,
@@ -46,8 +47,8 @@ class VerticalSection(object):
         axis_labels=None,
         **kwargs
     ):
-        section = self.NRadar.extract_rhi(azimuth=azimuth, field_name=field_name, range_mode=range_mode)
         field, field_key = resolve_field_data(self.NRadar, 0, field_name, range_mode=range_mode)
+        section = self.NRadar.extract_rhi(azimuth=azimuth, field_name=field_key, range_mode=range_mode)
         style = resolve_field_style(
             self.NRadar,
             0,
@@ -100,15 +101,14 @@ class VerticalSection(object):
         **kwargs
     ):
         ensure_ppi_scan(self.NRadar)
-        scale = 1000.0 if point_units == "km" else 1.0
+        field, field_key = resolve_field_data(self.NRadar, 0, field_name, range_mode=range_mode)
         section = self.NRadar.extract_section(
-            (start_point[0] * scale, start_point[1] * scale),
-            (end_point[0] * scale, end_point[1] * scale),
-            field_name=field_name,
-            point_units="m",
+            start_point,
+            end_point,
+            field_name=field_key,
+            point_units=point_units,
             range_mode=range_mode,
         )
-        field, field_key = resolve_field_data(self.NRadar, 0, field_name, range_mode=range_mode)
         style = resolve_field_style(
             self.NRadar,
             0,
@@ -170,6 +170,7 @@ class VerticalSection(object):
             end_lonlat,
             field_name,
             range_mode=range_mode,
+            orient=orient,
             title=title,
             clabel=clabel,
             continuously=continuously,
@@ -207,14 +208,14 @@ class VerticalSection(object):
         **kwargs
     ):
         ensure_ppi_scan(NRadar)
+        field, field_key = resolve_field_data(NRadar, 0, field_name, range_mode=range_mode)
         section = NRadar.extract_section(
             start_point,
             end_point,
-            field_name=field_name,
+            field_name=field_key,
             point_units="m",
             range_mode=range_mode,
         )
-        field, field_key = resolve_field_data(NRadar, 0, field_name, range_mode=range_mode)
         style = resolve_field_style(
             NRadar,
             0,
@@ -293,9 +294,11 @@ class VerticalSection(object):
         section = NRadar.extract_section_lonlat(
             start_lonlat,
             end_lonlat,
-            field_name=field_name,
+            field_name=field_key,
             range_mode=range_mode,
         )
+        if label is None:
+            label = ("(Longitude, Latitude) (degrees)", "Height (km)")
         mesh = plot_vertical_section(
             ax,
             section,
@@ -308,15 +311,17 @@ class VerticalSection(object):
             labels=label,
             **kwargs
         )
-        xticks = ax.get_xticks()
         start_xy_km = (start_xy[0] / 1000.0, start_xy[1] / 1000.0)
         end_xy_km = (end_xy[0] / 1000.0, end_xy[1] / 1000.0)
-        lon_points, lat_points = lonlat_section_points(start_xy_km, end_xy_km, xticks, radar_lon, radar_lat)
-        ax.set_xticklabels(
-            ["(%.2f, %.2f)" % (lon_points[i], lat_points[i]) for i in range(len(xticks))],
-            rotation=15,
-            fontsize=10,
-        )
+
+        def format_lonlat(distance_km, position):
+            lon, lat = lonlat_section_points(
+                start_xy_km, end_xy_km, distance_km, radar_lon, radar_lat
+            )
+            return "(%.2f, %.2f)" % (as_numpy(lon).item(), as_numpy(lat).item())
+
+        ax.xaxis.set_major_formatter(FuncFormatter(format_lonlat))
+        ax.tick_params(axis="x", labelrotation=15, labelsize=10)
         return mesh
 
     @staticmethod

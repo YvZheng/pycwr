@@ -3,52 +3,190 @@ name: publish-pypi
 on:
   push:
     tags: ["v*"]
+    branches: ["master"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish tested artifacts to GitHub Releases and PyPI"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
-jobs:
-  build-distributions:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+concurrency:
+  group: publish-pycwr
+  cancel-in-progress: false
 
+jobs:
+  build-sdist:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            setup.py
-            requirements-core.txt
-            requirements-full.txt
-
-      - name: Upgrade packaging tools
-        run: python -m pip install --upgrade pip build twine
-
-      - name: Build source distribution
-        run: python -m build --sdist
-
-      - name: Check built distribution
-        run: python -m twine check dist/*
-
-      - name: Upload distribution artifacts
-        uses: actions/upload-artifact@v5
+      - name: Check release version and trigger
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PUBLISH_INPUT: ${{ inputs.publish }}
+        run: |
+          python - <<'PY'
+          import ast, os, pathlib, re
+          module = ast.parse(pathlib.Path("pycwr/__init__.py").read_text())
+          version = next(ast.literal_eval(n.value) for n in module.body
+                         if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "__version__" for t in n.targets))
+          assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
+          ref = os.environ["GITHUB_REF"]
+          tagged = ref.startswith("refs/tags/")
+          if tagged:
+              assert ref == "refs/tags/v" + version, (ref, version)
+          publish = tagged or (os.environ["EVENT_NAME"] == "workflow_dispatch" and os.environ["PUBLISH_INPUT"] == "true")
+          publish |= (os.environ["EVENT_NAME"] == "push" and ref == "refs/heads/master"
+                      and os.environ["COMMIT_MESSAGE"].splitlines()[0] == "Release v" + version)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"version={version}\npublish={str(publish).lower()}\n")
+          PY
+      - run: python -m pip install --upgrade build twine
+      - run: python -m build --sdist
+      - run: python -m twine check dist/*
+      - uses: actions/upload-artifact@v5
         with:
-          name: python-package-distributions
+          name: release-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  build-wheels:
+    name: Wheels / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Build and test compiled wheels
+        uses: pypa/cibuildwheel@v4.2.1
+        env:
+          CIBW_ARCHS_MACOS: auto
+          MPLBACKEND: Agg
+          PYCWR_RUN_SLOW_SAMPLE_TESTS: "0"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: release-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  verify-artifacts:
+    needs: [build-sdist, build-wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist/
+      - run: python -m pip install twine packaging
+      - run: python -m twine check dist/*
+      - name: Verify all 16 compiled wheels and produce checksums
+        env:
+          RELEASE_VERSION: ${{ needs.build-sdist.outputs.version }}
+        run: |
+          python - <<'PY'
+          import hashlib, os, pathlib, zipfile
+          from packaging.utils import parse_wheel_filename
+          paths = sorted(pathlib.Path("dist").glob("*"))
+          wheels = [p for p in paths if p.suffix == ".whl"]
+          assert len(wheels) == 16, [p.name for p in wheels]
+          coverage = set()
+          for path in wheels:
+              name, version, _, tags = parse_wheel_filename(path.name)
+              assert name == "pycwr" and str(version) == os.environ["RELEASE_VERSION"]
+              with zipfile.ZipFile(path) as archive:
+                  assert any(n.startswith("pycwr/core/RadarGridC") and n.endswith((".so", ".pyd")) for n in archive.namelist()), path
+              for tag in tags:
+                  platform = tag.platform
+                  assert tag.abi == tag.interpreter, tag
+                  if platform.startswith("manylinux") and platform.endswith("_x86_64"):
+                      family = "linux"
+                  elif platform == "win_amd64":
+                      family = "windows"
+                  elif platform.startswith("macosx_") and platform.endswith("_arm64"):
+                      family = "macos-arm64"
+                  elif platform.startswith("macosx_") and platform.endswith("_x86_64"):
+                      family = "macos-x86_64"
+                  else:
+                      raise AssertionError(f"Unexpected wheel platform: {tag}")
+                  coverage.add((tag.interpreter, family))
+          expected = {(py, platform) for py in ("cp39", "cp310", "cp311", "cp312") for platform in ("linux", "windows", "macos-arm64", "macos-x86_64")}
+          assert coverage == expected, (coverage, expected)
+          pathlib.Path("dist/SHA256SUMS").write_text("".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n" for p in paths))
+          PY
+      - uses: actions/upload-artifact@v5
+        with:
+          name: verified-distributions
           path: dist/
 
+  github-release:
+    needs: [build-sdist, verify-artifacts]
+    if: needs.build-sdist.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v6
+        with:
+          name: verified-distributions
+          path: dist/
+      - name: Create release and attach compiled wheels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.build-sdist.outputs.version }}
+        run: |
+          tag="v${RELEASE_VERSION}"
+          if gh release view "$tag" --json tagName >/dev/null 2>&1; then
+            existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha)"
+            test "$existing_sha" = "$GITHUB_SHA"
+            gh release download "$tag" --dir existing-release
+            python - <<'PY'
+          import hashlib, pathlib
+          for artifact in pathlib.Path("dist").iterdir():
+              existing = pathlib.Path("existing-release") / artifact.name
+              if existing.exists():
+                  assert hashlib.sha256(existing.read_bytes()).digest() == hashlib.sha256(artifact.read_bytes()).digest(), (
+                      f"Immutable release asset differs: {artifact.name}; rerun failed jobs using the original verified artifacts."
+                  )
+          PY
+            gh release view "$tag" --json assets --jq '.assets[].name' > existing-assets.txt
+            for asset in dist/*; do
+              if ! grep -Fxq "$(basename "$asset")" existing-assets.txt; then
+                gh release upload "$tag" "$asset"
+              fi
+            done
+          else
+            gh release create "$tag" dist/* \
+              --target "$GITHUB_SHA" --title "pycwr ${RELEASE_VERSION}" \
+              --notes-file "docs/releases/${RELEASE_VERSION}.md"
+          fi
+
   publish-to-pypi:
-    needs: build-distributions
+    needs: [build-sdist, verify-artifacts, github-release]
+    if: needs.build-sdist.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -56,13 +194,14 @@ jobs:
     permissions:
       contents: read
       id-token: write
-
     steps:
-      - name: Download distribution artifacts
-        uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v6
         with:
-          name: python-package-distributions
+          name: verified-distributions
           path: dist/
-
-      - name: Publish to PyPI via Trusted Publisher
+      - name: Exclude checksum manifest from Python package upload
+        run: mv dist/SHA256SUMS SHA256SUMS
+      - name: Publish sdist and compiled wheels via Trusted Publisher
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

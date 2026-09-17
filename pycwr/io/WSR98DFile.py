@@ -138,15 +138,19 @@ def _available_wsr98d_fields(prd, field_names=None, strict=True):
 
 def _range_geometry(range_values):
     range_values = np.asarray(range_values, dtype=np.float64)
-    if range_values.size == 0:
-        raise ValueError("Export range vector cannot be empty.")
+    if range_values.ndim != 1 or range_values.size == 0:
+        raise ValueError("Export range vector must be one-dimensional and non-empty.")
+    if not np.all(np.isfinite(range_values)):
+        raise ValueError("Export range vector must contain only finite values.")
     if range_values.size > 1:
         spacing = float(range_values[1] - range_values[0])
         if spacing <= 0.0:
             raise ValueError("Range spacing must be positive.")
+        if not np.allclose(np.diff(range_values), spacing, rtol=0.0, atol=1e-6):
+            raise ValueError("Export range vector must have uniform spacing.")
     else:
         spacing = float(range_values[0]) if float(range_values[0]) > 0.0 else 1.0
-    return int(round(float(range_values[0]))), int(round(spacing))
+    return int(round(float(range_values[0]))), spacing
 
 
 def _select_resolution_range(prd, sweep, candidates):
@@ -160,9 +164,34 @@ def _select_resolution_range(prd, sweep, candidates):
     return np.asarray(prd.fields[sweep]["range"].values, dtype=np.float64)
 
 
+def _fit_wsr98d_encoding(values, spec):
+    """Keep finite values out of reserved codes without losing quantization precision."""
+    fitted = dict(spec)
+    finite = np.asarray(values, dtype=np.float64)
+    finite = finite[np.isfinite(finite)]
+    if not finite.size:
+        return fitted
+    with np.errstate(over="ignore", invalid="ignore"):
+        quantized = np.rint(finite * float(spec["scale"]))
+    if not np.all(np.isfinite(quantized)):
+        raise ValueError("Field values exceed the WSR98D encoding range at the requested precision.")
+    lowest = float(quantized.min())
+    highest = float(quantized.max())
+    offset = int(spec["offset"])
+    if lowest + offset < 5 or highest + offset > 65535:
+        offset = int(5 - lowest)
+    if not -(2 ** 31) <= offset < 2 ** 31 or highest + offset > 65535:
+        raise ValueError("Field values exceed the WSR98D encoding range at the requested precision.")
+    fitted["offset"] = offset
+    if highest + offset > 255:
+        fitted["bin_length"] = 2
+    return fitted
+
+
 def _encode_quantized(values, scale, offset, bin_length, missing_code=3):
     max_code = 255 if bin_length == 1 else 65535
-    codes = np.round(np.asarray(values, dtype=np.float64) * float(scale) + float(offset))
+    # Match the quantization used to choose the volume offset, including ties.
+    codes = np.rint(np.asarray(values, dtype=np.float64) * float(scale)) + float(offset)
     codes[~np.isfinite(values)] = missing_code
     codes = np.clip(codes.astype(np.int64), 0, max_code)
     if bin_length == 1:
@@ -188,18 +217,20 @@ class WSR98DBaseData(object):
         self.station_lat = station_lat
         self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename)
-        self._check_standard_basedata()
-        self.header = self._parse_BaseDataHeader()
-        self.radial, self._status, self._azimuth, self._elevation, self._seconds, self._microseconds = \
-            self._parse_radial()
-        self._scan_time = None
-        self._nyquist_velocity = None
-        self._unambiguous_range = None
-        self.nrays = len(self.radial)
-        self.sweep_start_ray_index = np.where((self._status == 0) | (self._status == 3))[0]
-        self.sweep_end_ray_index = np.where((self._status == 2) | (self._status == 4))[0]
-        self.nsweeps = len(self.sweep_start_ray_index)
-        self.fid.close()
+        try:
+            self._check_standard_basedata()
+            self.header = self._parse_BaseDataHeader()
+            self.radial, self._status, self._azimuth, self._elevation, self._seconds, self._microseconds = \
+                self._parse_radial()
+            self._scan_time = None
+            self._nyquist_velocity = None
+            self._unambiguous_range = None
+            self.nrays = len(self.radial)
+            self.sweep_start_ray_index = np.where((self._status == 0) | (self._status == 3))[0]
+            self.sweep_end_ray_index = np.where((self._status == 2) | (self._status == 4))[0]
+            self.nsweeps = len(self.sweep_start_ray_index)
+        finally:
+            self.fid.close()
 
     def _check_standard_basedata(self):
         """
@@ -310,7 +341,7 @@ class WSR98DBaseData(object):
             if Momheader['BinLength'] == 1:
                 dat_tmp = np.frombuffer(Data_buf, dtype=np.uint8, count=data_len)
             else:
-                dat_tmp = np.frombuffer(Data_buf, dtype=np.uint16, count=data_len // 2)
+                dat_tmp = np.frombuffer(Data_buf, dtype='<u2', count=data_len // 2)
             if Momheader['DataType'] <= 35:
                 dat = np.full(dat_tmp.shape, np.nan, dtype=np.float32)
                 valid = dat_tmp >= 5
@@ -800,6 +831,17 @@ def write_wsr98d(
     _ensure_ppi_prd_volume(prd)
     path = _ensure_output_path(filename, overwrite=overwrite)
     selected_fields = _available_wsr98d_fields(prd, field_names=field_names, strict=strict)
+    field_specs = {}
+    for field_name in selected_fields:
+        bounds = []
+        for sweep in range(int(prd.nsweeps)):
+            if field_name not in prd.available_fields(sweep=sweep, range_mode=None):
+                continue
+            values = np.asarray(prd.get_sweep_field(sweep, field_name, range_mode=None).values)
+            finite = values[np.isfinite(values)]
+            if finite.size:
+                bounds.extend((float(finite.min()), float(finite.max())))
+        field_specs[field_name] = _fit_wsr98d_encoding(bounds, WSR98D_WRITE_FIELD_SPECS[field_name])
 
     latitude = float(prd.scan_info["latitude"].values)
     longitude = float(prd.scan_info["longitude"].values)
@@ -911,9 +953,9 @@ def write_wsr98d(
                 for field_name in selected_fields:
                     if field_name not in prd.available_fields(sweep=sweep, range_mode=None):
                         continue
-                    spec = WSR98D_WRITE_FIELD_SPECS[field_name]
                     field = prd.get_sweep_field(sweep, field_name, range_mode=None)
                     values = np.asarray(field.values[iray], dtype=np.float32)
+                    spec = field_specs[field_name]
                     data_bytes = _encode_quantized(
                         values,
                         spec["scale"],

@@ -5,5 +5,10 @@ include pycwr/core/RadarGridC.c
 include pycwr/core/RadarGridC.pyx
 include requirements-core.txt
 include requirements-full.txt
+include .coveragerc
+include scripts/ci_import_smoke.py
+include scripts/audit_public_api.py
+recursive-include test *.py
+recursive-include docs *.md
 recursive-include pycwr/GraphicalInterface/templates *.html
 recursive-include pycwr/GraphicalInterface/static *

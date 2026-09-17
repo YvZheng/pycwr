@@ -15,7 +15,7 @@ QC_REFERENCE_NOTES = {
 
 
 def _as_float_array(data):
-    return np.asanyarray(data, dtype=float)
+    return np.ma.asarray(data, dtype=float).filled(np.nan)
 
 
 def _normalize_window(window):
@@ -82,6 +82,9 @@ def kdp_from_phidp(phidp_smooth, dr, fit_window=7):
     """
     Estimate KDP from a smoothed PhiDP field using a local linear fit.
     """
+    dr = float(dr)
+    if not np.isfinite(dr) or dr <= 0.0:
+        raise ValueError("dr must be finite and positive")
     phase = _as_float_array(phidp_smooth)
     fit_window = _normalize_window(fit_window)
     pad = fit_window // 2

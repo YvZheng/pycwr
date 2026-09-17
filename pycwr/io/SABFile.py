@@ -25,8 +25,10 @@ class SABBaseData(object):
         self.station_lat = station_lat
         self.station_alt = station_alt
         self.fid = _prepare_for_read(self.filename)
-        self._raw_buf = _read_all(self.fid, "SAB radial payload")
-        self.fid.close()
+        try:
+            self._raw_buf = _read_all(self.fid, "SAB radial payload")
+        finally:
+            self.fid.close()
         self.RadialNum, self.nrays = self._determine_radial_record_layout()
         self.radial, self._status, self._azimuth, self._elevation, self._julian_date, self._msends, \
             self._nyquist, self._unambiguous_range = self._parse_radial()

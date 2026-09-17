@@ -5,7 +5,7 @@ It covers radar base-data reading, geometry, plotting, quality control,
 hydrometeor classification, single-radar wind retrieval, multi-radar
 compositing, and export.
 
-- Current release: `1.0.8`
+- Current release: `1.0.9`
 - [中文说明](README_CN.md)
 - [API reference](docs/api_reference.md)
 - [Radar network quickstart](docs/radar_network_quickstart_en.md)
@@ -13,13 +13,14 @@ compositing, and export.
 - [Test guide](test/README.md)
 - [Draw quickstart](docs/draw_quickstart.md)
 
-## Why 1.0.8 matters
+## Why 1.0.9 matters
 
-`1.0.8` continues the first stable release line intended to be usable for production-style
+`1.0.9` continues the first stable release line intended to be usable for production-style
 usage and GitHub distribution.
-This refresh keeps the PA reader behavior aligned while improving the
-maintainability of the PA decode path and preserving the plotting colormap
-compatibility update in the public release line.
+This patch fixes geographic sections, native-range product plotting, masked-data
+handling, and radar export edge cases. It also adds compiled wheels for CPython
+3.9–3.12 on Linux x86_64, Windows x64, and macOS Intel/Apple silicon.
+See the [1.0.9 release notes](docs/releases/1.0.9.md) for fixes and validation.
 
 Highlights:
 
@@ -68,7 +69,7 @@ python -m pip install ".[full]"
 
 Notes:
 
-- `pycwr 1.0.8` requires Python `>=3.9`
+- `pycwr 1.0.9` requires Python `>=3.9`
 - `python -m pip install pycwr` is the recommended path for normal users
 - base install is enough for readers, `PRD`, geometry, interpolation, and
   NetCDF-style export
@@ -77,7 +78,7 @@ Notes:
 - upstream `arm_pyart` and `xradar` currently require Python `>=3.10`, so on
   Python `3.9` the full install still covers plotting, QC, and the web
   viewer, but not those two optional interop stacks
-- `pandas` is pinned to `<3` in `1.0.8` for release stability
+- `pandas` is pinned to `<3` in `1.0.9` for release stability
 - source install is still useful when you are developing locally or rebuilding
   the Cython extension
 
@@ -570,7 +571,7 @@ The viewer is local-only by design and requires a token for API access.
 
 ## Release notes for users
 
-For `1.0.8`, the most important user-visible behavior rules are:
+For `1.0.9`, the most important user-visible behavior rules are:
 
 - radar reading returns one stable `PRD` object across supported formats
 - low-level reflectivity can now be queried explicitly in aligned or native mode

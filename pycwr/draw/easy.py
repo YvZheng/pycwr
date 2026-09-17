@@ -132,13 +132,14 @@ def plot_section_lonlat(
 
 def plot_rhi(
     radar,
-    azimuth,
+    azimuth=None,
     field="dBZ",
     ax=None,
     figsize=(10, 5),
     show=False,
     save=None,
     title=None,
+    range_mode=None,
     **kwargs
 ):
     """Beginner-friendly RHI-style vertical plot at a target azimuth."""
@@ -154,8 +155,8 @@ def plot_rhi(
     continuously = kwargs.pop("continuously", False)
     height_km = kwargs.pop("height_km", None)
     labels = kwargs.pop("labels", None)
-    section = radar.extract_rhi(azimuth=azimuth, field_name=field)
-    field_data, field_key = resolve_field_data(radar, 0, field)
+    field_data, field_key = resolve_field_data(radar, 0, field, range_mode=range_mode)
+    section = radar.extract_rhi(azimuth=azimuth, field_name=field_key, range_mode=range_mode)
     style = resolve_field_style(
         radar,
         0,

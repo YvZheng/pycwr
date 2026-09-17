@@ -37,7 +37,6 @@ and antenna (azimuth, elevation, range) coordinate systems.
 import warnings
 
 import numpy as np
-import xarray as xr
 try:
     import pyproj
     _PYPROJ_AVAILABLE = True
@@ -53,8 +52,8 @@ def resolve_effective_earth_radius(effective_earth_radius=None):
     if effective_earth_radius is None:
         return DEFAULT_EFFECTIVE_EARTH_RADIUS
     radius = float(effective_earth_radius)
-    if radius <= 0:
-        raise ValueError("effective_earth_radius must be positive")
+    if not np.isfinite(radius) or radius <= 0:
+        raise ValueError("effective_earth_radius must be finite and positive")
     return radius
 
 
@@ -275,6 +274,9 @@ def antenna_vectors_to_cartesian_cwr(ranges, azimuths, elevations, h=0, edges=Fa
         Cartesian coordinates in meters from the center of the radar to the
         gate centers or edges.
     """
+    ranges = np.asarray(ranges)
+    azimuths = np.asarray(azimuths)
+    elevations = np.asarray(elevations)
     if edges:
         if len(ranges) != 1:
             ranges = _interpolate_range_edges(ranges)
@@ -321,16 +323,6 @@ def antenna_vectors_to_cartesian(ranges, azimuths, elevations, edges=False,
         gate centers or edges.
 
     """
-    assert isinstance(ranges, (np.ndarray, xr.DataArray)), "check input dtype!"
-    assert isinstance(azimuths, (np.ndarray, xr.DataArray)), "check input dtype!"
-    assert isinstance(elevations, (np.ndarray, xr.DataArray)), "check input dtype!"
-    if edges:
-        if len(ranges) != 1:
-            ranges = _interpolate_range_edges(ranges)
-        if len(elevations) != 1:
-            elevations = _interpolate_elevation_edges(elevations)
-        if len(azimuths) != 1:
-            azimuths = _interpolate_azimuth_edges(azimuths)
     return antenna_vectors_to_cartesian_cwr(
         ranges,
         azimuths,

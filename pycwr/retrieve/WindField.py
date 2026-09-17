@@ -49,7 +49,7 @@ WIND_REFERENCE_NOTES = {
 
 def _as_float_array(values, fillvalue=None):
     """Return a float64 array where fill values are replaced by NaN."""
-    array = np.asarray(values, dtype=np.float64)
+    array = np.ma.asarray(values, dtype=np.float64).filled(np.nan)
     if fillvalue is None:
         return array
     return np.where(array == float(fillvalue), np.nan, array)
@@ -249,18 +249,28 @@ def fit_vad_ring(
         Retrieval record containing horizontal wind, fit quality, and sample
         coverage diagnostics.
     """
-    azimuth = np.asarray(azimuth, dtype=np.float64).reshape(-1)
+    azimuth = _as_float_array(azimuth).reshape(-1)
     radial_velocity = _as_float_array(radial_velocity, fillvalue=fillvalue).reshape(-1)
     if azimuth.shape != radial_velocity.shape:
         raise ValueError("azimuth and radial_velocity must have the same shape")
-    if np.asarray(elevation).ndim == 0:
+    elevation = _as_float_array(elevation)
+    if elevation.ndim == 0:
         elevation = np.full(azimuth.shape, float(elevation), dtype=np.float64)
     else:
         elevation = np.asarray(elevation, dtype=np.float64).reshape(-1)
     if elevation.shape != azimuth.shape:
         raise ValueError("elevation must be scalar or match the azimuth shape")
 
-    valid = np.isfinite(radial_velocity)
+    valid = np.isfinite(radial_velocity) & np.isfinite(azimuth) & np.isfinite(elevation)
+    if weights is not None:
+        weights = _as_float_array(weights)
+        if weights.ndim == 0:
+            weights = np.full(azimuth.shape, float(weights), dtype=np.float64)
+        else:
+            weights = weights.reshape(-1)
+        if weights.shape != azimuth.shape:
+            raise ValueError("weights must be scalar or match the azimuth shape")
+        valid &= np.isfinite(weights) & (weights > 0.0)
     valid_count = int(valid.sum())
     valid_fraction = float(valid_count / radial_velocity.size) if radial_velocity.size else 0.0
     azimuth_coverage = _azimuth_coverage_deg(azimuth[valid])

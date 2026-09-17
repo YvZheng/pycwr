@@ -238,7 +238,11 @@ class PRD(object):
     def field_alias_candidates(cls, field_name):
         """Return the preferred aliases for one logical radar field name."""
         name = str(field_name)
-        return cls.FIELD_ALIASES.get(name, (name,))
+        candidates = list(cls.FIELD_ALIASES.get(name, (name,)))
+        for field_key, metadata_name in CINRAD_field_mapping.items():
+            if metadata_name == name:
+                candidates.extend(cls.FIELD_ALIASES.get(field_key, (field_key,)))
+        return tuple(dict.fromkeys(candidates))
 
     def resolve_field_name(self, field_name, sweep=None, range_mode=None, required=True):
         """Resolve a logical field name to an available field on one sweep or volume."""
@@ -1016,6 +1020,7 @@ class PRD(object):
         sample_spacing=None,
     ):
         """Extract a Cartesian vertical section for PPI scans using linear interpolation."""
+        field_name = self.resolve_field_name(field_name, range_mode=range_mode)
         range_mode = self._resolve_field_range_mode(field_name, range_mode=range_mode)
         if interpolation != "linear":
             raise ValueError("Only linear interpolation is currently supported.")
@@ -1265,6 +1270,7 @@ class PRD(object):
 
     def extract_rhi(self, azimuth=None, field_name="dBZ", range_mode=None):
         """Extract an RHI-style section from PPI or native-RHI scans."""
+        field_name = self.resolve_field_name(field_name, range_mode=range_mode)
         range_mode = self._resolve_field_range_mode(field_name, range_mode=range_mode)
         scan_type = str(np.asarray(self.scan_info.scan_type).item())
         if scan_type == "ppi":

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.machinery
 import pkgutil
 import sys
 from pathlib import Path
@@ -34,6 +35,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", default=None, help="Source-tree root to exclude from sys.path")
     parser.add_argument("--sample", default=None, help="Optional radar sample file for a tiny runtime smoke test")
+    parser.add_argument("--require-compiled", action="store_true", help="Fail if the Cython extension falls back to Python")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve() if args.repo_root else None
@@ -65,6 +67,20 @@ def main() -> int:
         "module_file": str(module_file),
         "submodules": discovered,
     }
+
+    if args.require_compiled:
+        from pycwr.core import RadarGrid, RadarGridC
+
+        extension_path = str(RadarGridC.__file__)
+        if not any(extension_path.endswith(suffix) for suffix in importlib.machinery.EXTENSION_SUFFIXES):
+            raise RuntimeError(f"Expected compiled RadarGridC extension, got: {extension_path}")
+        x = np.array([1000.0, -1000.0, -1000.0, 1000.0])
+        y = np.array([1000.0, 1000.0, -1000.0, -1000.0])
+        for px, py in zip(x, y):
+            actual = RadarGridC.cartesian_to_antenna(float(px), float(py), 1000.0, 100.0)
+            expected = RadarGrid.cartesian_to_antenna(float(px), float(py), 1000.0, 100.0)
+            np.testing.assert_allclose(actual, expected, rtol=1e-7, atol=1e-5)
+        result["compiled_extension"] = extension_path
 
     if args.sample:
         sample = Path(args.sample).resolve()

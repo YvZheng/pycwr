@@ -1,4 +1,4 @@
-from libc.math cimport sin, cos, asin, acos, tan, atan2, sqrt, fabs, NAN
+from libc.math cimport sin, cos, asin, acos, tan, atan2, sqrt, fabs, isfinite, NAN
 import numpy as np
 cimport numpy as cnp
 import cython
@@ -14,8 +14,8 @@ cdef inline double _resolve_effective_earth_radius(object effective_earth_radius
     if effective_earth_radius is None:
         return DEFAULT_EFFECTIVE_EARTH_RADIUS
     radius = float(effective_earth_radius)
-    if radius <= 0.0:
-        raise ValueError("effective_earth_radius must be positive")
+    if not isfinite(radius) or radius <= 0.0:
+        raise ValueError("effective_earth_radius must be finite and positive")
     return radius
 
 

@@ -45,6 +45,8 @@ class RadarGraph(object):
         colorbar_ticks=None,
         colorbar_ticklabels=None,
         reference_options=None,
+        cmap=None,
+        cmap_bins=None,
         **kwargs
     ):
         ensure_ppi_scan(self.NRadar)
@@ -55,6 +57,8 @@ class RadarGraph(object):
             field_key,
             field,
             value_range=normvar,
+            cmap=cmap,
+            bins=cmap_bins,
             continuous=continuously,
             colorbar_orientation=colorbar_orientation,
             colorbar_ticks=colorbar_ticks,
@@ -100,6 +104,8 @@ class RadarGraph(object):
         colorbar_ticks=None,
         colorbar_ticklabels=None,
         reference_options=None,
+        cmap=None,
+        cmap_bins=None,
         **kwargs
     ):
         ensure_ppi_scan(NRadar)
@@ -110,6 +116,8 @@ class RadarGraph(object):
             field_key,
             field,
             value_range=normvar,
+            cmap=cmap,
+            bins=cmap_bins,
             continuous=continuously,
             colorbar_orientation=colorbar_orientation,
             colorbar_ticks=colorbar_ticks,

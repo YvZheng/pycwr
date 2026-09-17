@@ -5,6 +5,9 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+.coverage
+.coverage.*
+htmlcov/
 
 pycwr/core/RadarGridC*.so
 pycwr/core/RadarGridC.c

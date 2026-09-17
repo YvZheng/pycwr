@@ -1,6 +1,9 @@
 """Section and RHI extraction examples plus regression coverage."""
 
 import unittest
+import warnings
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import matplotlib
 import numpy as np
@@ -134,6 +137,22 @@ class SectionExtractionTests(unittest.TestCase):
         np.testing.assert_allclose(section["dBZ"].values, prd.fields[0]["dBZ"].values)
         np.testing.assert_array_equal(section["source_sweep"].values, np.zeros(3, dtype=np.int32))
 
+    def test_extract_section_resolves_metadata_field_alias(self):
+        prd = self._build_ppi_prd()
+        expected = prd.extract_section((1.0, 2.0), (5.0, 2.0), field_name="dBZ")
+        section = prd.extract_section((1.0, 2.0), (5.0, 2.0), field_name="reflectivity")
+
+        self.assertEqual(section.attrs["field_name"], "dBZ")
+        np.testing.assert_allclose(section["dBZ"].values, expected["dBZ"].values, equal_nan=True)
+
+    def test_extract_rhi_resolves_metadata_field_alias(self):
+        for prd, azimuth in ((self._build_ppi_prd(), 45.0), (self._build_rhi_prd(), None)):
+            with self.subTest(scan_type=str(prd.scan_info.scan_type.values)):
+                expected = prd.extract_rhi(azimuth=azimuth, field_name="dBZ")
+                section = prd.extract_rhi(azimuth=azimuth, field_name="reflectivity")
+                self.assertEqual(section.attrs["field_name"], "dBZ")
+                np.testing.assert_allclose(section["dBZ"].values, expected["dBZ"].values, equal_nan=True)
+
     def test_legacy_section_helpers_remain_compatible(self):
         prd = self._build_ppi_prd()
 
@@ -166,6 +185,68 @@ class SectionPlotTests(unittest.TestCase):
         )
         try:
             self.assertIsNotNone(result.artist)
+        finally:
+            plt.close(result.fig)
+
+    def test_easy_plot_section_lonlat_numeric_endpoints_and_save(self):
+        from pycwr.core.transforms import cartesian_to_geographic_aeqd
+        from pycwr.draw import plot_section_lonlat
+
+        prd = self._build_plot_prd()
+        lon, lat = cartesian_to_geographic_aeqd(
+            np.array([1000.0, 5000.0]), np.array([2000.0, 2000.0]), 120.0, 30.0
+        )
+        with TemporaryDirectory() as directory:
+            for container in (tuple, list, np.array):
+                with self.subTest(container=container.__name__):
+                    fig, ax = plt.subplots()
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("error")
+                            result = plot_section_lonlat(
+                                prd,
+                                start_lonlat=container([float(lon[0]), float(lat[0])]),
+                                end_lonlat=container([float(lon[1]), float(lat[1])]),
+                                ax=ax,
+                                height_km=(0, 5),
+                                save=Path(directory) / "section.png",
+                            )
+                            fig.canvas.draw()
+                        self.assertIs(result.ax, ax)
+                        self.assertIs(result.fig, fig)
+                        self.assertIsNotNone(result.artist)
+                        self.assertGreater((Path(directory) / "section.png").stat().st_size, 0)
+                        self.assertIn("Longitude", ax.get_xlabel())
+                        np.testing.assert_allclose(ax.get_ylim(), [0, 5])
+                    finally:
+                        plt.close(fig)
+
+    def test_section_lonlat_labels_follow_tick_changes(self):
+        from pycwr.core.transforms import cartesian_to_geographic_aeqd
+        from pycwr.draw import plot_section_lonlat
+
+        prd = self._build_plot_prd()
+        lon, lat = cartesian_to_geographic_aeqd(
+            np.array([1000.0, 5000.0]), np.array([2000.0, 2000.0]), 120.0, 30.0
+        )
+        result = plot_section_lonlat(
+            prd, (float(lon[0]), float(lat[0])), (float(lon[1]), float(lat[1])),
+            labels=("Custom longitude / latitude", "Custom height"),
+        )
+        try:
+            # Reticking after creation must not leave geographic labels stale.
+            result.ax.set_xlim(1.0, 3.0)
+            result.ax.set_xticks([1.0, 2.0, 3.0])
+            result.fig.canvas.draw()
+            expected_lon, expected_lat = cartesian_to_geographic_aeqd(
+                np.array([2000.0, 3000.0, 4000.0]), np.full(3, 2000.0), 120.0, 30.0
+            )
+            self.assertEqual(
+                [tick.get_text() for tick in result.ax.get_xticklabels()],
+                ["(%.2f, %.2f)" % pair for pair in zip(expected_lon, expected_lat)],
+            )
+            self.assertEqual(result.ax.get_xlabel(), "Custom longitude / latitude")
+            self.assertEqual(result.ax.get_ylabel(), "Custom height")
         finally:
             plt.close(result.fig)
 

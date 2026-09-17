@@ -81,13 +81,13 @@ def load_config(filename=None):
     cfile = module_from_spec(spec)
     spec.loader.exec_module(cfile)
 
-    _DEFAULT_METADATA = cfile.DEFAULT_METADATA
-    _FILE_SPECIFIC_METADATA = cfile.FILE_SPECIFIC_METADATA
-    _FIELD_MAPPINGS = cfile.FIELD_MAPPINGS
-    _FILL_VALUE = cfile.FILL_VALUE
-    _DEFAULT_FIELD_NAMES = cfile.DEFAULT_FIELD_NAMES
-    _DEFAULT_FIELD_COLORMAP = cfile.DEFAULT_FIELD_COLORMAP
-    _DEFAULT_FIELD_LIMITS = cfile.DEFAULT_FIELD_LIMITS
+    # Validate every required setting before replacing the active configuration.
+    settings = tuple(getattr(cfile, name) for name in (
+        "DEFAULT_METADATA", "FILE_SPECIFIC_METADATA", "FIELD_MAPPINGS", "FILL_VALUE",
+        "DEFAULT_FIELD_NAMES", "DEFAULT_FIELD_COLORMAP", "DEFAULT_FIELD_LIMITS",
+    ))
+    (_DEFAULT_METADATA, _FILE_SPECIFIC_METADATA, _FIELD_MAPPINGS, _FILL_VALUE,
+     _DEFAULT_FIELD_NAMES, _DEFAULT_FIELD_COLORMAP, _DEFAULT_FIELD_LIMITS) = settings
     return
 
 # load the configuration from the enviromental parameter if it is set
@@ -143,8 +143,8 @@ def get_field_colormap(field):
     if field in _DEFAULT_FIELD_COLORMAP:
         return _DEFAULT_FIELD_COLORMAP[field]
     else:
-        import matplotlib.cm
-        return matplotlib.cm.get_cmap().name
+        import matplotlib
+        return matplotlib.rcParams["image.cmap"]
 
 
 def get_field_limits(field, container=None, selection=0):

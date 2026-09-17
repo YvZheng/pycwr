@@ -205,13 +205,21 @@ def julian2date_SEC(Sec, Msec):
     scantime = datetime.datetime(1970, 1, 1) + deltSec + deltMSec
     return scantime
 
+def _source_basename(filename):
+    """Return a filename for paths or named streams, without requiring either."""
+    source = getattr(filename, "name", "") if hasattr(filename, "read") else filename
+    if not isinstance(source, (str, bytes, os.PathLike)):
+        return ""
+    return os.path.basename(os.fsdecode(source))
+
+
 def get_radar_info(filename):
     """
     Look up radar site metadata from the station identifier embedded in the filename.
     :param filename:
     :return:(lat(deg), lon(deg), elev(m), frequency(GHZ))
     """
-    name = os.path.basename(filename)
+    name = _source_basename(filename)
     try:
         station_id = [int(name[idx:idx+4]) for idx in range(len(name)-4) if name[idx:idx+4].isdigit()][0]
     except Exception:
@@ -222,7 +230,7 @@ def get_radar_info(filename):
            radar_info.loc[station_id, "Elevation"], radar_info.loc[station_id, "Frequency"]
 
 def get_radar_sitename(filename):
-    name = os.path.basename(filename)
+    name = _source_basename(filename)
     station_ids = [int(name[idx:idx + 4]) for idx in range(len(name) - 4) if name[idx:idx + 4].isdigit()]
     if not station_ids:
         return "Unknown"
@@ -237,7 +245,7 @@ def _get_radar_type(filename):
     :param filename:
     :return:
     """
-    name = os.path.basename(filename)
+    name = _source_basename(filename)
     station_ids = [int(name[idx:idx + 4]) for idx in range(len(name) - 4) if name[idx:idx + 4].isdigit()]
     if not station_ids:
         return None
@@ -253,16 +261,17 @@ def _get_radar_type(filename):
         return None
 
 def radar_format(filename):
-    if hasattr(filename, 'read'):
-        return filename
+    borrowed = hasattr(filename, 'read')
     fh = _prepare_for_read(filename)
+    position = fh.tell() if borrowed else None
     try:
+        fh.seek(0)
         flag = fh.read(28)
         if flag[:4] == b'AR2V':
             return "NEXRAD_LEVEL2"
         # PA files share the RSTM prefix with WSR98D, but carry a distinct
         # generic type marker at bytes 8:12.
-        if flag[8:12] == b'\x10\x00\x00\x00':
+        if flag[:4] == b'RSTM' and flag[8:12] == b'\x10\x00\x00\x00':
             return "PA"
         if flag[:4] == b'RSTM':
             return "WSR98D"
@@ -285,19 +294,30 @@ def radar_format(filename):
                 return "CC"
             if (size - 1024) % 4000 == 0 and sc_flag in (b"CINRAD/SC", b"CINRAD/CD"):
                 return "SC"
-        return _get_radar_type(filename)
+        source_name = getattr(filename, 'name', '') if borrowed else filename
+        return _get_radar_type(source_name) if isinstance(source_name, (str, bytes, os.PathLike)) else None
     finally:
-        fh.close()
+        if borrowed:
+            fh.seek(position)
+        else:
+            fh.close()
 
 def make_time_unit_str(dtobj):
     """ Return a time unit string from a datetime object. """
     return "seconds since " + dtobj.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def date2num(dates, units):
-    """Convert datetimes to numeric seconds for the unit format used by pycwr."""
+    """Convert datetime scalars or arrays to numeric seconds, preserving shape."""
     prefix = "seconds since "
-    assert units.startswith(prefix), "only second-based time units are supported"
+    if not isinstance(units, str) or not units.startswith(prefix):
+        raise ValueError("only second-based time units are supported")
     base_time = datetime.datetime.strptime(units[len(prefix):], "%Y-%m-%dT%H:%M:%SZ")
-    if np.isscalar(dates):
-        return (dates - base_time).total_seconds()
-    return np.array([(date - base_time).total_seconds() for date in dates], dtype=np.float64)
+    values = np.asarray(dates)
+    if np.issubdtype(values.dtype, np.datetime64):
+        seconds = (values - np.datetime64(base_time)) / np.timedelta64(1, "s")
+    else:
+        seconds = np.array(
+            [(date - base_time).total_seconds() for date in values.reshape(-1)],
+            dtype=np.float64,
+        ).reshape(values.shape)
+    return float(seconds) if values.ndim == 0 else np.asarray(seconds, dtype=np.float64)
